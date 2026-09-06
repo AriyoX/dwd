@@ -1,0 +1,34 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { SignupForm } from '@/features/auth/auth-form';
+import { safeReturnPath } from '@/lib/navigation';
+
+export const metadata: Metadata = { title: 'Create account' };
+
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const params = await searchParams;
+  const next = safeReturnPath(params.next);
+  return (
+    <section className="stack-lg">
+      <header>
+        <h1>Create an account.</h1>
+      </header>
+      <SignupForm next={next} />
+      <p className="muted small">
+        By continuing, you agree to the{' '}
+        <Link href="/terms" style={{ color: 'var(--amber)' }}>
+          terms
+        </Link>{' '}
+        and acknowledge the{' '}
+        <Link href="/privacy" style={{ color: 'var(--amber)' }}>
+          privacy notice
+        </Link>
+        .
+      </p>
+    </section>
+  );
+}

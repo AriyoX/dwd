@@ -1,0 +1,174 @@
+export type DrinkCategory = 'beer' | 'wine' | 'spirit' | 'cocktail' | 'other';
+export type NightStatus = 'active' | 'ended';
+export type MemberType = 'account' | 'guest';
+export type MemberRole = 'host' | 'member';
+export type AlertVisibility = 'private' | 'group';
+export type PlanStatus = 'within_plan' | 'reached' | 'exceeded';
+export type NightTimeStatus = 'active' | 'overdue' | 'ended';
+
+export interface Night {
+  id: string;
+  hostUserId: string;
+  title: string;
+  status: NightStatus;
+  startsAt: string;
+  initialEndsAt: string;
+  endsAt: string;
+  endedAt: string | null;
+  timezone: string;
+}
+
+export interface NightEndTimeChange {
+  id: string;
+  nightId: string;
+  changedBy: string;
+  previousEndsAt: string;
+  newEndsAt: string;
+  effectiveAt: string;
+}
+
+export interface NightMember {
+  id: string;
+  nightId: string;
+  userId: string | null;
+  displayName: string;
+  memberType: MemberType;
+  role: MemberRole;
+  managedByUserId: string | null;
+  joinedAt: string;
+  leftAt: string | null;
+}
+
+export interface PlanItemInput {
+  clientId?: string | undefined;
+  id?: string | undefined;
+  label: string;
+  category: DrinkCategory;
+  volumeMl: number;
+  abvPercent: number;
+  plannedQuantity: number;
+  isQuickLog: boolean;
+}
+
+export interface PlanItem extends PlanItemInput {
+  id: string;
+  nightMemberId: string;
+  createdBy: string;
+  createdAt: string;
+  archivedAt: string | null;
+  updatedAt: string;
+}
+
+export interface AlcoholLog {
+  id: string;
+  nightId: string;
+  nightMemberId: string;
+  actorUserId: string;
+  planItemId: string | null;
+  labelSnapshot: string;
+  categorySnapshot: DrinkCategory;
+  volumeMl: number;
+  abvPercent: number;
+  ethanolGrams: number;
+  consumedAt: string;
+  createdAt: string;
+  afterEnd: boolean;
+  idempotencyKey: string;
+  deletedAt: string | null;
+}
+
+export interface WaterLog {
+  id: string;
+  nightId: string;
+  nightMemberId: string;
+  actorUserId: string;
+  consumedAt: string;
+  createdAt: string;
+  idempotencyKey: string;
+  deletedAt: string | null;
+}
+
+export interface NightAlert {
+  id: string;
+  nightId: string;
+  nightMemberId: string | null;
+  type: 'personal_pace' | 'group_check_in' | 'plan_reached';
+  severity: 'info' | 'caution' | 'urgent';
+  visibility: AlertVisibility;
+  message: string;
+  dedupeKey: string;
+  createdAt: string;
+  expiresAt: string | null;
+}
+
+export interface MemberSnapshot extends NightMember {
+  planItems: PlanItem[];
+  drinkLogs: AlcoholLog[];
+  waterLogs: WaterLog[];
+}
+
+export interface NightSnapshot {
+  night: Night;
+  currentUserId: string;
+  currentMemberId: string;
+  members: MemberSnapshot[];
+  alerts: NightAlert[];
+  endTimeChanges: NightEndTimeChange[];
+}
+
+export interface ActiveNightSummary {
+  id: string;
+  title: string;
+  status: NightStatus;
+  startsAt: string;
+  endsAt: string;
+  role: MemberRole;
+  lastActivityAt: string;
+}
+
+export interface CustomDrinkInput {
+  label: string;
+  category: DrinkCategory;
+  volumeMl: number;
+  abvPercent: number;
+}
+
+export interface DrinkLogCommand {
+  targetMemberId: string;
+  planItemId?: string | undefined;
+  customDrink?: CustomDrinkInput | undefined;
+  consumedAt: string;
+  idempotencyKey: string;
+  acknowledgePlanExceeded: boolean;
+  acknowledgeAfterEnd: boolean;
+}
+
+export type DrinkLogResult =
+  | { status: 'created'; log: AlcoholLog; alerts: NightAlert[] }
+  | { status: 'duplicate'; log: AlcoholLog; alerts: NightAlert[] }
+  | {
+      status: 'confirmation_required';
+      warnings: Array<'plan_exceeded' | 'after_end'>;
+      message: string;
+    }
+  | { status: 'temporarily_failed'; message: string }
+  | { status: 'permanently_rejected'; code: string; message: string };
+
+export type WaterLogResult =
+  | { status: 'created'; log: WaterLog }
+  | { status: 'duplicate'; log: WaterLog }
+  | { status: 'temporarily_failed'; message: string }
+  | { status: 'permanently_rejected'; code: string; message: string };
+
+export type InvitationPreview =
+  | {
+      valid: true;
+      nightTitle: string;
+      hostDisplayName: string;
+      startsAt: string;
+      endsAt: string;
+    }
+  | {
+      valid: false;
+      reason?: 'invalid' | 'expired' | 'revoked' | 'full' | 'ended' | undefined;
+    };

@@ -1,0 +1,13 @@
+.git
+.tmp
+.tmp-*
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+**/.env*
+.env*
+coverage
+supabase/.temp
+supabase/.branches

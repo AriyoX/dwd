@@ -1,0 +1,7 @@
+package-lock.json
+apps/web/next-env.d.ts
+.next
+dist
+coverage
+supabase/.temp
+.tmp

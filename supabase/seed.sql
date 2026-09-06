@@ -1,0 +1,5 @@
+-- Intentionally empty.
+--
+-- Profiles are created only by the audited auth.users trigger. Create local test
+-- accounts through Supabase Studio or the web signup flow so passwords never
+-- appear in source control.
