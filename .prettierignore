@@ -4,4 +4,5 @@ apps/web/next-env.d.ts
 dist
 coverage
 supabase/.temp
+**/supabase/.temp
 .tmp

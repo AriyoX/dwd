@@ -428,5 +428,5 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
 select extensions.is((select count(*) from public.nights), 0::bigint, 'member who left can no longer read the night');
 
-select * from extensions.finish();
+select * from extensions.finish(true);
 rollback;

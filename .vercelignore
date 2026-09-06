@@ -10,4 +10,5 @@ node_modules
 .env*
 coverage
 supabase/.temp
+**/supabase/.temp
 supabase/.branches

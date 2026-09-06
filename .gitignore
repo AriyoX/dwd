@@ -12,4 +12,6 @@ Thumbs.db
 !.env.example
 supabase/.branches/
 supabase/.temp/
+**/supabase/.temp/
 .tmp/
+.tmp-supabase-config-check

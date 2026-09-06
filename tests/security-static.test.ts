@@ -3,12 +3,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const root = process.cwd();
-const migrationPath = join(
-  root,
-  'supabase',
-  'migrations',
-  '20260731195723_initial_dwd_schema.sql',
-);
+const migrationPath = join(root, 'supabase', 'migrations', '20260906121948_initial_dwd_schema.sql');
 const migration = readFileSync(migrationPath, 'utf8').toLowerCase();
 
 describe('database security invariants', () => {

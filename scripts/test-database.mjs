@@ -2,15 +2,9 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const containerName = `dwd-db-test-${process.pid}`;
-const image =
-  process.env.DWD_TEST_DB_IMAGE ?? 'public.ecr.aws/supabase/postgres:17.6.1.143';
+const image = process.env.DWD_TEST_DB_IMAGE ?? 'public.ecr.aws/supabase/postgres:17.6.1.143';
 const root = process.cwd();
-const migration = join(
-  root,
-  'supabase',
-  'migrations',
-  '20260731195723_initial_dwd_schema.sql',
-);
+const migration = join(root, 'supabase', 'migrations', '20260906121948_initial_dwd_schema.sql');
 const tests = join(root, 'supabase', 'tests', 'database_lifecycle.sql');
 
 /**

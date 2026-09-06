@@ -13,9 +13,9 @@ describe('deployment origins', () => {
     ).toBe('https://dwd-review.vercel.app');
   });
   it('uses the canonical domain in production and removes a trailing slash', () => {
-    expect(
-      resolveSiteUrl({ VERCEL: '1', NEXT_PUBLIC_SITE_URL: 'https://dwd.example/' }),
-    ).toBe('https://dwd.example');
+    expect(resolveSiteUrl({ VERCEL: '1', NEXT_PUBLIC_SITE_URL: 'https://dwd.example/' })).toBe(
+      'https://dwd.example',
+    );
   });
   it('supports the initial Vercel deployment before a custom domain is configured', () => {
     expect(resolveSiteUrl({ VERCEL: '1', VERCEL_URL: 'dwd.vercel.app' })).toBe(

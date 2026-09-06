@@ -1,0 +1,40 @@
+# Hosted Auth configuration. Invoke the Supabase CLI from supabase/hosted.
+# This is separate from the local Docker configuration in supabase/config.toml.
+project_id = "dwd"
+
+[api]
+enabled = true
+
+[db]
+major_version = 17
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "https://drink-with-desire.vercel.app"
+additional_redirect_urls = [
+  "https://drink-with-desire.vercel.app/auth/confirm?**",
+  "https://dwd-*-ariyoxs-projects.vercel.app/auth/confirm?**",
+  "http://localhost:3000/auth/confirm?**",
+  "http://127.0.0.1:3000/auth/confirm?**"
+]
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
+secure_password_change = true
+max_frequency = "1m"
+otp_length = 8
+otp_expiry = 3600
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

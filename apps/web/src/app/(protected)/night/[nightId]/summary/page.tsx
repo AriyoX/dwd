@@ -89,8 +89,8 @@ export default async function NightSummaryPage({
           Back to home
         </Link>
         <p className="muted small">
-          Drink with Desire is not a medical device, BAC calculator, sobriety detector, or driving-safety
-          tool.
+          Drink with Desire is not a medical device, BAC calculator, sobriety detector, or
+          driving-safety tool.
         </p>
       </div>
     </main>

@@ -14,13 +14,19 @@ try {
     url.username ||
     url.password
   ) {
-    errors.push('Set NEXT_PUBLIC_SUPABASE_URL to the dedicated hosted Drink with Desire project URL.');
+    errors.push(
+      'Set NEXT_PUBLIC_SUPABASE_URL to the dedicated hosted Drink with Desire project URL.',
+    );
   }
   if (['roddypqhsgiamymfvool', 'ydtxgwlnldfuqamhxfqi'].includes(url.hostname.split('.')[0] ?? '')) {
-    errors.push('The selected backend belongs to Baby Steps. Use a separate Drink with Desire project.');
+    errors.push(
+      'The selected backend belongs to Baby Steps. Use a separate Drink with Desire project.',
+    );
   }
 } catch {
-  errors.push('Set NEXT_PUBLIC_SUPABASE_URL to the dedicated hosted Drink with Desire project URL.');
+  errors.push(
+    'Set NEXT_PUBLIC_SUPABASE_URL to the dedicated hosted Drink with Desire project URL.',
+  );
 }
 
 if (!key.startsWith('sb_publishable_') || key.includes('REPLACE_ME') || key.length < 25) {

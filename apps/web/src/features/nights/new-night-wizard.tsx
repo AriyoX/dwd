@@ -88,10 +88,7 @@ export function NewNightWizard() {
       }
       try {
         if (result.data.inviteUrl !== null)
-          sessionStorage.setItem(
-            `dwd-invite:${result.data.nightId}`,
-            result.data.inviteUrl,
-          );
+          sessionStorage.setItem(`dwd-invite:${result.data.nightId}`, result.data.inviteUrl);
         if (result.data.inviteError !== null)
           sessionStorage.setItem(
             `dwd-invite-error:${result.data.nightId}`,

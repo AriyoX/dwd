@@ -14,9 +14,9 @@ export default function PrivacyPage() {
         <p className="eyebrow">Draft · legal review required</p>
         <h1>Privacy notice</h1>
         <p>
-          Drink with Desire stores account details, shared-night membership, personal plans, drink and
-          water entries, alerts, invitation metadata, and security audit events needed to run the
-          service.
+          Drink with Desire stores account details, shared-night membership, personal plans, drink
+          and water entries, alerts, invitation metadata, and security audit events needed to run
+          the service.
         </p>
         <h2>What we do not collect</h2>
         <p>
