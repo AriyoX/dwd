@@ -13,8 +13,9 @@ enabled = true
 
 [auth]
 enabled = true
-site_url = "https://drink-with-desire.vercel.app"
+site_url = "https://dwdug.vercel.app"
 additional_redirect_urls = [
+  "https://dwdug.vercel.app/auth/confirm?**",
   "https://drink-with-desire.vercel.app/auth/confirm?**",
   "https://dwd-*-ariyoxs-projects.vercel.app/auth/confirm?**",
   "http://localhost:3000/auth/confirm?**",

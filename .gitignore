@@ -2,6 +2,9 @@ node_modules/
 .next/
 dist/
 coverage/
+playwright-report/
+.next-e2e/
+test-results/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db

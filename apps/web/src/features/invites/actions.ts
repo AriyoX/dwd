@@ -31,12 +31,15 @@ async function authenticatedClient() {
 export async function createInviteAction(
   nightId: string,
   rotate = false,
+  requestToken?: string,
 ): Promise<InviteActionResult<{ url: string; expiresAt: string }>> {
   const parsed = createInviteSchema.safeParse({ nightId, expiresInHours: 24, maxUses: null });
   if (!parsed.success) return { ok: false, error: 'The night identifier is invalid.' };
+  if (requestToken !== undefined && !inviteTokenSchema.safeParse(requestToken).success)
+    return { ok: false, error: 'The invitation request is invalid.' };
   try {
     const client = await authenticatedClient();
-    const rawToken = generateInviteToken();
+    const rawToken = requestToken ?? generateInviteToken();
     const expiresAt = new Date(
       Date.now() + parsed.data.expiresInHours * 60 * 60 * 1000,
     ).toISOString();
@@ -46,18 +49,37 @@ export async function createInviteAction(
       expiresAt,
       maxUses: parsed.data.maxUses,
     };
-    if (rotate) await rotateNightInvite(client, input);
-    else await createNightInvite(client, input);
-    return { ok: true, data: { url: `${getSiteUrl()}/join/${rawToken}`, expiresAt } };
+    const created = rotate
+      ? await rotateNightInvite(client, input)
+      : await createNightInvite(client, input);
+    return {
+      ok: true,
+      data: { url: `${getSiteUrl()}/join/${rawToken}`, expiresAt: created.expiresAt },
+    };
   } catch {
-    return { ok: false, error: 'Only the active night host can create an invitation.' };
+    return {
+      ok: false,
+      error:
+        'Couldn’t create the link. Check your connection and retry. Only the current host of an active night can invite people.',
+    };
   }
 }
 
-export async function revokeInviteAction(nightId: string): Promise<InviteActionResult<undefined>> {
+export async function revokeInviteAction(
+  nightId: string,
+  requestToken?: string,
+): Promise<InviteActionResult<undefined>> {
   try {
     const client = await authenticatedClient();
-    await revokeNightInvite(client, nightId);
+    if (requestToken !== undefined) {
+      if (!inviteTokenSchema.safeParse(requestToken).success)
+        return { ok: false, error: 'Invalid invitation request.' };
+      const { error } = await client.rpc('revoke_night_invite_once', {
+        p_night_id: nightId,
+        p_request_key: hashInviteToken(requestToken),
+      });
+      if (error) throw error;
+    } else await revokeNightInvite(client, nightId);
     return { ok: true, data: undefined };
   } catch {
     return { ok: false, error: 'The invitation could not be revoked.' };
@@ -79,17 +101,23 @@ export async function redeemInviteAction(
     const result = await redeemNightInvite(client, tokenHash);
     return { ok: true, data: result };
   } catch {
-    return { ok: false, error: 'This invitation is unavailable or has expired.' };
+    return {
+      ok: false,
+      error:
+        'Couldn’t join. Check your connection and retry. If the link has expired or been revoked, ask the host for a new one.',
+    };
   }
 }
 
-export async function previewInvite(rawToken: string): Promise<InvitationPreview> {
+export async function previewInvite(
+  rawToken: string,
+): Promise<InvitationPreview | { valid: false; reason: 'network' }> {
   const parsed = inviteTokenSchema.safeParse(rawToken);
   if (!parsed.success) return { valid: false, reason: 'invalid' };
   try {
     const client = await createServerSupabaseClient();
     return await getInvitePreview(client, hashInviteToken(parsed.data));
   } catch {
-    return { valid: false, reason: 'invalid' };
+    return { valid: false, reason: 'network' };
   }
 }

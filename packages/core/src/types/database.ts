@@ -1,4 +1,4 @@
-﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   public: {
@@ -422,6 +422,50 @@ export type Database = {
         };
         Relationships: [];
       };
+      support_requests: {
+        Row: {
+          created_at: string;
+          id: string;
+          kind: string;
+          message: string;
+          request_key: string;
+          response: string | null;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          kind: string;
+          message: string;
+          request_key: string;
+          response?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          message?: string;
+          request_key?: string;
+          response?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'support_requests_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       water_logs: {
         Row: {
           actor_user_id: string;
@@ -528,6 +572,10 @@ export type Database = {
         Returns: Json;
       };
       revoke_night_invite: { Args: { p_night_id: string }; Returns: Json };
+      revoke_night_invite_once: {
+        Args: { p_night_id: string; p_request_key: string };
+        Returns: Json;
+      };
       rotate_night_invite: {
         Args: {
           p_expires_at: string;
@@ -551,6 +599,10 @@ export type Database = {
           p_title: string;
         };
         Returns: Json;
+      };
+      submit_support_request: {
+        Args: { p_kind: string; p_message: string; p_request_key: string };
+        Returns: string;
       };
       update_night_title: {
         Args: { p_night_id: string; p_title: string };

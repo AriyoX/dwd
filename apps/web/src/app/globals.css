@@ -1280,3 +1280,181 @@ p {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* DWD keeps the original sage layout; amber accents carry into the evening palette. */
+.wordmark-name {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.065em;
+}
+.wordmark-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: #263b2e;
+  color: #fff4de;
+}
+.theme-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: max(16px, var(--safe-bottom));
+  z-index: 35;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 24px;
+  box-shadow: 0 3px 18px #0001;
+}
+body:has(.segment-nav) .theme-toggle {
+  bottom: calc(94px + var(--safe-bottom));
+}
+.auth-main,
+.page-shell:not(.active-night-shell) {
+  padding-bottom: calc(80px + var(--safe-bottom));
+}
+.wizard-fields {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.demo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.demo-banner {
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--amber-dark);
+}
+.demo-banner .button {
+  flex-shrink: 0;
+}
+.demo-grid .big-count {
+  font-size: 2.5rem;
+}
+.request-record {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  overflow-wrap: anywhere;
+}
+.support-response {
+  white-space: pre-wrap;
+}
+textarea.input {
+  min-height: 120px;
+  resize: vertical;
+}
+.account-popover .text-link {
+  display: block;
+  padding-block: 9px;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #141a17;
+  --surface: #1d2721;
+  --surface-raised: #29362d;
+  --surface-soft: #233027;
+  --border: #3b4b3e;
+  --text: #f0f0df;
+  --muted: #b1bbab;
+  --amber: #e0b573;
+  --amber-dark: #353325;
+  --green: #adc99b;
+  --red: #ffaca0;
+  --focus: #f4c47c;
+}
+[data-theme='dark'] .auth-aside {
+  background: #243429;
+}
+[data-theme='dark'] .auth-steps li {
+  border-color: var(--border);
+}
+[data-theme='dark'] .illustration-disc {
+  background: #334833;
+}
+[data-theme='dark'] .illustration-orbit {
+  border-color: #52634b55;
+}
+[data-theme='dark'] .glass-illustration {
+  filter: brightness(0.88);
+}
+[data-theme='dark'] :is(.start-card, .personal-card, .card-amber) {
+  background: #29362a;
+  border-color: var(--border);
+}
+[data-theme='dark'] .button-primary {
+  color: #211b12;
+}
+[data-theme='dark'] :is(.error-box, .button-danger) {
+  background: #392624;
+  color: #ffb7a9;
+  border-color: #77534d;
+}
+[data-theme='dark'] :is(.warning-box, .pill-warning) {
+  background: #3c3322;
+  color: #efd096;
+  border-color: #7b6841;
+}
+[data-theme='dark'] :is(.success-box, .pill-online) {
+  background: #293d2c;
+  color: #bfd6ad;
+  border-color: #4f6b45;
+}
+[data-theme='dark'] .avatar {
+  background: #3d4e34;
+  color: #d4e0c1;
+}
+[data-theme='dark'] .avatar:nth-child(3n) {
+  background: #52442d;
+  color: #edd5aa;
+}
+[data-theme='dark'] .avatar:nth-child(3n + 1) {
+  background: #314844;
+  color: #c3dbd7;
+}
+[data-theme='dark'] .segment-nav {
+  background: #1d2721f5;
+}
+[data-theme='dark'] .step-number {
+  color: #231c12;
+}
+[data-theme='dark'] .skip-link {
+  color: #141a17;
+}
+[data-theme='dark'] .skeleton {
+  background: linear-gradient(100deg, #263329 30%, #37483b 50%, #263329 70%);
+  background-size: 250% 100%;
+}
+@media (hover: hover) {
+  [data-theme='dark'] .button-primary:hover:not(:disabled) {
+    background: #efc88e;
+  }
+  [data-theme='dark']
+    :is(.button-secondary, .button-ghost, .button-icon, .icon-text-button):hover:not(:disabled),
+  [data-theme='dark'] .action-list button:hover:not(:disabled) {
+    background: #344237;
+  }
+  [data-theme='dark'] .button-danger:hover:not(:disabled) {
+    background: #51312d;
+  }
+}
+@media (max-width: 620px) {
+  .demo-grid {
+    grid-template-columns: 1fr;
+  }
+  .demo-banner {
+    align-items: start;
+    flex-direction: column;
+  }
+  .demo-shell .topbar {
+    gap: 12px;
+  }
+  .demo-shell .topbar .button {
+    padding-inline: 12px;
+  }
+  .theme-toggle {
+    right: 12px;
+  }
+}

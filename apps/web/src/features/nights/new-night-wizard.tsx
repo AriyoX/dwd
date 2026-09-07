@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PlanEditor, newPlanItem } from '@/features/plans/plan-editor';
 import { startNightAction } from './actions';
+import { newInviteRequestToken } from '@/features/invites/invite-request';
+import { nightDraftKey, readNightDraft } from './night-draft';
 
 type GuestDraft = { clientId: string; displayName: string; planItems: PlanItemInput[] };
 
@@ -21,15 +23,25 @@ function defaultEndTime(): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-export function NewNightWizard() {
+function defaultEndDate() {
+  const date = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function NewNightWizard({ userId }: { userId: string }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('Tonight');
   const [endTime, setEndTime] = useState(defaultEndTime);
+  const [endDate, setEndDate] = useState(defaultEndDate);
+  const [draftReady, setDraftReady] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [withPeople, setWithPeople] = useState(true);
   const [hostPlan, setHostPlan] = useState<PlanItemInput[]>(() => [newPlanItem()]);
   const [guests, setGuests] = useState<GuestDraft[]>([]);
-  const [creationKey] = useState(() => crypto.randomUUID());
+  const [inviteToken, setInviteToken] = useState(newInviteRequestToken);
+  const [creationKey, setCreationKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -39,12 +51,89 @@ export function NewNightWizard() {
     heading.current?.focus();
   }, [step]);
 
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const draft = readNightDraft(localStorage, userId);
+        if (draft) {
+          setStep(draft.step);
+          setTitle(draft.title);
+          setEndTime(draft.endTime);
+          setEndDate(draft.endDate);
+          setWithPeople(draft.withPeople);
+          setHostPlan(draft.hostPlan);
+          setGuests(draft.guests);
+          setCreationKey(draft.creationKey);
+          setInviteToken(draft.inviteToken);
+          setHasDraft(true);
+          setDraftNotice('Your unfinished setup was restored on this device.');
+        }
+      } catch {
+        setDraftNotice('Browser storage is unavailable. Keep this page open to retain setup.');
+      }
+      setDraftReady(true);
+    });
+  }, [userId]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    try {
+      if (!hasDraft) localStorage.removeItem(nightDraftKey(userId));
+      else
+        localStorage.setItem(
+          nightDraftKey(userId),
+          JSON.stringify({
+            version: 1,
+            userId,
+            creationKey,
+            inviteToken,
+            step,
+            title,
+            endTime,
+            endDate,
+            withPeople,
+            hostPlan,
+            guests,
+          }),
+        );
+    } catch {
+      queueMicrotask(() =>
+        setDraftNotice('Could not save setup on this device. Keep this page open.'),
+      );
+    }
+  }, [
+    draftReady,
+    hasDraft,
+    userId,
+    creationKey,
+    inviteToken,
+    step,
+    title,
+    endTime,
+    endDate,
+    withPeople,
+    hostPlan,
+    guests,
+  ]);
+
+  function discard() {
+    setHasDraft(false);
+    setStep(1);
+    setTitle('Tonight');
+    setEndTime(defaultEndTime());
+    setEndDate(defaultEndDate());
+    setWithPeople(true);
+    setHostPlan([newPlanItem()]);
+    setGuests([]);
+    setCreationKey(crypto.randomUUID());
+    setInviteToken(newInviteRequestToken());
+    setError(null);
+    setDraftNotice('Unfinished setup discarded.');
+  }
+
   function resolveEndsAt(): string {
-    const [hourText, minuteText] = endTime.split(':');
-    const end = new Date();
-    end.setHours(Number(hourText), Number(minuteText), 0, 0);
-    if (end.getTime() <= Date.now()) end.setDate(end.getDate() + 1);
-    return end.toISOString();
+    const end = new Date(`${endDate}T${endTime}:00`);
+    return Number.isNaN(end.getTime()) ? '' : end.toISOString();
   }
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
@@ -81,7 +170,7 @@ export function NewNightWizard() {
     inFlight.current = true;
     setPending(true);
     try {
-      const result = await startNightAction(parsed.data);
+      const result = await startNightAction(parsed.data, inviteToken);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -97,6 +186,12 @@ export function NewNightWizard() {
       } catch {
         /* Invitations remain available from the night if browser storage is disabled. */
       }
+      try {
+        localStorage.removeItem(nightDraftKey(userId));
+      } catch {
+        /* Creation key still prevents duplicates. */
+      }
+      setHasDraft(false);
       router.push(`/night/${result.data.nightId}${withPeople ? '?invite=1' : ''}`);
     } catch {
       setError('Couldn’t start the night. Check your connection and try again.');
@@ -107,224 +202,256 @@ export function NewNightWizard() {
   }
 
   return (
-    <form className="stack-lg" onSubmit={(event) => void submit(event)} aria-busy={pending}>
-      <ol className="wizard-progress" aria-label="Night setup">
-        {['Details', 'Your plan', 'Review'].map((label, index) => (
-          <li
-            key={label}
-            className={index + 1 <= step ? 'active' : ''}
-            aria-current={index + 1 === step ? 'step' : undefined}
-          >
-            <span className="step-number">
-              {index + 1 < step ? <Check size={14} aria-hidden="true" /> : index + 1}
-            </span>
-            {label}
-          </li>
-        ))}
-      </ol>
-      {step === 1 ? (
-        <Card className="stack-lg wizard-card">
-          <h1 ref={heading} tabIndex={-1}>
-            Make it your night.
-          </h1>
-          <div className="field">
-            <label htmlFor="night-title">Night name</label>
-            <input
-              className="input"
-              id="night-title"
-              placeholder="Friday with friends"
-              maxLength={80}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="end-time">Planned end time</label>
-            <input
-              className="input"
-              id="end-time"
-              type="time"
-              value={endTime}
-              onChange={(event) => setEndTime(event.target.value)}
-              required
-              aria-describedby="end-time-hint"
-            />
-            <span id="end-time-hint" className="muted small">
-              Earlier times mean tomorrow. You can extend this later.
-            </span>
-          </div>
-          <fieldset className="choice-grid">
-            <legend className="field-label">Who’s joining?</legend>
-            <button
-              type="button"
-              className={!withPeople ? 'choice active' : 'choice'}
-              aria-pressed={!withPeople}
-              onClick={() => setWithPeople(false)}
+    <form
+      className="stack-lg"
+      onChangeCapture={() => setHasDraft(true)}
+      onClickCapture={() => setHasDraft(true)}
+      onSubmit={(event) => void submit(event)}
+      aria-busy={pending}
+    >
+      <div className="row-between">
+        <p className="muted small">
+          {draftNotice ?? 'Unfinished setup is saved on this device for your account.'}
+        </p>
+        <Button type="button" variant="ghost" disabled={pending || !draftReady} onClick={discard}>
+          Discard setup
+        </Button>
+      </div>
+      <fieldset disabled={pending || !draftReady} className="wizard-fields stack-lg">
+        <ol className="wizard-progress" aria-label="Night setup">
+          {['Details', 'Your plan', 'Review'].map((label, index) => (
+            <li
+              key={label}
+              className={index + 1 <= step ? 'active' : ''}
+              aria-current={index + 1 === step ? 'step' : undefined}
             >
-              <User size={22} aria-hidden="true" /> Just me
-            </button>
-            <button
-              type="button"
-              className={withPeople ? 'choice active' : 'choice'}
-              aria-pressed={withPeople}
-              onClick={() => setWithPeople(true)}
-            >
-              <Users size={22} aria-hidden="true" /> With friends
-            </button>
-          </fieldset>
-        </Card>
-      ) : null}
-      {step === 2 ? (
-        <Card className="stack-lg wizard-card">
-          <h1 ref={heading} tabIndex={-1}>
-            Set your own pace.
-          </h1>
-          <p className="muted small">
-            Choose your drinks and quantities. Select one for quick logging.
-          </p>
-          <PlanEditor items={hostPlan} onChange={setHostPlan} />
-        </Card>
-      ) : null}
-      {step === 3 ? (
-        <div className="stack">
+              <span className="step-number">
+                {index + 1 < step ? <Check size={14} aria-hidden="true" /> : index + 1}
+              </span>
+              {label}
+            </li>
+          ))}
+        </ol>
+        {step === 1 ? (
           <Card className="stack-lg wizard-card">
             <h1 ref={heading} tabIndex={-1}>
-              Ready for tonight?
+              Make it your night.
             </h1>
-            <dl className="review-list">
-              <div>
-                <dt>Night</dt>
-                <dd>{title.trim() || 'Tonight'}</dd>
-              </div>
-              <div>
-                <dt className="row">
-                  <Clock3 size={16} aria-hidden="true" /> Planned end
-                </dt>
-                <dd>{endTime}</dd>
-              </div>
-              <div>
-                <dt>Company</dt>
-                <dd>{withPeople ? 'With friends' : 'Just me'}</dd>
-              </div>
-              <div>
-                <dt>Your plan</dt>
-                <dd>
-                  {hostPlan.map((item) => `${item.plannedQuantity} × ${item.label}`).join(', ')}
-                </dd>
-              </div>
-            </dl>
-            {withPeople ? (
-              <>
-                <hr className="divider" />
-                <h2>Bring your people</h2>
-                <p className="muted small">
-                  Share an invite after starting, or add guests whose entries you’ll manage.
-                </p>
-                {guests.map((guest, index) => (
-                  <div className="plan-item stack" key={guest.clientId}>
-                    <div className="row-between">
-                      <strong>Guest {index + 1}</strong>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() =>
-                          setGuests((current) =>
-                            current.filter((item) => item.clientId !== guest.clientId),
-                          )
-                        }
-                        aria-label={`Remove guest ${index + 1}`}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    <div className="field">
-                      <label htmlFor={`guest-${guest.clientId}`}>Guest name</label>
-                      <input
-                        className="input"
-                        id={`guest-${guest.clientId}`}
-                        maxLength={60}
-                        placeholder="Your friend’s name"
-                        value={guest.displayName}
-                        required
-                        onChange={(event) =>
+            <div className="field">
+              <label htmlFor="night-title">Night name</label>
+              <input
+                className="input"
+                id="night-title"
+                placeholder="Friday with friends"
+                maxLength={80}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="end-date">Planned end date</label>
+              <input
+                className="input"
+                id="end-date"
+                type="date"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="end-time">Planned end time</label>
+              <input
+                className="input"
+                id="end-time"
+                type="time"
+                value={endTime}
+                onChange={(event) => setEndTime(event.target.value)}
+                required
+                aria-describedby="end-time-hint"
+              />
+              <span id="end-time-hint" className="muted small">
+                Use tomorrow's date if you are staying out past midnight. You can extend this later.
+              </span>
+            </div>
+            <fieldset className="choice-grid">
+              <legend className="field-label">Who’s joining?</legend>
+              <button
+                type="button"
+                className={!withPeople ? 'choice active' : 'choice'}
+                aria-pressed={!withPeople}
+                onClick={() => setWithPeople(false)}
+              >
+                <User size={22} aria-hidden="true" /> Just me
+              </button>
+              <button
+                type="button"
+                className={withPeople ? 'choice active' : 'choice'}
+                aria-pressed={withPeople}
+                onClick={() => setWithPeople(true)}
+              >
+                <Users size={22} aria-hidden="true" /> With friends
+              </button>
+            </fieldset>
+          </Card>
+        ) : null}
+        {step === 2 ? (
+          <Card className="stack-lg wizard-card">
+            <h1 ref={heading} tabIndex={-1}>
+              Set your own pace.
+            </h1>
+            <p className="muted small">
+              Choose water only, or set an alcohol plan with a quick-log drink.
+            </p>
+            <PlanEditor items={hostPlan} onChange={setHostPlan} />
+          </Card>
+        ) : null}
+        {step === 3 ? (
+          <div className="stack">
+            <Card className="stack-lg wizard-card">
+              <h1 ref={heading} tabIndex={-1}>
+                Ready for tonight?
+              </h1>
+              <dl className="review-list">
+                <div>
+                  <dt>Night</dt>
+                  <dd>{title.trim() || 'Tonight'}</dd>
+                </div>
+                <div>
+                  <dt className="row">
+                    <Clock3 size={16} aria-hidden="true" /> Planned end
+                  </dt>
+                  <dd>{endTime}</dd>
+                </div>
+                <div>
+                  <dt>Company</dt>
+                  <dd>{withPeople ? 'With friends' : 'Just me'}</dd>
+                </div>
+                <div>
+                  <dt>Your plan</dt>
+                  <dd>
+                    {hostPlan.map((item) => `${item.plannedQuantity} × ${item.label}`).join(', ') ||
+                      'Water only'}
+                  </dd>
+                </div>
+              </dl>
+              {withPeople ? (
+                <>
+                  <hr className="divider" />
+                  <h2>Bring your people</h2>
+                  <p className="muted small">
+                    Invite someone: they use their own account and phone. Track for someone: you
+                    manage their entries on this device. Ask them before tracking for them. You can
+                    share an invite after starting.
+                  </p>
+                  {guests.map((guest, index) => (
+                    <div className="plan-item stack" key={guest.clientId}>
+                      <div className="row-between">
+                        <strong>Guest {index + 1}</strong>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() =>
+                            setGuests((current) =>
+                              current.filter((item) => item.clientId !== guest.clientId),
+                            )
+                          }
+                          aria-label={`Remove guest ${index + 1}`}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                      <div className="field">
+                        <label htmlFor={`guest-${guest.clientId}`}>Guest name</label>
+                        <input
+                          className="input"
+                          id={`guest-${guest.clientId}`}
+                          maxLength={60}
+                          placeholder="Your friend’s name"
+                          value={guest.displayName}
+                          required
+                          onChange={(event) =>
+                            setGuests((current) =>
+                              current.map((item) =>
+                                item.clientId === guest.clientId
+                                  ? { ...item, displayName: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </div>
+                      <PlanEditor
+                        compact
+                        items={guest.planItems}
+                        onChange={(items) =>
                           setGuests((current) =>
                             current.map((item) =>
                               item.clientId === guest.clientId
-                                ? { ...item, displayName: event.target.value }
+                                ? { ...item, planItems: items }
                                 : item,
                             ),
                           )
                         }
                       />
                     </div>
-                    <PlanEditor
-                      compact
-                      items={guest.planItems}
-                      onChange={(items) =>
-                        setGuests((current) =>
-                          current.map((item) =>
-                            item.clientId === guest.clientId ? { ...item, planItems: items } : item,
-                          ),
-                        )
-                      }
-                    />
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  full
-                  disabled={guests.length >= 20}
-                  onClick={() =>
-                    setGuests((current) => [
-                      ...current,
-                      {
-                        clientId: crypto.randomUUID(),
-                        displayName: '',
-                        planItems: [newPlanItem()],
-                      },
-                    ])
-                  }
-                >
-                  <UserPlus aria-hidden="true" size={20} /> Add a guest
-                </Button>
-              </>
-            ) : null}
-          </Card>
-        </div>
-      ) : null}
-      {error === null ? null : (
-        <div className="error-box" role="alert">
-          {error}
-        </div>
-      )}
-      <div className="row wizard-actions">
-        {step > 1 ? (
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={pending}
-            onClick={() => {
-              setError(null);
-              setStep((current) => current - 1);
-            }}
-          >
-            <ArrowLeft aria-hidden="true" size={18} /> Back
-          </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    full
+                    disabled={guests.length >= 20}
+                    onClick={() =>
+                      setGuests((current) => [
+                        ...current,
+                        {
+                          clientId: crypto.randomUUID(),
+                          displayName: '',
+                          planItems: [newPlanItem()],
+                        },
+                      ])
+                    }
+                  >
+                    <UserPlus aria-hidden="true" size={20} /> Track for someone
+                  </Button>
+                </>
+              ) : null}
+            </Card>
+          </div>
         ) : null}
-        <Button type="submit" full disabled={pending}>
-          {step < 3 ? (
-            <>
-              Continue <ArrowRight aria-hidden="true" size={18} />
-            </>
-          ) : pending ? (
-            'Starting…'
-          ) : (
-            'Start night'
-          )}
-        </Button>
-      </div>
+        {error === null ? null : (
+          <div className="error-box" role="alert">
+            {error}
+          </div>
+        )}
+        <div className="row wizard-actions">
+          {step > 1 ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => {
+                setError(null);
+                setStep((current) => current - 1);
+              }}
+            >
+              <ArrowLeft aria-hidden="true" size={18} /> Back
+            </Button>
+          ) : null}
+          <Button type="submit" full disabled={pending}>
+            {step < 3 ? (
+              <>
+                Continue <ArrowRight aria-hidden="true" size={18} />
+              </>
+            ) : pending ? (
+              'Starting…'
+            ) : (
+              'Start night'
+            )}
+          </Button>
+        </div>
+      </fieldset>
     </form>
   );
 }

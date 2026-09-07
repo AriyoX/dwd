@@ -24,8 +24,8 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
   const rateKey = `${requestHeaders.get('x-forwarded-for') ?? 'local'}:${token.slice(0, 10)}`;
   const preview = allowInviteLookup(rateKey)
     ? await previewInvite(token)
-    : { valid: false as const };
-  const userId = await getAuthenticatedUserId();
+    : { valid: false as const, reason: 'rate_limit' };
+  const userId = await getAuthenticatedUserId().catch(() => null);
   const next = `/join/${encodeURIComponent(token)}`;
 
   return (
@@ -34,10 +34,19 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
         <Wordmark />
         {!preview.valid ? (
           <Card className="stack">
-            <h1>This link cannot be used.</h1>
+            <h1>
+              {preview.reason === 'network'
+                ? 'Couldn?t load this invitation.'
+                : 'This link cannot be used.'}
+            </h1>
             <p className="muted">
-              It may be invalid, expired, revoked, full, or attached to an ended night.
+              {preview.reason === 'network'
+                ? 'Check your connection and retry. Your invitation is still here.'
+                : 'It may be invalid, expired, revoked, full, or attached to an ended night. Retry in a minute, or ask the host for a new link.'}
             </p>
+            <a className="button button-primary" href={next}>
+              Retry invitation
+            </a>
             <Link className="button button-secondary" href="/home">
               Go to home
             </Link>

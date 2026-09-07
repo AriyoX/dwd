@@ -142,11 +142,9 @@ function ActiveNightView({
   const [drinkChooser, setDrinkChooser] = useState<MemberSnapshot | null>(null);
   const [confirmation, setConfirmation] = useState<DrinkDraft | null>(null);
   const [planMember, setPlanMember] = useState<MemberSnapshot | null>(
-    setupPlanInitially || currentMember.planItems.length === 0 ? currentMember : null,
+    setupPlanInitially ? currentMember : null,
   );
-  const [planDraft, setPlanDraft] = useState<PlanItemInput[]>(() =>
-    currentMember.planItems.length === 0 ? [newPlanItem()] : currentMember.planItems,
-  );
+  const [planDraft, setPlanDraft] = useState<PlanItemInput[]>(() => currentMember.planItems);
   const [guestOpen, setGuestOpen] = useState(false);
   const [guestToRemove, setGuestToRemove] = useState<MemberSnapshot | null>(null);
   const [guestName, setGuestName] = useState('');
@@ -266,7 +264,7 @@ function ActiveNightView({
     notificationService.vibrate();
     void notificationService.show({
       title: 'Your planned night has ended',
-      body: 'Drink with Desire is still open. Continue tracking, or ask the host to extend or end the night.',
+      body: 'DWD is still open. Continue tracking, or ask the host to extend or end the night.',
       tag: `dwd-end-${snapshot.night.id}`,
     });
   }, [notificationService, snapshot.night.endsAt, snapshot.night.id, timeStatus]);
@@ -482,7 +480,7 @@ function ActiveNightView({
 
   function editPlan(member: MemberSnapshot) {
     setPlanMember(member);
-    setPlanDraft(member.planItems.length === 0 ? [newPlanItem()] : member.planItems);
+    setPlanDraft(member.planItems);
   }
 
   async function savePlan() {
@@ -675,6 +673,12 @@ function ActiveNightView({
           <header>
             <h2>Night controls</h2>
           </header>
+          {isHost && (
+            <p className="muted small">
+              Invite someone: they use their own account and phone. Track for someone: you manage
+              their entries on your phone.
+            </p>
+          )}
           <Card className="action-list">
             <button type="button" onClick={() => editPlan(currentMember)}>
               <Pencil aria-hidden="true" /> Edit my plan
@@ -684,12 +688,12 @@ function ActiveNightView({
             </button>
             {isHost ? (
               <button type="button" onClick={() => setInviteOpen(true)}>
-                <Share2 aria-hidden="true" /> Share invite
+                <Share2 aria-hidden="true" /> Invite someone
               </button>
             ) : null}
             {isHost ? (
               <button type="button" onClick={() => setGuestOpen(true)}>
-                <UserPlus aria-hidden="true" /> Add managed guest
+                <UserPlus aria-hidden="true" /> Track for someone
               </button>
             ) : null}
             {isHost ? (
@@ -824,6 +828,7 @@ function ActiveNightView({
         onRemove={() => void removeGuest()}
       />
       <ShareInviteDialog
+        currentUserId={snapshot.currentUserId}
         nightId={snapshot.night.id}
         nightTitle={snapshot.night.title}
         open={inviteOpen}
@@ -935,7 +940,7 @@ function TonightView({
             <h2>{member.displayName}</h2>
           </div>
           <span className={`pill${planStatus !== 'within_plan' ? ' pill-warning' : ''}`}>
-            {planStatus.replace('_', ' ')}
+            {member.planItems.length === 0 ? 'Water only' : planStatus.replace('_', ' ')}
           </span>
         </div>
         <div>
@@ -951,19 +956,27 @@ function TonightView({
           )}
         </div>
         <div className="plan-summary">
-          <span>Your plan</span>
+          <span>
+            Your plan · {totals.waterCount + pendingWater}{' '}
+            {totals.waterCount + pendingWater === 1 ? 'water entry' : 'water entries'}
+          </span>
           <strong>
             {member.planItems
               .map((item) => `${item.plannedQuantity} ${item.label.toLowerCase()}`)
-              .join(' · ') || 'Not set'}
+              .join(' · ') || 'Water only'}
           </strong>
         </div>
         <Button type="button" full disabled={busy} onClick={onQuick}>
           <Plus aria-hidden="true" size={26} />{' '}
-          {quick === undefined ? 'Set plan to log' : `Log ${quick.label}`}
+          {quick === undefined ? 'Add an alcohol plan' : `Log ${quick.label}`}
         </Button>
         <div className="quick-actions">
-          <Button type="button" variant="secondary" disabled={busy} onClick={onChoose}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || member.planItems.length === 0}
+            onClick={onChoose}
+          >
             Choose another drink
           </Button>
           <Button type="button" variant="secondary" disabled={busy} onClick={onWater}>
@@ -1048,7 +1061,12 @@ function ParticipantCard({
               : `Log ${quick.label} for ${member.displayName}`}
           </Button>
           <div className="quick-actions">
-            <Button type="button" variant="secondary" disabled={busy} onClick={onChoose}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy || member.planItems.length === 0}
+              onClick={onChoose}
+            >
               Another for {member.displayName}
             </Button>
             <Button type="button" variant="secondary" disabled={busy} onClick={onWater}>
@@ -1339,8 +1357,8 @@ function GuestDialog({
   return (
     <Dialog
       open={open}
-      title="Add managed guest"
-      description="This guest has no account. Only the host can manage their plan and entries."
+      title="Track for someone"
+      description="You manage their plan and entries on your phone. They do not need an account. Ask them before adding them."
       onClose={onClose}
     >
       <div className="field">
@@ -1355,7 +1373,7 @@ function GuestDialog({
       </div>
       <PlanEditor compact items={plan} onChange={setPlan} />
       <Button type="button" full disabled={busy} onClick={onSave}>
-        {busy ? 'Adding…' : 'Add managed guest'}
+        {busy ? 'Adding…' : 'Track for someone'}
       </Button>
     </Dialog>
   );

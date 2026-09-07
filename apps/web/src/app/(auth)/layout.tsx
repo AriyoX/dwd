@@ -10,15 +10,15 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <aside className="auth-aside">
         <Wordmark linked={false} />
         <NightIllustration />
-        <ol className="auth-steps" aria-label="How Drink with Desire works">
+        <ol className="auth-steps" aria-label="How DWD works">
           <li>
             <ClipboardList size={20} aria-hidden="true" />
-            <span>Make a plan</span>
+            <span>Start your night</span>
             <span className="muted">01</span>
           </li>
           <li>
             <Droplets size={20} aria-hidden="true" />
-            <span>Track your drinks</span>
+            <span>Log drinks &amp; water</span>
             <span className="muted">02</span>
           </li>
           <li>

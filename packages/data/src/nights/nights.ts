@@ -39,6 +39,20 @@ export async function getActiveNights(
   return unwrapRpc<ActiveNightSummary[]>(data, error);
 }
 
+export async function getFinishedNights(client: SupabaseClient<Database>, page = 0) {
+  const offset = Math.max(0, Math.floor(page)) * 20;
+  // The nights SELECT policy requires current membership, including for ended nights.
+  const { data, error } = await client
+    .from('nights')
+    .select('id, title, starts_at, ended_at')
+    .eq('status', 'ended')
+    .order('ended_at', { ascending: false })
+    .order('id')
+    .range(offset, offset + 20);
+  if (error) throw error;
+  return { nights: data.slice(0, 20), hasMore: data.length > 20 };
+}
+
 export async function extendNight(
   client: SupabaseClient<Database>,
   nightId: string,

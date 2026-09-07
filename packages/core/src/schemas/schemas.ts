@@ -52,7 +52,7 @@ export const planItemsSchema = z
   .min(INPUT_LIMITS.planItems.min)
   .max(INPUT_LIMITS.planItems.max)
   .superRefine((items, context) => {
-    if (items.filter((item) => item.isQuickLog).length !== 1) {
+    if (items.length > 0 && items.filter((item) => item.isQuickLog).length !== 1) {
       context.addIssue({
         code: 'custom',
         message: 'Choose exactly one quick-log drink.',

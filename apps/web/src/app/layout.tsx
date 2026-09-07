@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
+import { ThemeToggle } from '@/components/layout/theme-toggle';
 
 export const metadata: Metadata = {
-  title: { default: 'Drink with Desire', template: '%s · Drink with Desire' },
+  title: { default: 'DWD', template: '%s · DWD' },
   description: 'Track what you drink during a shared night out.',
-  applicationName: 'Drink with Desire',
+  applicationName: 'DWD',
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
-  colorScheme: 'light',
+  colorScheme: 'light dark',
   themeColor: '#f7f7f0',
   width: 'device-width',
   initialScale: 1,
@@ -19,12 +20,20 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('dwd-theme');document.documentElement.dataset.theme=t==='dark'||t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){document.documentElement.dataset.theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}})();`,
+          }}
+        />
+      </head>
       <body>
         <a href="#main-content" className="skip-link">
           Skip to content
         </a>
         {children}
+        <ThemeToggle />
       </body>
     </html>
   );

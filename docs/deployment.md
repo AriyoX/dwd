@@ -4,7 +4,7 @@ Drink with Desire (code name **dwd**) is deployed at **https://drink-with-desire
 
 ## Deployment record
 
-Verified September 6, 2026:
+Verified September 7, 2026:
 
 | Resource                 | Configuration                                                                    |
 | ------------------------ | -------------------------------------------------------------------------------- |
@@ -45,13 +45,75 @@ Root `.env.local` and `apps/web/.env.local` contain the supplied backend URL and
 
 Preview links use their own `VERCEL_URL`. Previews share the explicitly selected dwd backend, so preview writes affect the same database. Uploads exclude environment files, caches, build output, and Supabase CLI state.
 
-There is no Git repository in this workspace. Publish from the repository root using an authenticated Vercel CLI:
+The existing repository is [AriyoX/dwd](https://github.com/AriyoX/dwd). It was public and was made **private** on September 7, 2026. Its `origin` remote is `https://github.com/AriyoX/dwd.git`. The existing Vercel project is now connected to that repository with **production branch `main`**. `apps/web/vercel.json` explicitly enables Git deployments for all branches.
+
+- Push a feature branch: Vercel creates a Preview deployment.
+- Push or merge to `main`: Vercel creates a Production deployment, retaining `drink-with-desire.vercel.app`.
+- GitHub Checks runs type checking, lint, formatting, unit tests and disposable Docker database tests. It has no hosted Supabase credentials and cannot migrate production.
+- Environment files, credentials, local CLI state, browser traces and screenshots remain ignored. Never stage an environment file with `git add -f`.
+
+### Exact update workflow
+
+Run from the repository root:
 
 ```sh
-vercel deploy --prod --yes --project dwd --scope ariyoxs-projects
+git switch main
+git pull --ff-only origin main
+git switch -c feat/your-change
+# Make changes.
+npm ci
+npm run typecheck
+npm run lint
+npm run format:check
+npm test
+npm run build
+git add <the-files-you-changed>
+git diff --cached
+git commit -m "Describe the resulting behavior"
+git push -u origin feat/your-change
 ```
 
-The permanent production domain follows new production deployments automatically. Connecting Git later can enable automatic deployments.
+Open a pull request from the feature branch to `main`, check its Vercel Preview, and review the diff and Checks results. If it contains SQL, complete the separate migration release below before merging code that requires it. Merge the pull request on GitHub; Vercel deploys `main` automatically. Then update the local checkout:
+
+```sh
+git switch main
+git pull --ff-only origin main
+```
+
+For a simple local fast-forward merge after review, with no changes on remote `main` since the feature branch started:
+
+```sh
+git switch main
+git pull --ff-only origin main
+git merge --ff-only feat/your-change
+git push origin main
+```
+
+If fast-forward fails, use the pull request to resolve the divergence; do not force-push `main`. The self-service review branch is `feat/dwd-self-service`. Production application code remains on `main` until review/merge.
+
+### Separate Supabase migration release
+
+**Vercel builds never run migrations.** They only check environment configuration and build the workspaces. Previews use the existing DWD backend credentials, so authenticated preview actions write to that backend. `/demo` is local-only and does not touch it.
+
+1. Create the migration with the Supabase CLI. Implement and review it locally, keeping changes compatible with the currently deployed app.
+2. Run `npm test` to apply _all_ migrations in timestamp order to an isolated Docker database. The test runner never uses hosted database credentials. Do not run the fixture SQL suites against production; the older suite assumes an empty database.
+3. Lint the local schema, review RLS, grants, transaction boundaries, and data preservation. Regenerate database types from the migrated test database.
+4. Confirm the target is DWD (`kdplbebaotvgcvjggacz`), review a suitable backup/restore path for the change, and inspect remote migration history.
+5. Execute a deliberate dry run and inspect the exact SQL/version. Use `--skip-vault` to avoid changing unrelated secret configuration. Do not include seeds or roles.
+
+```sh
+npx supabase@2.116.0 migration list --linked
+npx supabase@2.116.0 db push --linked --skip-vault --dry-run
+# Only after the dry run and SQL review:
+npx supabase@2.116.0 db push --linked --skip-vault
+npx supabase@2.116.0 migration list --linked
+```
+
+6. Verify the new schema and security advisors without inserting production test accounts. Review the Preview and merge the application code to `main`.
+
+The self-service migration is `20260906204749_self_service_onboarding.sql`: empty plans, invite retry recovery, a finished-history index, and private account support requests. It preserves existing RLS and drink/water idempotency rules. Alcohol logged before switching to water-only can still sync against its archived plan; existing confirmation and post-end rules still apply. No product records are deleted.
+
+Migrations are released once, independently of previews. Never add `supabase db push`, migration SQL, or a database password to a Vercel build command. Roll back application code through Vercel if needed; keep compatible additive schema changes and use a reviewed forward migration for database corrections.
 
 ## Hosted authentication
 
@@ -76,7 +138,7 @@ Inspect the displayed diff before accepting. Running `npm exec` in this nested d
 
 After SMTP setup, install the confirmation and recovery HTML from `supabase/templates`. These templates preserve invitations and support confirmation on another device. The default PKCE email flow depends on opening the email in the browser that requested it. New free projects restrict email-template customization with the default provider. [Supabase email-template change](https://supabase.com/changelog/46599-changes-to-email-template-customisation-on-free-tier).
 
-## Validation and remaining checks
+## Earlier deployment validation
 
 - Production Vercel build and deployment configuration check passed.
 - 96 unit tests, TypeScript, lint, and formatting checks passed.
@@ -94,3 +156,13 @@ The security advisor flags callable SECURITY DEFINER RPCs. These intentional tra
 The performance advisor reports five foreign keys without covering indexes and unused indexes on the new database. Review these as data grows; do not drop indexes just because the database is empty. [Foreign-key index advisory](https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys).
 
 Invite throttling remains per process. A durable limiter or Vercel Firewall rule is still needed for a broad public launch.
+
+## Self-service release validation
+
+- Production build passes with the existing workspace root and environment configuration.
+- 110 unit tests pass, including demo isolation, saved setup, water-only validation, and confirmation cooldown/recovery.
+- 73 pgTAP assertions pass on isolated Supabase PostgreSQL (42 existing lifecycle checks and 31 self-service checks). Database lint reports no schema errors.
+- Mobile and desktop Chromium checks verify the public demo, theme persistence, participant boundaries, summary/reset, and invitation-preserving recovery.
+- SMTP remains deferred. Production email confirmation stays enabled. Real public confirmation/reset delivery and cross-device email behavior need verification after SMTP and template setup.
+- Feedback/deletion requests are saved in Supabase, with private status and replies in `/account`. The operator must review the queue; there is no outbound email or live support. See [support operations](support-operations.md).
+- New branding uses the custom vector mark at `apps/web/public/dwd-mark.svg`, also used for the favicon. The light layout is preserved and dark mode follows system preference until the user chooses a theme.

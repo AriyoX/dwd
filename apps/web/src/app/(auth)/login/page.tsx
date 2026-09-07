@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { LoginForm } from '@/features/auth/auth-form';
 import { safeReturnPath } from '@/lib/navigation';
@@ -13,6 +14,9 @@ export default async function LoginPage({
   const next = safeReturnPath(params.next);
   return (
     <section className="stack-lg">
+      <Link className="button button-secondary" href={`/demo?next=${encodeURIComponent(next)}`}>
+        Try a demo
+      </Link>
       <header>
         <h1>Welcome back.</h1>
       </header>

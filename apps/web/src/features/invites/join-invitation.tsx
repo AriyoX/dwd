@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { redeemInviteAction } from './actions';
 
@@ -9,8 +9,11 @@ export function JoinInvitation({ token }: { token: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
 
   async function redeem() {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setPending(true);
     setError(null);
     try {
@@ -23,6 +26,7 @@ export function JoinInvitation({ token }: { token: string }) {
     } catch {
       setError('Couldn’t join. Check your connection and try again.');
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   }

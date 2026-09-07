@@ -2,9 +2,10 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@dwd/core';
 
-const protectedPrefixes = ['/home', '/night'];
+const protectedPrefixes = ['/home', '/night', '/history', '/account', '/feedback'];
 
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
+  if (request.nextUrl.pathname === '/demo') return NextResponse.next({ request });
   const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
   const key = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
 

@@ -1,4 +1,4 @@
-# Drink with Desire
+# DWD ? Drink with Desire
 
 Code name: **dwd**. Shared packages use the `@dwd` scope.
 
@@ -13,6 +13,12 @@ Drink with Desire is not a drinking game, competition, medical device, BAC calcu
 The working web MVP includes email/password authentication, audited profile creation, transactional night creation, personal and managed-guest plans, hashed invitations, idempotent redemption, one-tap alcohol and water logging, deterministic checkpoints, Realtime snapshot refresh, offline queuing, corrections, prospective end-time extensions, irreversible ending, and factual summaries.
 
 It deliberately has no marketing site, native/mobile project, social login, PIN or delegated-edit flow, spending, food logging, GPS, analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation, or reliable notifications after a browser is fully closed.
+
+## Self-service onboarding
+
+Use **Try a demo** on the sign-in/sign-up screen to explore a fictional night without an account. Demo actions remain in browser storage with Reset and Exit controls. DWD includes light/dark mode, email-confirmation recovery, water-only participation, saved night setup, finished-night history, and private feedback/deletion requests. Invite someone uses their account and phone; Track for someone lets the host manage a guest without an account.
+
+The repository is private and connected to the existing Vercel `dwd` project. Branch pushes create previews; `main` deploys production. Database migrations are an explicit separate release step, never part of a preview build. See [deployment and Git workflow](docs/deployment.md) and [support operations](docs/support-operations.md).
 
 ## Repository
 
@@ -125,9 +131,9 @@ See [docs/deployment.md](docs/deployment.md) for the live project settings, CLI 
 - A normal browser notification is opportunistic and is not reliable after the browser is fully closed. There is no Web Push server.
 - The compact outbox uses guarded `localStorage`, not a general offline database. It stores only pending activity data needed for retry and is isolated by account and night.
 - Invite lookup throttling is an in-process best-effort limiter. Production should add an edge or durable rate limiter after the vertical MVP is stable.
-- No data export or account-deletion interface is claimed.
+- Account deletion is a private request for operator review, not an automatic destructive action. Data export is not implemented.
 - Vercel and the dedicated Supabase backend are deployed. The user deferred SMTP setup; public signup and password-reset email delivery still need it. See [deployment status](docs/deployment.md).
-- The migration/RPC/RLS lifecycle was exercised against Supabase PostgreSQL, but the full local Supabase Auth/Realtime stack did not finish launching and no controllable browser session was available for automated UI QA.
+- Database authorization is covered by isolated PostgreSQL tests; mobile and desktop onboarding checks use Playwright. See the deployment guide for the latest validation and deferred SMTP work.
 - Uganda emergency numbers `112` and `999` were rechecked against the [Uganda Police Force FAQ](https://upf.go.ug/faq/) on September 6, 2026.
 
 See [architecture](docs/architecture.md), [database and RLS](docs/database-and-rls.md), [manual QA](docs/manual-qa-checklist.md), and [mobile portability](docs/mobile-portability.md) for operational detail.

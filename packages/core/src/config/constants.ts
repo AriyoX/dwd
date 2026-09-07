@@ -25,7 +25,7 @@ export const INPUT_LIMITS = {
   abvPercent: { minExclusive: 0, max: 95 },
   plannedQuantity: { min: 1, max: 50 },
   guests: { max: 20 },
-  planItems: { min: 1, max: 20 },
+  planItems: { min: 0, max: 20 },
 } as const;
 
 export const EMERGENCY_NUMBERS_UGANDA = ['112', '999'] as const;
