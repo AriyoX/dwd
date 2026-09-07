@@ -1,8 +1,8 @@
-# DWD ? Drink with Desire
+# DWD — Drink with Desire
 
 Code name: **dwd**. Shared packages use the `@dwd` scope.
 
-Live app: **https://drink-with-desire.vercel.app**. Public email delivery is deferred until SMTP setup.
+Live app: **https://dwdug.vercel.app** (the original address remains available). Public email delivery is deferred until SMTP setup.
 
 Drink with Desire is a mobile-first web application for adults who want a shared, factual record of drinks during a night out. Account participants keep ownership of their own plans and logs; a host can separately manage guests who do not have accounts.
 
@@ -56,7 +56,7 @@ Update `apps/web/.env.local` with the local URL and publishable key reported by 
 
 Local email confirmation is disabled in `supabase/config.toml`, so browser-created test accounts can sign in immediately. The local SMTP testing UI is available at `http://localhost:54324` if confirmation is enabled locally. Do not put test passwords in `seed.sql`; create accounts through the app or Supabase Studio.
 
-The migration was applied to an isolated `public.ecr.aws/supabase/postgres:17.6.1.143` container. Supabase schema linting completed with no warnings, and the database lifecycle suite passed all 42 pgTAP assertions. The full `supabase start` stack did not finish launching in this environment, so run `supabase db reset` on a normal local setup before browser integration work.
+Both migrations pass 73 pgTAP assertions in isolated Supabase PostgreSQL. Six mobile/desktop browser flows pass against a separate local Supabase stack. See the deployment notes for reproduction and remaining email setup.
 
 ## Root commands
 
@@ -118,7 +118,7 @@ The web app uses request-scoped `@supabase/ssr` clients with cookie-backed sessi
 
 ## Deployment to Vercel
 
-1. Create a Vercel project named `dwd` with **Root Directory `apps/web`**, **Framework Next.js**, and **Node.js 22.x**. Enable files outside the root directory so the shared workspaces can build.
+1. Use the existing Vercel project `ariyoxs-projects/dwd` with **Root Directory `apps/web`**, **Framework Next.js**, and **Node.js 22.x**. Keep files outside the root directory enabled so the shared workspaces can build.
 2. Use the checked-in `apps/web/vercel.json`. It installs dependencies from the repository root, checks deployment environment variables, builds shared packages and Next.js, and uses `.next` as output relative to `apps/web`.
 3. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the dedicated Drink with Desire backend. Set `NEXT_PUBLIC_SITE_URL` to the HTTPS production origin. Preview links automatically use `VERCEL_URL`.
 4. Configure Supabase email confirmation, recovery templates, SMTP, and allowed redirects as described in [the deployment guide](docs/deployment.md).

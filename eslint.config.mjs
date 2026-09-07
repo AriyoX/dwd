@@ -5,7 +5,16 @@ import nextTypeScript from 'eslint-config-next/typescript';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  { ignores: ['**/.next/**', '**/dist/**', '**/coverage/**', 'supabase/.temp/**', '.tmp/**'] },
+  {
+    ignores: [
+      '**/.next/**',
+      '**/.next-e2e/**',
+      '**/dist/**',
+      '**/coverage/**',
+      'supabase/.temp/**',
+      '.tmp/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...nextVitals,
