@@ -36,6 +36,18 @@ export default async function HomePage() {
           </summary>
           <div className="account-popover">
             <p className="small muted">{name}</p>
+            <Link className="text-link" href="/history">
+              Night history
+            </Link>
+            <Link className="text-link" href="/account">
+              Your account
+            </Link>
+            <Link className="text-link" href="/feedback">
+              Feedback & support
+            </Link>
+            <Link className="text-link" href="/demo">
+              Try a demo
+            </Link>
             <form action={signOutAction}>
               <button className="icon-text-button" type="submit">
                 <LogOut aria-hidden="true" size={18} /> Sign out
@@ -51,6 +63,9 @@ export default async function HomePage() {
         </span>
       </header>
       <div className="stack-lg">
+        <Link className="text-link" href="/history">
+          View finished-night history ?
+        </Link>
         {nights.length > 0 ? (
           <section className="stack" aria-labelledby="active-nights">
             <div className="section-heading">
@@ -104,8 +119,9 @@ export default async function HomePage() {
         ) : null}
       </div>
       <footer className="app-footer">
-        <p>Drink with Desire cannot determine sobriety or driving safety.</p>
+        <p>DWD cannot determine sobriety or driving safety.</p>
         <nav aria-label="Legal">
+          <Link href="/feedback">Feedback & support</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
         </nav>

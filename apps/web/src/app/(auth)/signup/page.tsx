@@ -8,15 +8,24 @@ export const metadata: Metadata = { title: 'Create account' };
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; correct?: string }>;
 }) {
   const params = await searchParams;
   const next = safeReturnPath(params.next);
   return (
     <section className="stack-lg">
+      <Link className="button button-secondary" href={`/demo?next=${encodeURIComponent(next)}`}>
+        Try a demo
+      </Link>
       <header>
         <h1>Create an account.</h1>
       </header>
+      {params.correct === '1' && (
+        <p className="notice-box">
+          Start signup again with the correct email and a password. The mistyped signup is not moved
+          or confirmed. Your invitation will still be waiting.
+        </p>
+      )}
       <SignupForm next={next} />
       <p className="muted small">
         By continuing, you agree to the{' '}

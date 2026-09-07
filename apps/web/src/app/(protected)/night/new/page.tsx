@@ -2,10 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { NewNightWizard } from '@/features/nights/new-night-wizard';
+import { requireAuthenticatedUserId } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Start a night' };
 
-export default function NewNightPage() {
+export default async function NewNightPage() {
+  const userId = await requireAuthenticatedUserId();
   return (
     <main className="page-shell" id="main-content">
       <header className="topbar">
@@ -13,7 +15,7 @@ export default function NewNightPage() {
           <ChevronLeft aria-hidden="true" size={22} /> Home
         </Link>
       </header>
-      <NewNightWizard />
+      <NewNightWizard userId={userId} key={userId} />
     </main>
   );
 }

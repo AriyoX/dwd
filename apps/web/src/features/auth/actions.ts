@@ -6,10 +6,14 @@ import { loginSchema, signupSchema } from '@dwd/core';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getSiteUrl } from '@/lib/supabase/env';
 import { safeReturnPath } from '@/lib/navigation';
+import { createHash } from 'node:crypto';
+import { CONFIRMATION_COOLDOWN_MS, reserveConfirmationAttempt } from './resend-cooldown';
 
 export interface AuthActionState {
   error?: string;
   success?: string;
+  email?: string;
+  retryAt?: number;
   fieldErrors?: Record<string, string[] | undefined>;
 }
 
@@ -34,7 +38,13 @@ export async function loginAction(
     .catch(() => null);
   if (result === null) return { error: 'Couldn’t connect. Please try again.' };
   const { error } = result;
-  if (error !== null) return { error: 'Email or password not accepted. Please try again.' };
+  if (error !== null)
+    return {
+      error:
+        error.code === 'email_not_confirmed'
+          ? 'Confirm your email before signing in. Use the confirmation help below.'
+          : 'Email or password not accepted. Please try again.',
+    };
   redirect(safeReturnPath(parsed.data.next));
 }
 
@@ -77,7 +87,49 @@ export async function signupAction(
     };
   }
   if (data.session !== null) redirect(returnPath);
-  return { success: 'Check your email to confirm your account, then return here to sign in.' };
+  return {
+    success: 'Check your email to confirm your account.',
+    email: parsed.data.email,
+    retryAt: Date.now() + CONFIRMATION_COOLDOWN_MS,
+  };
+}
+
+export async function resendConfirmationAction(
+  _previousState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = z.email().max(254).safeParse(formData.get('email'));
+  if (!parsed.success) return { error: 'Enter a valid email address.' };
+  const email = parsed.data.toLowerCase();
+  const key = createHash('sha256').update(email).digest('hex');
+  const blockedUntil = reserveConfirmationAttempt(key);
+  if (blockedUntil !== null)
+    return {
+      error: 'Wait a minute before requesting another confirmation.',
+      retryAt: blockedUntil,
+    };
+  const retryAt = Date.now() + CONFIRMATION_COOLDOWN_MS;
+  const nextValue = formData.get('next');
+  const next = safeReturnPath(typeof nextValue === 'string' ? nextValue : undefined);
+  try {
+    const client = await createServerSupabaseClient();
+    const { error } = await client.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=${encodeURIComponent(next)}` },
+    });
+    if (error)
+      return {
+        error: 'Couldn’t send confirmation. Wait a minute, check the address, and retry.',
+        retryAt,
+      };
+    return {
+      success: 'If this email has a pending signup, a new confirmation link has been requested.',
+      retryAt,
+    };
+  } catch {
+    return { error: 'Couldn’t connect. Your invitation is preserved. Please retry.', retryAt };
+  }
 }
 
 export async function signOutAction(): Promise<void> {

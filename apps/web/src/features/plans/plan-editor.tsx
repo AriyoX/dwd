@@ -43,7 +43,6 @@ export function PlanEditor({
   }
 
   function remove(index: number) {
-    if (items.length === 1) return;
     const wasQuick = items[index]?.isQuickLog ?? false;
     const next = items.filter((_, itemIndex) => itemIndex !== index);
     if (wasQuick && next[0] !== undefined) next[0] = { ...next[0], isQuickLog: true };
@@ -52,127 +51,163 @@ export function PlanEditor({
 
   return (
     <div className="stack">
-      <div className="preset-grid" aria-label="Drink presets">
-        {DRINK_PRESETS.map((preset) => (
-          <Button
-            key={preset.id}
-            type="button"
-            variant="secondary"
-            onClick={() => addPreset(preset.id)}
-          >
-            <Plus aria-hidden="true" size={18} /> {preset.label}
-            {preset.estimate === true ? ' · estimate' : ''}
-          </Button>
-        ))}
-        <Button type="button" variant="secondary" onClick={() => addPreset('cocktail')}>
-          <Plus aria-hidden="true" size={18} /> Custom
-        </Button>
-      </div>
-      {items.map((item, index) => {
-        const domId = item.id ?? item.clientId ?? `item-${String(index)}`;
-        return (
-          <div className="plan-item" key={domId}>
-            <div className="row-between">
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name={`quick-${radioGroup}`}
-                  checked={item.isQuickLog}
-                  onChange={() => chooseQuick(index)}
-                />
-                Quick log
-              </label>
-              <button
-                className="icon-text-button"
+      <fieldset className="choice-grid">
+        <legend className="field-label">Participation</legend>
+        <button
+          type="button"
+          className={items.length === 0 ? 'choice active' : 'choice'}
+          aria-pressed={items.length === 0}
+          onClick={() => onChange([])}
+        >
+          Water only
+        </button>
+        <button
+          type="button"
+          className={items.length > 0 ? 'choice active' : 'choice'}
+          aria-pressed={items.length > 0}
+          onClick={() => {
+            if (items.length === 0) onChange([newPlanItem()]);
+          }}
+        >
+          Plan alcohol
+        </button>
+      </fieldset>
+      {items.length === 0 ? (
+        <p className="muted small">
+          Log water without an alcohol plan. You can add a plan later before logging alcohol.
+        </p>
+      ) : (
+        <>
+          <div className="preset-grid" aria-label="Drink presets">
+            {DRINK_PRESETS.map((preset) => (
+              <Button
+                key={preset.id}
                 type="button"
-                onClick={() => remove(index)}
-                disabled={items.length === 1}
-                aria-label={`Remove ${item.label}`}
+                variant="secondary"
+                disabled={items.length >= 20}
+                onClick={() => addPreset(preset.id)}
               >
-                <Trash2 aria-hidden="true" size={18} /> Remove
-              </button>
-            </div>
-            <div className="field-grid">
-              <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor={`label-${domId}`}>Drink name</label>
-                <input
-                  className="input"
-                  id={`label-${domId}`}
-                  value={item.label}
-                  maxLength={60}
-                  required
-                  onChange={(event) => update(index, { label: event.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`category-${domId}`}>Category</label>
-                <select
-                  className="select"
-                  id={`category-${domId}`}
-                  value={item.category}
-                  onChange={(event) =>
-                    update(index, { category: event.target.value as DrinkCategory })
-                  }
-                >
-                  <option value="beer">Beer</option>
-                  <option value="wine">Wine</option>
-                  <option value="spirit">Spirit</option>
-                  <option value="cocktail">Cocktail</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor={`quantity-${domId}`}>Quantity</label>
-                <input
-                  className="input"
-                  id={`quantity-${domId}`}
-                  type="number"
-                  min="1"
-                  max="50"
-                  required
-                  inputMode="numeric"
-                  value={item.plannedQuantity}
-                  onChange={(event) =>
-                    update(index, { plannedQuantity: Number(event.target.value) })
-                  }
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`volume-${domId}`}>Volume (ml)</label>
-                <input
-                  className="input"
-                  id={`volume-${domId}`}
-                  type="number"
-                  min="1"
-                  max="2000"
-                  required
-                  inputMode="decimal"
-                  value={item.volumeMl}
-                  onChange={(event) => update(index, { volumeMl: Number(event.target.value) })}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`abv-${domId}`}>Alcohol (ABV %)</label>
-                <input
-                  className="input"
-                  id={`abv-${domId}`}
-                  type="number"
-                  min="0.1"
-                  max="95"
-                  step="0.1"
-                  required
-                  inputMode="decimal"
-                  value={item.abvPercent}
-                  onChange={(event) => update(index, { abvPercent: Number(event.target.value) })}
-                />
-              </div>
-            </div>
+                <Plus aria-hidden="true" size={18} /> {preset.label}
+                {preset.estimate === true ? ' · estimate' : ''}
+              </Button>
+            ))}
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={items.length >= 20}
+              onClick={() => addPreset('cocktail')}
+            >
+              <Plus aria-hidden="true" size={18} /> Custom
+            </Button>
           </div>
-        );
-      })}
-      <p className="muted small">
-        Your plan is a personal intention, not a medically safe allowance.
-      </p>
+          {items.map((item, index) => {
+            const domId = item.id ?? item.clientId ?? `item-${String(index)}`;
+            return (
+              <div className="plan-item" key={domId}>
+                <div className="row-between">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name={`quick-${radioGroup}`}
+                      checked={item.isQuickLog}
+                      onChange={() => chooseQuick(index)}
+                    />
+                    Quick log
+                  </label>
+                  <button
+                    className="icon-text-button"
+                    type="button"
+                    onClick={() => remove(index)}
+                    aria-label={`Remove ${item.label}`}
+                  >
+                    <Trash2 aria-hidden="true" size={18} /> Remove
+                  </button>
+                </div>
+                <div className="field-grid">
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label htmlFor={`label-${domId}`}>Drink name</label>
+                    <input
+                      className="input"
+                      id={`label-${domId}`}
+                      value={item.label}
+                      maxLength={60}
+                      required
+                      onChange={(event) => update(index, { label: event.target.value })}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor={`category-${domId}`}>Category</label>
+                    <select
+                      className="select"
+                      id={`category-${domId}`}
+                      value={item.category}
+                      onChange={(event) =>
+                        update(index, { category: event.target.value as DrinkCategory })
+                      }
+                    >
+                      <option value="beer">Beer</option>
+                      <option value="wine">Wine</option>
+                      <option value="spirit">Spirit</option>
+                      <option value="cocktail">Cocktail</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor={`quantity-${domId}`}>Quantity</label>
+                    <input
+                      className="input"
+                      id={`quantity-${domId}`}
+                      type="number"
+                      min="1"
+                      max="50"
+                      required
+                      inputMode="numeric"
+                      value={item.plannedQuantity}
+                      onChange={(event) =>
+                        update(index, { plannedQuantity: Number(event.target.value) })
+                      }
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor={`volume-${domId}`}>Volume (ml)</label>
+                    <input
+                      className="input"
+                      id={`volume-${domId}`}
+                      type="number"
+                      min="1"
+                      max="2000"
+                      required
+                      inputMode="decimal"
+                      value={item.volumeMl}
+                      onChange={(event) => update(index, { volumeMl: Number(event.target.value) })}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor={`abv-${domId}`}>Alcohol (ABV %)</label>
+                    <input
+                      className="input"
+                      id={`abv-${domId}`}
+                      type="number"
+                      min="0.1"
+                      max="95"
+                      step="0.1"
+                      required
+                      inputMode="decimal"
+                      value={item.abvPercent}
+                      onChange={(event) =>
+                        update(index, { abvPercent: Number(event.target.value) })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <p className="muted small">
+            Your plan is a personal intention, not a medically safe allowance.
+          </p>
+        </>
+      )}
     </div>
   );
 }

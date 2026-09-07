@@ -1,11 +1,16 @@
 import { spawnSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const containerName = `dwd-db-test-${process.pid}`;
 const image = process.env.DWD_TEST_DB_IMAGE ?? 'public.ecr.aws/supabase/postgres:17.6.1.143';
 const root = process.cwd();
-const migration = join(root, 'supabase', 'migrations', '20260906121948_initial_dwd_schema.sql');
-const tests = join(root, 'supabase', 'tests', 'database_lifecycle.sql');
+const migrations = readdirSync(join(root, 'supabase', 'migrations'))
+  .filter((file) => file.endsWith('.sql'))
+  .sort();
+const suites = readdirSync(join(root, 'supabase', 'tests'))
+  .filter((file) => file.endsWith('.sql'))
+  .sort();
 
 /**
  * @param {string} command
@@ -36,13 +41,34 @@ function docker(...args) {
 try {
   execute('docker', ['info']);
   console.log(`Starting isolated Supabase Postgres test container (${image})…`);
-  docker('run', '-d', '--name', containerName, '-e', 'POSTGRES_PASSWORD=postgres', image);
+  docker(
+    'run',
+    '-d',
+    '--name',
+    containerName,
+    ...(process.env.DWD_TEST_DB_PORT
+      ? ['-p', `127.0.0.1:${process.env.DWD_TEST_DB_PORT}:5432`]
+      : []),
+    '-e',
+    'POSTGRES_PASSWORD=postgres',
+    image,
+  );
 
   let ready = false;
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = execute(
       'docker',
-      ['exec', containerName, 'pg_isready', '-U', 'supabase_admin', '-d', 'postgres'],
+      [
+        'exec',
+        containerName,
+        'pg_isready',
+        '-h',
+        '127.0.0.1',
+        '-U',
+        'supabase_admin',
+        '-d',
+        'postgres',
+      ],
       { allowFailure: true },
     );
     if (result.status === 0) {
@@ -59,45 +85,57 @@ try {
     throw new Error('Supabase Postgres did not become ready within 60 seconds.');
   }
 
-  docker('cp', migration, `${containerName}:/tmp/dwd.sql`);
-  docker('cp', tests, `${containerName}:/tmp/database_lifecycle.sql`);
-  execute('docker', [
-    'exec',
-    containerName,
-    'psql',
-    '-X',
-    '-q',
-    '-v',
-    'ON_ERROR_STOP=1',
-    '-U',
-    'supabase_admin',
-    '-d',
-    'postgres',
-    '-f',
-    '/tmp/dwd.sql',
-  ]);
-  const testRun = execute('docker', [
-    'exec',
-    containerName,
-    'psql',
-    '-X',
-    '-qAt',
-    '-v',
-    'ON_ERROR_STOP=1',
-    '-U',
-    'supabase_admin',
-    '-d',
-    'postgres',
-    '-f',
-    '/tmp/database_lifecycle.sql',
-  ]);
-  const output = testRun.stdout;
-  process.stdout.write(output);
-  const passed = output.match(/^ok \d+ - /gm)?.length ?? 0;
-  if (output.includes('not ok') || output.includes('Looks like') || passed !== 42) {
-    throw new Error(`Database test plan did not pass cleanly (${passed}/42 passing assertions).`);
+  for (const migration of migrations) {
+    docker(
+      'cp',
+      join(root, 'supabase', 'migrations', migration),
+      `${containerName}:/tmp/migration.sql`,
+    );
+    execute('docker', [
+      'exec',
+      containerName,
+      'psql',
+      '-X',
+      '-q',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-U',
+      'supabase_admin',
+      '-d',
+      'postgres',
+      '-f',
+      '/tmp/migration.sql',
+    ]);
   }
-  console.log('Database integration tests passed (42/42).');
+  for (const suite of suites) {
+    const path = join(root, 'supabase', 'tests', suite);
+    const expected = Number(readFileSync(path, 'utf8').match(/extensions\.plan\((\d+)\)/)?.[1]);
+    if (!expected) throw new Error(`Missing pgTAP plan in ${suite}.`);
+    docker('cp', path, `${containerName}:/tmp/tests.sql`);
+    const testRun = execute('docker', [
+      'exec',
+      containerName,
+      'psql',
+      '-X',
+      '-qAt',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-U',
+      'supabase_admin',
+      '-d',
+      'postgres',
+      '-f',
+      '/tmp/tests.sql',
+    ]);
+    const output = testRun.stdout;
+    process.stdout.write(output);
+    const passed = output.match(/^ok \d+ - /gm)?.length ?? 0;
+    if (output.includes('not ok') || output.includes('Looks like') || passed !== expected)
+      throw new Error(`${suite}: ${passed}/${expected} passing assertions.`);
+    console.log(`${suite}: ${passed}/${expected} passed.`);
+  }
 } finally {
-  execute('docker', ['rm', '-f', containerName], { allowFailure: true });
+  if (process.env.DWD_TEST_KEEP_CONTAINER === 'true')
+    console.log(`Kept isolated test container: ${containerName}`);
+  else execute('docker', ['rm', '-f', containerName], { allowFailure: true });
 }

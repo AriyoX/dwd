@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, MailCheck } from 'lucide-react';
+import { MailCheck } from 'lucide-react';
 import { useActionState } from 'react';
 import { loginAction, signupAction, type AuthActionState } from './actions';
 import { SubmitButton } from '@/components/feedback/submit-button';
 import { PasswordField } from '@/components/ui/password-field';
+
+import { ConfirmationForm } from './confirmation-form';
 
 const initialState: AuthActionState = {};
 
@@ -62,9 +64,15 @@ export function LoginForm({ next }: { next: string }) {
           {state.error}
         </div>
       )}
+      <Link
+        className="text-link small"
+        href={`/confirmation-help?next=${encodeURIComponent(next)}`}
+      >
+        Need to confirm your email?
+      </Link>
       <SubmitButton idle="Sign in" pending="Signing in…" />
       <p className="muted small form-switch">
-        New to Drink with Desire?{' '}
+        New to DWD?{' '}
         <Link href={`/signup?next=${encodeURIComponent(next)}`} className="text-link">
           Create an account
         </Link>
@@ -82,9 +90,7 @@ export function SignupForm({ next }: { next: string }) {
         <div className="success-box" role="status">
           {state.success}
         </div>
-        <Link className="button button-primary" href={`/login?next=${encodeURIComponent(next)}`}>
-          Back to sign in <ArrowRight size={18} aria-hidden="true" />
-        </Link>
+        <ConfirmationForm next={next} email={state.email ?? ''} retryAt={state.retryAt ?? 0} />
       </div>
     );
   return (

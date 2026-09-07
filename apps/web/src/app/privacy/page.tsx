@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Wordmark } from '@/components/layout/wordmark';
-
 export const metadata: Metadata = { title: 'Privacy' };
-
 export default function PrivacyPage() {
   return (
     <main className="page-shell" id="main-content">
@@ -11,34 +9,79 @@ export default function PrivacyPage() {
         <Wordmark />
       </header>
       <article className="legal-copy">
-        <p className="eyebrow">Draft · legal review required</p>
         <h1>Privacy notice</h1>
         <p>
-          Drink with Desire stores account details, shared-night membership, personal plans, drink
-          and water entries, alerts, invitation metadata, and security audit events needed to run
-          the service.
+          DWD (Drink with Desire) keeps a shared record of a night out. This notice describes the
+          app?s current behavior.
         </p>
-        <h2>What we do not collect</h2>
+        <h2>Account and night data</h2>
         <p>
-          The MVP does not collect GPS, exact birth dates, weight, medication details, health
-          information, advertising identifiers, or analytics-SDK data.
+          Supabase handles your email, password authentication, sessions, and email confirmation.
+          DWD stores your display name and adult confirmation, night membership, plans, alcohol and
+          water entries, corrections, alerts, invitation metadata, and audit events. Vercel hosts
+          the website; Supabase provides the database and live updates. Hosting and authentication
+          providers also process technical request information needed to operate their services.
         </p>
-        <h2>Sharing</h2>
+        <h2>Who can see your night</h2>
         <p>
-          Current members can see shared-night status. They cannot edit another account participant.
-          A host can manage only guests that do not have accounts. Email addresses are not shown to
-          participants.
+          Current account members can see the shared night and its summary, including participant
+          names, plans, and entries. Members who leave lose access. Personal alerts are limited by
+          their visibility rules. Email addresses are not shown to other participants. A host can
+          manage entries for guests without accounts, but cannot edit another account participant?s
+          plan or logs. Ask someone before tracking for them.
         </p>
-        <h2>Local queue</h2>
         <p>
-          Small pending log payloads may be kept in this browser until they sync. Remove failed
-          items from the night screen to delete them from this device.
+          Anyone holding a valid invitation link can see the night name, host name, and times before
+          joining. Treat links as private. Hosts can replace or revoke them. Invitations are stored
+          on the server as token hashes.
         </p>
-        <p className="warning-box">
-          This placeholder must be reviewed and replaced by counsel before production launch.
+        <h2>On this device</h2>
+        <p>
+          Authentication uses cookies. Pending drink and water entries are stored in this browser
+          for retry and separated by account and night. Signing out does not erase that queue.
+          Remove unwanted pending entries from the night or summary screen.
         </p>
-        <Link href="/" style={{ color: 'var(--amber)' }}>
-          Back to Drink with Desire
+        <p>
+          Unfinished night setup is saved in browser storage for the account that started it,
+          including guest names, plans, and the invitation request needed for safe retries. Use
+          Discard setup to remove it. Temporary invitation operations use session storage. These
+          browser records are not encrypted by DWD; use a trusted device.
+        </p>
+        <p>
+          Demo participants and actions stay in a separate browser record and do not create real
+          accounts or database entries. Reset demo data removes that record. Exiting the demo keeps
+          it for your next visit. Your light or dark theme preference is also saved locally.
+        </p>
+        <h2>Feedback and deletion requests</h2>
+        <p>
+          Reports and deletion requests store your account identifier, the text you submit, request
+          status, and any operator response. You can see your own requests; other night members
+          cannot. The app operator reviews requests through the backend. No screenshots or
+          diagnostics are attached automatically, and submitting a request does not send an email.
+        </p>
+        <p>
+          Request account deletion in Your account. A request does not immediately delete your
+          account, shared records, or local data. Shared nights include other people?s records, so
+          the operator must review removal or anonymisation and communicate the outcome in your
+          request. The app does not specify a deletion turnaround or a fixed data-retention period.
+        </p>
+        <h2>Collection limits</h2>
+        <p>
+          DWD does not request GPS, exact birth dates, weight, or medication details, and does not
+          include advertising or analytics SDKs. Avoid putting sensitive information in display
+          names, night names, or reports. Drink entries themselves may reveal personal habits.
+        </p>
+        <p>
+          <Link className="text-link" href="/feedback">
+            Feedback & support
+          </Link>{' '}
+          ?{' '}
+          <Link className="text-link" href="/account">
+            Your account and requests
+          </Link>
+        </p>
+        <Link className="text-link" href="/">
+          Back to DWD
         </Link>
       </article>
     </main>

@@ -38,6 +38,7 @@ async function authenticatedClient() {
 
 export async function startNightAction(
   input: StartNightInput,
+  inviteToken?: string,
 ): Promise<
   NightActionResult<{ nightId: string; inviteUrl: string | null; inviteError: string | null }>
 > {
@@ -55,7 +56,7 @@ export async function startNightAction(
     if (!parsed.data.withPeople) {
       return { ok: true, data: { nightId: created.nightId, inviteUrl: null, inviteError: null } };
     }
-    const invite = await createInviteAction(created.nightId);
+    const invite = await createInviteAction(created.nightId, false, inviteToken);
     return invite.ok
       ? {
           ok: true,
@@ -66,7 +67,10 @@ export async function startNightAction(
           data: { nightId: created.nightId, inviteUrl: null, inviteError: invite.error },
         };
   } catch {
-    return { ok: false, error: 'The night could not be started. Nothing partial was saved.' };
+    return {
+      ok: false,
+      error: 'Could not confirm whether the night started. Retry this setup to safely recover it.',
+    };
   }
 }
 
@@ -84,7 +88,7 @@ export async function getNightSnapshotAction(
 export async function replacePlanAction(input: unknown): Promise<NightActionResult<NightSnapshot>> {
   const parsed = replacePlanSchema.safeParse(input);
   if (!parsed.success)
-    return { ok: false, error: 'Add at least one valid plan item and choose a quick drink.' };
+    return { ok: false, error: 'Choose water only, or check your plan and quick-log drink.' };
   try {
     const client = await authenticatedClient();
     return {

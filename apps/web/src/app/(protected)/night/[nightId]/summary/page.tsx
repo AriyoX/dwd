@@ -71,7 +71,7 @@ export default async function NightSummaryPage({
                   />
                   <SummaryValue
                     label="Plan"
-                    value={planGrams === 0 ? 'Not set' : `${planGrams.toFixed(1)} g`}
+                    value={planGrams === 0 ? 'Water only' : `${planGrams.toFixed(1)} g`}
                   />
                   <SummaryValue label="After planned end" value={String(totals.afterEndCount)} />
                   <SummaryValue label="Water" value={String(totals.waterCount)} />
@@ -89,8 +89,7 @@ export default async function NightSummaryPage({
           Back to home
         </Link>
         <p className="muted small">
-          Drink with Desire is not a medical device, BAC calculator, sobriety detector, or
-          driving-safety tool.
+          DWD is not a medical device, BAC calculator, sobriety detector, or driving-safety tool.
         </p>
       </div>
     </main>

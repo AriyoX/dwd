@@ -14,14 +14,14 @@ export default function TermsPage() {
         <p className="eyebrow">Draft · legal review required</p>
         <h1>Terms of use</h1>
         <p>
-          Drink with Desire is for adults tracking entries they choose to record during a shared
-          night. It is not a drinking game, competition, medical device, BAC calculator, sobriety
-          detector, or driving-safety tool.
+          DWD is for adults tracking entries they choose to record during a shared night. It is not
+          a drinking game, competition, medical device, BAC calculator, sobriety detector, or
+          driving-safety tool.
         </p>
         <h2>No safety determination</h2>
         <p>
-          Counts and alcohol equivalents are approximate. Never use Drink with Desire to decide
-          whether anyone can drive, whether someone is sober, or whether emergency care is needed.
+          Counts and alcohol equivalents are approximate. Never use DWD to decide whether anyone can
+          drive, whether someone is sober, or whether emergency care is needed.
         </p>
         <h2>Emergencies</h2>
         <p>
@@ -33,7 +33,7 @@ export default function TermsPage() {
           This placeholder must be reviewed and replaced by counsel before production launch.
         </p>
         <Link href="/" style={{ color: 'var(--amber)' }}>
-          Back to Drink with Desire
+          Back to DWD
         </Link>
       </article>
     </main>

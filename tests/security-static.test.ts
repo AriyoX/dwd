@@ -3,8 +3,13 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const root = process.cwd();
-const migrationPath = join(root, 'supabase', 'migrations', '20260906121948_initial_dwd_schema.sql');
-const migration = readFileSync(migrationPath, 'utf8').toLowerCase();
+const migrationDirectory = join(root, 'supabase', 'migrations');
+const migration = readdirSync(migrationDirectory)
+  .filter((file) => file.endsWith('.sql'))
+  .sort()
+  .map((file) => readFileSync(join(migrationDirectory, file), 'utf8'))
+  .join('\n')
+  .toLowerCase();
 
 describe('database security invariants', () => {
   const exposedTables = [
@@ -18,6 +23,7 @@ describe('database security invariants', () => {
     'night_invites',
     'night_alerts',
     'audit_events',
+    'support_requests',
   ];
 
   it.each(exposedTables)('enables RLS on %s', (table) => {
@@ -30,7 +36,7 @@ describe('database security invariants', () => {
   });
 
   it('gives every direct update policy both predicates', () => {
-    const policies = [...migration.matchAll(/create policy[\s\S]*?for update[\s\S]*?;/g)];
+    const policies = [...migration.matchAll(/create policy[^;]*?for update[^;]*?;/g)];
     expect(policies).not.toHaveLength(0);
     for (const policy of policies) {
       expect(policy[0]).toContain('using');
