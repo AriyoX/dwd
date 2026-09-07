@@ -52,7 +52,7 @@ export function EndedNightOutbox({
     setBusyKey(null);
     if (outcome.status === 'synced') {
       setMessage(
-        `${record.memberDisplayName}: queued ${record.kind === 'water' ? 'water' : 'drink'} synced.`,
+        `${record.memberDisplayName}: ${record.kind === 'water' ? 'water' : 'drink'} saved.`,
       );
       router.refresh();
     } else if (outcome.status === 'needs_confirmation') {
@@ -67,7 +67,7 @@ export function EndedNightOutbox({
     await outbox.remove(record.idempotencyKey);
     await load();
     setBusyKey(null);
-    setMessage('Queued entry removed from this device.');
+    setMessage('Unsaved entry removed from this device.');
   }
 
   if (records.length === 0 && message === null) return null;
@@ -75,10 +75,10 @@ export function EndedNightOutbox({
     <Card className="stack">
       <div>
         <Eyebrow>Offline entries</Eyebrow>
-        <h2>Post-end sync</h2>
+        <h2>Entries waiting to save</h2>
         <p className="muted small">
-          Entries recorded on or before the actual end may sync for 24 hours. Canonical server rules
-          still apply.
+          Go online within 24 hours of the night ending to save entries made before it ended. Some
+          entries may need your review.
         </p>
       </div>
       {message === null ? null : (
@@ -98,13 +98,23 @@ export function EndedNightOutbox({
                   ? 'Water'
                   : (record.planItemLabel ?? record.drinkSnapshot?.label ?? 'Drink')}
               </strong>
-              <span className="pill">{record.status.replaceAll('_', ' ')}</span>
+              <span className="pill">
+                {record.status === 'needs_confirmation'
+                  ? 'Review needed'
+                  : record.status === 'permanent_failure'
+                    ? 'Could not save'
+                    : record.status === 'failed'
+                      ? 'Try again'
+                      : record.status === 'syncing'
+                        ? 'Saving'
+                        : 'Waiting to save'}
+              </span>
             </div>
             {warnings.includes('plan_exceeded') ? (
               <div className="warning-box">This is beyond the plan set earlier.</div>
             ) : null}
             {warnings.includes('after_end') ? (
-              <div className="warning-box">This entry was after the applicable planned end.</div>
+              <div className="warning-box">This entry was after the planned end time.</div>
             ) : null}
             {record.lastError === undefined ? null : (
               <p className="muted small">{record.lastError}</p>
@@ -118,7 +128,7 @@ export function EndedNightOutbox({
                     void handle(record, outbox.confirmAndRetry(record.idempotencyKey, warnings))
                   }
                 >
-                  Log anyway and sync
+                  Save anyway
                 </Button>
               ) : null}
               {record.status === 'failed' ? (

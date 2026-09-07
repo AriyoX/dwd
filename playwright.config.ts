@@ -22,6 +22,8 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:3100',
+    // Production CSP intentionally excludes local Supabase. Only the local test browser bypasses it.
+    bypassCSP: process.env['E2E_PRODUCTION'] === '1',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -33,8 +35,11 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
   ],
   webServer: {
-    command: 'npm run dev --workspace @dwd/web -- --port 3100',
-    url: 'http://localhost:3100/demo',
+    command:
+      process.env['E2E_PRODUCTION'] === '1'
+        ? 'npx next start apps/web --port 3100'
+        : 'npm run dev --workspace @dwd/web -- --port 3100',
+    url: 'http://localhost:3100/login',
     timeout: 120_000,
     reuseExistingServer: false,
     env: {

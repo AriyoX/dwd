@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Wordmark } from '@/components/layout/wordmark';
 import { NightIllustration } from '@/components/layout/night-illustration';
 import { signOutAction } from '@/features/auth/actions';
+import { TourButton } from '@/features/tour/tour-provider';
 import { JoinCodeForm } from '@/features/nights/join-code-form';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -45,9 +46,7 @@ export default async function HomePage() {
             <Link className="text-link" href="/feedback">
               Feedback & support
             </Link>
-            <Link className="text-link" href="/demo">
-              Try a demo
-            </Link>
+            <TourButton />
             <form action={signOutAction}>
               <button className="icon-text-button" type="submit">
                 <LogOut aria-hidden="true" size={18} /> Sign out
@@ -63,8 +62,8 @@ export default async function HomePage() {
         </span>
       </header>
       <div className="stack-lg">
-        <Link className="text-link" href="/history">
-          View finished-night history ?
+        <Link data-tour="history" className="text-link" href="/history">
+          Night history
         </Link>
         {nights.length > 0 ? (
           <section className="stack" aria-labelledby="active-nights">
@@ -93,7 +92,7 @@ export default async function HomePage() {
           <Card className="start-card">
             <h2>A night of your own.</h2>
             <NightIllustration compact />
-            <Link className="button button-primary" href="/night/new">
+            <Link data-tour="start" className="button button-primary" href="/night/new">
               <Plus aria-hidden="true" size={19} /> Start a night{' '}
               <ArrowRight aria-hidden="true" size={18} />
             </Link>
@@ -105,7 +104,9 @@ export default async function HomePage() {
               </span>
               <h2>Join your mates</h2>
             </header>
-            <JoinCodeForm />
+            <div data-tour="join">
+              <JoinCodeForm />
+            </div>
           </Card>
         </section>
         {nights.length === 0 ? (

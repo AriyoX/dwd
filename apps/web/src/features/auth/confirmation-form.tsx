@@ -70,9 +70,6 @@ export function ConfirmationForm({
       <Link className="text-link" href={`/forgot-password?next=${encodeURIComponent(next)}`}>
         Reset your password
       </Link>
-      <Link className="button button-secondary" href={`/demo?next=${encodeURIComponent(next)}`}>
-        Try a demo while you wait
-      </Link>
     </div>
   );
 }

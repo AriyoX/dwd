@@ -38,7 +38,7 @@ export default function PrivacyPage() {
         <h2>On this device</h2>
         <p>
           Authentication uses cookies. Pending drink and water entries are stored in this browser
-          for retry and separated by account and night. Signing out does not erase that queue.
+          for retry and separated by account and night. Signing out does not erase those entries.
           Remove unwanted pending entries from the night or summary screen.
         </p>
         <p>
@@ -48,9 +48,8 @@ export default function PrivacyPage() {
           browser records are not encrypted by DWD; use a trusted device.
         </p>
         <p>
-          Demo participants and actions stay in a separate browser record and do not create real
-          accounts or database entries. Reset demo data removes that record. Exiting the demo keeps
-          it for your next visit. Your light or dark theme preference is also saved locally.
+          DWD remembers that you have seen the app tour in your account and on this device. Your
+          light or dark theme preference is saved on this device.
         </p>
         <h2>Feedback and deletion requests</h2>
         <p>

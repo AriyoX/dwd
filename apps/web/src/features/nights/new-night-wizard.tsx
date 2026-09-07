@@ -272,7 +272,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
                 aria-describedby="end-time-hint"
               />
               <span id="end-time-hint" className="muted small">
-                Use tomorrow's date if you are staying out past midnight. You can extend this later.
+                Use tomorrow&apos;s date if you are staying out past midnight. You can extend this
+                later.
               </span>
             </div>
             <fieldset className="choice-grid">

@@ -5,7 +5,15 @@ import { EMERGENCY_NUMBERS_UGANDA, EMERGENCY_SIGNS } from '@dwd/core';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 
-export function EmergencyPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function EmergencyPanel({
+  open,
+  onClose,
+  practice = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  practice?: boolean;
+}) {
   return (
     <Dialog
       open={open}
@@ -27,12 +35,19 @@ export function EmergencyPanel({ open, onClose }: { open: boolean; onClose: () =
         2026. Confirm again before production release.
       </p>
       <div className="field-grid">
-        {EMERGENCY_NUMBERS_UGANDA.map((number) => (
-          <a className="button button-danger" href={`tel:${number}`} key={number}>
-            <Phone aria-hidden="true" size={20} /> Call {number}
-          </a>
-        ))}
+        {EMERGENCY_NUMBERS_UGANDA.map((number) =>
+          practice ? (
+            <button className="button button-danger" type="button" disabled key={number}>
+              <Phone aria-hidden="true" size={20} /> Call {number}
+            </button>
+          ) : (
+            <a className="button button-danger" href={`tel:${number}`} key={number}>
+              <Phone aria-hidden="true" size={20} /> Call {number}
+            </a>
+          ),
+        )}
       </div>
+      {practice && <p className="muted small">Calls are off during the tour.</p>}
       <Button type="button" variant="secondary" full onClick={onClose}>
         Close
       </Button>

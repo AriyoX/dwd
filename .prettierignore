@@ -1,6 +1,7 @@
 package-lock.json
 apps/web/next-env.d.ts
 .next
+.next-e2e
 dist
 coverage
 supabase/.temp

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Card } from '@/components/ui/card';
 import { RequestForm } from '@/features/support/request-form';
-import { ResetDemoButton } from '@/features/demo/reset-demo-button';
+import { TourButton } from '@/features/tour/tour-provider';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 export const metadata = { title: 'Your account' };
 export default async function AccountPage() {
@@ -62,12 +62,8 @@ export default async function AccountPage() {
           </Link>
         </Card>
         <Card className="stack">
-          <h2>Demo data</h2>
-          <p className="muted small">
-            Demo data is stored only in this browser. Resetting it leaves real nights, unfinished
-            setup, and queued entries intact.
-          </p>
-          <ResetDemoButton />
+          <h2>App tour</h2>
+          <TourButton className="button button-secondary" />
         </Card>
         <Card className="stack">
           <h2>Request account deletion</h2>
@@ -82,9 +78,8 @@ export default async function AccountPage() {
             appears above; no completion date is promised.
           </p>
           <p className="muted small">
-            Queued entries and unfinished setup on this device are separate. Sync or remove queued
-            entries from each night and discard unfinished setup before handing this device to
-            someone else.
+            Before sharing this device, save or remove any entries waiting to save and discard
+            unfinished night setup.
           </p>
           {deletion ? (
             <p className="notice-box">
