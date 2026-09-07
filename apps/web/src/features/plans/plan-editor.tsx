@@ -52,7 +52,7 @@ export function PlanEditor({
   return (
     <div className="stack">
       <fieldset className="choice-grid">
-        <legend className="field-label">Participation</legend>
+        <legend className="field-label">Your plan</legend>
         <button
           type="button"
           className={items.length === 0 ? 'choice active' : 'choice'}
@@ -69,7 +69,7 @@ export function PlanEditor({
             if (items.length === 0) onChange([newPlanItem()]);
           }}
         >
-          Plan alcohol
+          Plan drinks
         </button>
       </fieldset>
       {items.length === 0 ? (
@@ -112,7 +112,7 @@ export function PlanEditor({
                       checked={item.isQuickLog}
                       onChange={() => chooseQuick(index)}
                     />
-                    Quick log
+                    Usual drink
                   </label>
                   <button
                     className="icon-text-button"
@@ -169,7 +169,7 @@ export function PlanEditor({
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor={`volume-${domId}`}>Volume (ml)</label>
+                    <label htmlFor={`volume-${domId}`}>Drink size (ml)</label>
                     <input
                       className="input"
                       id={`volume-${domId}`}
@@ -183,7 +183,7 @@ export function PlanEditor({
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor={`abv-${domId}`}>Alcohol (ABV %)</label>
+                    <label htmlFor={`abv-${domId}`}>Alcohol strength (%)</label>
                     <input
                       className="input"
                       id={`abv-${domId}`}

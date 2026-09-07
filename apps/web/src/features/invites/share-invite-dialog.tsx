@@ -103,7 +103,7 @@ export function ShareInviteDialog({
       }
     } catch {
       setFailed(true);
-      setMessage('Connection interrupted. Retry to recover the same invitation operation.');
+      setMessage('Connection lost. Try again to finish updating your invite link.');
     } finally {
       inFlight.current = false;
       setPending(false);
@@ -173,7 +173,7 @@ export function ShareInviteDialog({
       <div className="stack">
         {failed ? (
           <Button type="button" disabled={pending} onClick={() => void mutate('create')}>
-            Retry invitation operation
+            Try again
           </Button>
         ) : (
           effectiveUrl === null && (

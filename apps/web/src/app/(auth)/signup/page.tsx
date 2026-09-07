@@ -14,9 +14,6 @@ export default async function SignupPage({
   const next = safeReturnPath(params.next);
   return (
     <section className="stack-lg">
-      <Link className="button button-secondary" href={`/demo?next=${encodeURIComponent(next)}`}>
-        Try a demo
-      </Link>
       <header>
         <h1>Create an account.</h1>
       </header>

@@ -65,7 +65,8 @@ export class OutboxCoordinator {
       await this.store.markFailed(idempotencyKey, result.message);
       return { status: 'retryable_failure', message: result.message };
     } catch {
-      const message = 'Connection interrupted. This entry remains queued.';
+      const message =
+        'Connection lost. This entry is saved on this device and will be sent when you are back online.';
       await this.store.markFailed(idempotencyKey, message);
       return { status: 'retryable_failure', message };
     }

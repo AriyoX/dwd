@@ -1317,23 +1317,7 @@ body:has(.segment-nav) .theme-toggle {
   padding: 0;
   margin: 0;
 }
-.demo-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-}
-.demo-banner {
-  padding: 18px 22px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--amber-dark);
-}
-.demo-banner .button {
-  flex-shrink: 0;
-}
-.demo-grid .big-count {
-  font-size: 2.5rem;
-}
+
 .request-record {
   border-top: 1px solid var(--border);
   padding-top: 18px;
@@ -1441,20 +1425,156 @@ textarea.input {
   }
 }
 @media (max-width: 620px) {
-  .demo-grid {
-    grid-template-columns: 1fr;
-  }
-  .demo-banner {
-    align-items: start;
-    flex-direction: column;
-  }
-  .demo-shell .topbar {
-    gap: 12px;
-  }
-  .demo-shell .topbar .button {
-    padding-inline: 12px;
-  }
   .theme-toggle {
     right: 12px;
+  }
+}
+
+/* Guided tour: highlight the current feature without changing a night. */
+.tour-trigger.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tour-shade {
+  position: fixed;
+  z-index: 100;
+  background: #18271eb3;
+  touch-action: none;
+}
+body[data-tour-active='true'] .theme-toggle {
+  visibility: hidden;
+}
+.tour-loading-shade {
+  inset: 0;
+}
+.tour-spotlight {
+  position: fixed;
+  z-index: 101;
+  border: 2px solid var(--focus);
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.tour-coach {
+  position: fixed;
+  z-index: 102;
+  width: min(350px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 16px 48px #15201933;
+  display: grid;
+  gap: 12px;
+}
+.tour-coach h2 {
+  font-size: 1.15rem;
+  padding-right: 28px;
+}
+.tour-coach > p {
+  font-size: 0.9rem;
+}
+.tour-coach > p:first-of-type {
+  padding-right: 28px;
+  font-size: 0.8rem;
+}
+.tour-coach .dialog-close {
+  top: 6px;
+  right: 6px;
+  width: 36px;
+  height: 36px;
+}
+.tour-progress {
+  display: flex;
+  gap: 6px;
+}
+.tour-progress span {
+  flex: 1;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--border);
+}
+.tour-progress .active {
+  background: var(--amber);
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.tour-actions .row {
+  gap: 6px;
+}
+.tour-actions .button {
+  padding: 10px 12px;
+  min-height: 44px;
+  font-size: 0.8rem;
+}
+.tour-opening {
+  position: fixed;
+  z-index: 102;
+  bottom: 16px;
+  left: 12px;
+  right: 12px;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-coach * {
+    scroll-behavior: auto;
+  }
+}
+
+.install-hint {
+  position: fixed;
+  z-index: 40;
+  right: 20px;
+  bottom: 76px;
+  width: min(380px, calc(100vw - 32px));
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 8px 28px #15201922;
+}
+.install-hint strong {
+  font-size: 0.9rem;
+}
+.install-hint p {
+  margin-top: 4px;
+}
+.install-hint .text-link {
+  border: 0;
+  background: transparent;
+  padding: 8px 0 0;
+  cursor: pointer;
+}
+.install-hint .button-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+@media (max-width: 620px) {
+  .install-hint {
+    right: 16px;
+    bottom: calc(76px + var(--safe-bottom));
   }
 }

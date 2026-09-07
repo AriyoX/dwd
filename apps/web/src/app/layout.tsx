@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   title: { default: 'DWD', template: '%s · DWD' },
   description: 'Track what you drink during a shared night out.',
   applicationName: 'DWD',
+  appleWebApp: { capable: true, title: 'DWD', statusBarStyle: 'default' },
+  icons: { apple: '/icons/apple-touch-icon.png' },
   robots: { index: false, follow: false },
 };
 

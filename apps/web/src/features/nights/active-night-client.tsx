@@ -1,33 +1,14 @@
 'use client';
 
-import {
-  BellRing,
-  ChevronDown,
-  Clock3,
-  Droplets,
-  HeartHandshake,
-  Moon,
-  Settings2,
-  Users,
-  LogOut,
-  Pencil,
-  Plus,
-  Share2,
-  Undo2,
-  UserPlus,
-} from 'lucide-react';
+import { BellRing, ChevronDown, Clock3, LogOut, Pencil, Share2, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   calculateEthanolGrams,
-  calculateMemberTotals,
-  calculatePlanTotal,
   determineNightTimeStatus,
-  determinePlanStatus,
   projectedPlanStatus,
   requiredLogConfirmations,
   type CustomDrinkInput,
-  type DrinkCategory,
   type MemberSnapshot,
   type NightSnapshot,
   type PlanItemInput,
@@ -36,7 +17,8 @@ import type { PendingDrinkLog } from '@dwd/contracts';
 import { Button } from '@/components/ui/button';
 import { Card, Eyebrow } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
-import { Wordmark } from '@/components/layout/wordmark';
+import { TonightView, ParticipantCard, DrinkChooser } from './night-content';
+import { NightFrame } from './night-frame';
 import { EmergencyPanel } from '@/features/alerts/emergency-panel';
 import { deleteActivityAction } from '@/features/drink-logging/actions';
 import { ShareInviteDialog } from '@/features/invites/share-invite-dialog';
@@ -328,7 +310,7 @@ function ActiveNightView({
       await handleSyncOutcome(outcome, record);
     } catch {
       setMessage(
-        'This entry could not be saved on this device. Check browser storage and try again.',
+        'This entry could not be saved on this device. Try again, or check that your browser allows this site to save data.',
       );
     } finally {
       setBusy(false);
@@ -373,7 +355,7 @@ function ActiveNightView({
           warnings: outcome.warnings,
         });
       }
-      setMessage('Review the new server warning before this entry can sync.');
+      setMessage('Review this warning before saving the entry.');
       return;
     }
     if (outcome.status === 'skipped') {
@@ -381,7 +363,7 @@ function ActiveNightView({
       setConfirmation(null);
       setUndoTarget(null);
       setMessage(
-        `${record.memberDisplayName}: ${record.kind === 'water' ? 'water' : 'drink'} queued offline.`,
+        `${record.memberDisplayName}: ${record.kind === 'water' ? 'water' : 'drink'} saved on this device until you are back online.`,
       );
       return;
     }
@@ -457,7 +439,7 @@ function ActiveNightView({
       setMessage(
         result === 'not_found'
           ? `That ${local.kind === 'alcohol' ? 'drink' : 'water'} entry could not be undone.`
-          : `${member.displayName}: queued ${local.kind === 'alcohol' ? 'drink' : 'water'} entry undone.`,
+          : `${member.displayName}: unsaved ${local.kind === 'alcohol' ? 'drink' : 'water'} entry undone.`,
       );
       return;
     }
@@ -507,7 +489,7 @@ function ActiveNightView({
       setGuestOpen(false);
       setGuestName('');
       setGuestPlan([newPlanItem()]);
-      setMessage('Managed guest added.');
+      setMessage('Guest added.');
     } else setMessage(result.error);
   }
 
@@ -518,7 +500,9 @@ function ActiveNightView({
     setBusy(false);
     if (result.ok) {
       setSnapshot(result.data);
-      setMessage(`${guestToRemove.displayName} was removed. Historical entries were preserved.`);
+      setMessage(
+        `${guestToRemove.displayName} was removed. Their past entries are still in the summary.`,
+      );
       setGuestToRemove(null);
     } else setMessage(result.error);
   }
@@ -530,7 +514,7 @@ function ActiveNightView({
     if (result.ok) {
       setSnapshot(result.data);
       setOverdueDismissedFor(result.data.night.endsAt);
-      setMessage('Planned end extended by 30 minutes. Earlier logs were not reclassified.');
+      setMessage('End time extended by 30 minutes.');
     } else setMessage(result.error);
   }
 
@@ -585,7 +569,7 @@ function ActiveNightView({
   async function removePending(record: PendingDrinkLog) {
     await outbox.remove(record.idempotencyKey);
     await loadPending();
-    setMessage('Queued entry removed from this device.');
+    setMessage('Unsaved entry removed from this device.');
   }
 
   async function enableBrowserAlert() {
@@ -598,35 +582,15 @@ function ActiveNightView({
   }
 
   return (
-    <main className="page-shell active-night-shell" id="main-content">
-      <header className="night-header">
-        <div className="row-between">
-          <Wordmark />
-          <span
-            className={`pill${realtimeStatus === 'connected' ? ' pill-online' : realtimeStatus === 'offline' ? ' pill-warning' : ''}`}
-          >
-            {realtimeStatus === 'connected'
-              ? 'Connected'
-              : realtimeStatus === 'offline'
-                ? 'Offline'
-                : 'Reconnecting'}
-          </span>
-        </div>
-        <div>
-          <p className="eyebrow">
-            {timeStatus === 'overdue' ? 'Planned time ended' : remainingText}
-          </p>
-          <h1>{snapshot.night.title}</h1>
-        </div>
-        <div className="avatar-row" aria-label={`${snapshot.members.length} participants`}>
-          {snapshot.members.slice(0, 8).map((member) => (
-            <span className="avatar" title={member.displayName} key={member.id}>
-              {initials(member.displayName)}
-            </span>
-          ))}
-        </div>
-      </header>
-
+    <NightFrame
+      snapshot={snapshot}
+      segment={segment}
+      onSegment={setSegment}
+      onHelp={() => setEmergencyOpen(true)}
+      connection={realtimeStatus}
+      remainingText={remainingText}
+      overdue={timeStatus === 'overdue'}
+    >
       {segment === 'tonight' ? (
         <TonightView
           member={currentMember}
@@ -684,7 +648,7 @@ function ActiveNightView({
               <Pencil aria-hidden="true" /> Edit my plan
             </button>
             <button type="button" onClick={() => editPlan(currentMember)}>
-              <ChevronDown aria-hidden="true" /> Change my quick-log drink
+              <ChevronDown aria-hidden="true" /> Change my usual drink
             </button>
             {isHost ? (
               <button type="button" onClick={() => setInviteOpen(true)}>
@@ -702,13 +666,10 @@ function ActiveNightView({
               </button>
             ) : null}
             <button type="button" onClick={() => void enableBrowserAlert()}>
-              <BellRing aria-hidden="true" /> Enable browser end alert
+              <BellRing aria-hidden="true" /> Remind me when the night ends
             </button>
           </Card>
-          <p className="muted small">
-            The live countdown and in-app alert work while this page is open. A normal browser
-            notification is not reliable after the browser is fully closed.
-          </p>
+          <p className="muted small">Keep this page open to receive your end reminder.</p>
           <PendingQueuePanel
             records={optimisticLogs}
             busy={busy}
@@ -739,37 +700,6 @@ function ActiveNightView({
           )}
         </section>
       ) : null}
-
-      <Button type="button" variant="danger" full onClick={() => setEmergencyOpen(true)}>
-        <HeartHandshake aria-hidden="true" size={21} /> Someone needs help
-      </Button>
-
-      <nav className="segment-nav" aria-label="Night views">
-        <button
-          className={segment === 'tonight' ? 'active' : ''}
-          aria-pressed={segment === 'tonight'}
-          type="button"
-          onClick={() => setSegment('tonight')}
-        >
-          <Moon aria-hidden="true" size={19} /> Tonight
-        </button>
-        <button
-          className={segment === 'group' ? 'active' : ''}
-          aria-pressed={segment === 'group'}
-          type="button"
-          onClick={() => setSegment('group')}
-        >
-          <Users aria-hidden="true" size={19} /> Group
-        </button>
-        <button
-          className={segment === 'more' ? 'active' : ''}
-          aria-pressed={segment === 'more'}
-          type="button"
-          onClick={() => setSegment('more')}
-        >
-          <Settings2 aria-hidden="true" size={19} /> Manage
-        </button>
-      </nav>
 
       {message === null ? null : (
         <div className="toast" role="status">
@@ -855,7 +785,7 @@ function ActiveNightView({
       >
         {optimisticLogs.length > 0 ? (
           <div className="warning-box">
-            You have entries waiting to sync. Keep this device online to save them.
+            You have entries waiting to save. Keep this device online to save them.
           </div>
         ) : null}
         <div className="row">
@@ -896,195 +826,7 @@ function ActiveNightView({
           </Button>
         </div>
       </Dialog>
-    </main>
-  );
-}
-
-function TonightView({
-  member,
-  alerts,
-  busy,
-  onQuick,
-  onChoose,
-  onWater,
-  onUndo,
-  pendingLogs,
-}: {
-  member: MemberSnapshot;
-  alerts: NightSnapshot['alerts'];
-  busy: boolean;
-  onQuick: () => void;
-  onChoose: () => void;
-  onWater: () => void;
-  onUndo: () => void;
-  pendingLogs: readonly PendingDrinkLog[];
-}) {
-  const totals = calculateMemberTotals(member.drinkLogs, member.waterLogs);
-  const pendingAlcohol = pendingLogs.filter((record) => record.kind === 'alcohol').length;
-  const pendingWater = pendingLogs.filter((record) => record.kind === 'water').length;
-  const planTotal = member.planItems.length === 0 ? 0 : calculatePlanTotal(member.planItems);
-  const planStatus =
-    planTotal === 0 ? 'within_plan' : determinePlanStatus(totals.ethanolGrams, planTotal);
-  const quick = member.planItems.find((item) => item.isQuickLog) ?? member.planItems[0];
-  return (
-    <section className="stack">
-      {alerts.map((alert) => (
-        <div className="warning-box row" key={alert.id}>
-          <BellRing aria-hidden="true" size={20} />
-          <span>{alert.message}</span>
-        </div>
-      ))}
-      <Card className="personal-card stack-lg">
-        <div className="row-between">
-          <div>
-            <h2>{member.displayName}</h2>
-          </div>
-          <span className={`pill${planStatus !== 'within_plan' ? ' pill-warning' : ''}`}>
-            {member.planItems.length === 0 ? 'Water only' : planStatus.replace('_', ' ')}
-          </span>
-        </div>
-        <div>
-          <strong className="big-count">{totals.alcoholCount + pendingAlcohol}</strong>
-          <span className="muted"> drinks logged</span>
-          <p className="muted small">
-            {formatCategories(totals.categoryCounts)} · approximately{' '}
-            {totals.ethanolGrams.toFixed(1)} g pure alcohol (
-            {totals.standardDrinkEquivalent.toFixed(1)} standard-drink equivalents)
-          </p>
-          {pendingAlcohol + pendingWater === 0 ? null : (
-            <p className="pill pill-warning">{pendingAlcohol + pendingWater} waiting to sync</p>
-          )}
-        </div>
-        <div className="plan-summary">
-          <span>
-            Your plan · {totals.waterCount + pendingWater}{' '}
-            {totals.waterCount + pendingWater === 1 ? 'water entry' : 'water entries'}
-          </span>
-          <strong>
-            {member.planItems
-              .map((item) => `${item.plannedQuantity} ${item.label.toLowerCase()}`)
-              .join(' · ') || 'Water only'}
-          </strong>
-        </div>
-        <Button type="button" full disabled={busy} onClick={onQuick}>
-          <Plus aria-hidden="true" size={26} />{' '}
-          {quick === undefined ? 'Add an alcohol plan' : `Log ${quick.label}`}
-        </Button>
-        <div className="quick-actions">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={busy || member.planItems.length === 0}
-            onClick={onChoose}
-          >
-            Choose another drink
-          </Button>
-          <Button type="button" variant="secondary" disabled={busy} onClick={onWater}>
-            <Droplets aria-hidden="true" size={19} /> Water
-          </Button>
-          <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
-            <Undo2 aria-hidden="true" size={19} /> Undo
-          </Button>
-        </div>
-      </Card>
-    </section>
-  );
-}
-
-function ParticipantCard({
-  member,
-  alerts,
-  managed,
-  busy,
-  onQuick,
-  onChoose,
-  onWater,
-  onUndo,
-  onEditPlan,
-  onRemove,
-  pendingLogs,
-}: {
-  member: MemberSnapshot;
-  alerts: NightSnapshot['alerts'];
-  managed: boolean;
-  busy: boolean;
-  onQuick: () => void;
-  onChoose: () => void;
-  onWater: () => void;
-  onUndo: () => void;
-  onEditPlan: () => void;
-  onRemove: () => void;
-  pendingLogs: readonly PendingDrinkLog[];
-}) {
-  const totals = calculateMemberTotals(member.drinkLogs, member.waterLogs);
-  const pendingAlcohol = pendingLogs.filter((record) => record.kind === 'alcohol').length;
-  const planned = member.planItems.reduce((sum, item) => sum + item.plannedQuantity, 0);
-  const quick = member.planItems.find((item) => item.isQuickLog) ?? member.planItems[0];
-  const lastActivity = [...member.drinkLogs, ...member.waterLogs].sort(
-    (a, b) => Date.parse(b.consumedAt) - Date.parse(a.consumedAt),
-  )[0];
-  return (
-    <Card className="stack">
-      <div className="row-between">
-        <div className="row">
-          <span className="avatar">{initials(member.displayName)}</span>
-          <div>
-            <strong>{member.displayName}</strong>
-            <p className="muted small">
-              {member.memberType === 'guest' ? 'Managed guest' : 'Account participant'}
-              {member.leftAt === null ? '' : ' · left'}
-            </p>
-          </div>
-        </div>
-        {alerts.length === 0 ? null : <span className="pill pill-warning">Check in</span>}
-      </div>
-      <div className="row-between">
-        <span>
-          {totals.alcoholCount + pendingAlcohol} logged · Plan {planned}
-          {pendingLogs.length === 0 ? '' : ` · ${pendingLogs.length} syncing`}
-        </span>
-        {lastActivity === undefined ? null : (
-          <span className="muted small">{relativeTime(lastActivity.consumedAt)}</span>
-        )}
-      </div>
-      {alerts.map((alert) => (
-        <div className="warning-box small" key={alert.id}>
-          {alert.message}
-        </div>
-      ))}
-      {managed && member.leftAt === null ? (
-        <div className="guest-controls stack">
-          <Button type="button" full disabled={busy} onClick={onQuick}>
-            <Plus aria-hidden="true" size={20} />{' '}
-            {quick === undefined
-              ? `Set ${member.displayName}'s plan`
-              : `Log ${quick.label} for ${member.displayName}`}
-          </Button>
-          <div className="quick-actions">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy || member.planItems.length === 0}
-              onClick={onChoose}
-            >
-              Another for {member.displayName}
-            </Button>
-            <Button type="button" variant="secondary" disabled={busy} onClick={onWater}>
-              <Droplets aria-hidden="true" size={18} /> Water
-            </Button>
-            <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
-              <Undo2 aria-hidden="true" size={18} /> Undo
-            </Button>
-          </div>
-          <Button type="button" variant="ghost" onClick={onEditPlan}>
-            <Pencil aria-hidden="true" size={18} /> Edit {member.displayName}&apos;s plan
-          </Button>
-          <Button type="button" variant="danger" onClick={onRemove}>
-            Remove {member.displayName}
-          </Button>
-        </div>
-      ) : null}
-    </Card>
+    </NightFrame>
   );
 }
 
@@ -1154,110 +896,6 @@ function PendingQueuePanel({
         </div>
       ))}
     </Card>
-  );
-}
-
-function DrinkChooser({
-  member,
-  customDrink,
-  setCustomDrink,
-  busy,
-  onClose,
-  onPlanned,
-  onCustom,
-}: {
-  member: MemberSnapshot | null;
-  customDrink: CustomDrinkInput;
-  setCustomDrink: (drink: CustomDrinkInput) => void;
-  busy: boolean;
-  onClose: () => void;
-  onPlanned: (member: MemberSnapshot, id: string) => void;
-  onCustom: (member: MemberSnapshot) => void;
-}) {
-  return (
-    <Dialog
-      open={member !== null}
-      title={member === null ? 'Choose a drink' : `Log for ${member.displayName}`}
-      onClose={onClose}
-    >
-      {member?.planItems.map((item) => (
-        <Button
-          type="button"
-          variant="secondary"
-          full
-          disabled={busy}
-          key={item.id}
-          onClick={() => onPlanned(member, item.id)}
-        >
-          {item.label} · {item.volumeMl} ml · {item.abvPercent}%
-        </Button>
-      ))}
-      <hr className="divider" />
-      <h3>Custom drink</h3>
-      <div className="field-grid">
-        <div className="field" style={{ gridColumn: '1 / -1' }}>
-          <label htmlFor="custom-label">Label</label>
-          <input
-            id="custom-label"
-            className="input"
-            maxLength={60}
-            value={customDrink.label}
-            onChange={(event) => setCustomDrink({ ...customDrink, label: event.target.value })}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="custom-category">Category</label>
-          <select
-            id="custom-category"
-            className="select"
-            value={customDrink.category}
-            onChange={(event) =>
-              setCustomDrink({ ...customDrink, category: event.target.value as DrinkCategory })
-            }
-          >
-            <option value="beer">Beer</option>
-            <option value="wine">Wine</option>
-            <option value="spirit">Spirit</option>
-            <option value="cocktail">Cocktail</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="custom-volume">Volume ml</label>
-          <input
-            id="custom-volume"
-            className="input"
-            type="number"
-            value={customDrink.volumeMl}
-            onChange={(event) =>
-              setCustomDrink({ ...customDrink, volumeMl: Number(event.target.value) })
-            }
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="custom-abv">ABV %</label>
-          <input
-            id="custom-abv"
-            className="input"
-            type="number"
-            value={customDrink.abvPercent}
-            onChange={(event) =>
-              setCustomDrink({ ...customDrink, abvPercent: Number(event.target.value) })
-            }
-          />
-        </div>
-      </div>
-      <Button
-        type="button"
-        full
-        disabled={member === null || busy}
-        onClick={() => {
-          if (member !== null) onCustom(member);
-        }}
-      >
-        Log custom drink
-      </Button>
-    </Dialog>
   );
 }
 
@@ -1393,8 +1031,8 @@ function GuestRemovalDialog({
   return (
     <Dialog
       open={guest !== null}
-      title={guest === null ? 'Remove managed guest' : `Remove ${guest.displayName}?`}
-      description="They will become read-only. Their historical logs and summary remain available."
+      title={guest === null ? 'Remove guest' : `Remove ${guest.displayName}?`}
+      description="You will no longer be able to add drinks for them. Their past entries stay in the summary."
       onClose={onClose}
     >
       <div className="row">
@@ -1481,36 +1119,10 @@ function formatRemaining(endsAt: string, now: Date): string {
   return `${hours} h ${minutes % 60} min remaining`;
 }
 
-function formatCategories(categories: Record<string, number | undefined>): string {
-  const entries = Object.entries(categories).filter(
-    (entry): entry is [string, number] => entry[1] !== undefined,
-  );
-  if (entries.length === 0) return 'No alcohol logged';
-  return entries
-    .map(([category, count]) => `${count} ${category}${count === 1 ? '' : 's'}`)
-    .join(' · ');
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
-
-function relativeTime(value: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - Date.parse(value)) / 60_000));
-  if (minutes < 1) return 'now';
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.floor(minutes / 60)}h ago`;
-}
-
 function pendingStatusLabel(status: PendingDrinkLog['status']): string {
   if (status === 'needs_confirmation') return 'Review needed';
-  if (status === 'permanent_failure') return 'Cannot sync';
+  if (status === 'permanent_failure') return 'Could not save';
   if (status === 'failed') return 'Retry available';
-  if (status === 'syncing') return 'Syncing';
+  if (status === 'syncing') return 'Saving';
   return 'Waiting';
 }

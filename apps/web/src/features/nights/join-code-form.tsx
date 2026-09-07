@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useState, type SubmitEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { parseInviteInput } from './invite-input';
+import { useTour } from '@/features/tour/tour-provider';
 
 export function JoinCodeForm() {
+  const tour = useTour();
+  const [practiceValue, setPracticeValue] = useState('Practice invite');
   const router = useRouter();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -14,6 +17,10 @@ export function JoinCodeForm() {
 
   function join(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (tour?.active) {
+      tour.goTo('log');
+      return;
+    }
     const token = parseInviteInput(value);
     if (token === null) {
       setError('Enter a valid invitation link or code.');
@@ -31,9 +38,10 @@ export function JoinCodeForm() {
           className="input"
           id="join-code"
           placeholder="Paste your invitation"
-          value={value}
+          value={tour?.active ? practiceValue : value}
           onChange={(event) => {
-            setValue(event.target.value);
+            if (tour?.active) setPracticeValue(event.target.value);
+            else setValue(event.target.value);
             setError(null);
           }}
           autoCapitalize="none"
