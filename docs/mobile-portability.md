@@ -20,6 +20,7 @@ RLS authorizes `auth.uid()` and database membership, not Next.js, cookies, HTML 
 - Browser online/focus/visibility lifecycle
 - Web Share and clipboard integration
 - Notification API and vibration integration
+- Service-worker Web Push registration and account-scoped subscription cleanup. On iOS/iPadOS, browser push requires a Home Screen web app on supported versions; a native app would use the platform notification service instead.
 - Cookie-backed SSR clients and Next.js proxy/session refresh
 - Vercel deployment configuration
 
@@ -51,3 +52,5 @@ The Expo client would install the existing three shared packages and create a no
 6. Preserve the browser product’s rule that account users control only themselves and hosts control only their managed guests.
 
 Adding `apps/mobile` later requires no movement of the existing web app or shared packages and no database fork.
+
+The web handoff does not add an avatar editor. Future editable avatars should define ownership, safe asset handling, and reduced-motion behavior before a native or web implementation is started.

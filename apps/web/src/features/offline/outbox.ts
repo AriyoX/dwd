@@ -21,6 +21,8 @@ export type SyncOutcome =
   | { status: 'skipped' };
 
 export class OutboxCoordinator {
+  private readonly inFlight = new Map<string, Promise<SyncOutcome>>();
+
   public constructor(
     private readonly store: PendingLogStore,
     private readonly sender: PendingActivitySender,
@@ -31,23 +33,44 @@ export class OutboxCoordinator {
     return syncNow ? this.syncOne(record.idempotencyKey) : { status: 'skipped' };
   }
 
-  public async syncOne(idempotencyKey: string, force = false): Promise<SyncOutcome> {
-    const record = (await this.store.getAll()).find(
-      (item) => item.idempotencyKey === idempotencyKey,
+  public syncOne(idempotencyKey: string, force = false): Promise<SyncOutcome> {
+    const existing = this.inFlight.get(idempotencyKey);
+    if (existing !== undefined) return existing;
+    const work = this.syncOneInternal(idempotencyKey, force);
+    this.inFlight.set(idempotencyKey, work);
+    void work.then(
+      () => {
+        if (this.inFlight.get(idempotencyKey) === work) this.inFlight.delete(idempotencyKey);
+      },
+      () => {
+        if (this.inFlight.get(idempotencyKey) === work) this.inFlight.delete(idempotencyKey);
+      },
     );
-    if (record === undefined) return { status: 'skipped' };
-    if (
-      !force &&
-      (record.status === 'needs_confirmation' || record.status === 'permanent_failure')
-    ) {
-      return { status: 'skipped' };
-    }
+    return work;
+  }
 
-    await this.store.update(idempotencyKey, { status: 'syncing' });
+  private async syncOneInternal(idempotencyKey: string, force: boolean): Promise<SyncOutcome> {
     try {
+      const record = (await this.store.getAll()).find(
+        (item) => item.idempotencyKey === idempotencyKey,
+      );
+      if (record === undefined) return { status: 'skipped' };
+      if (
+        !force &&
+        (record.status === 'needs_confirmation' || record.status === 'permanent_failure')
+      ) {
+        return { status: 'skipped' };
+      }
+
+      await this.store.update(idempotencyKey, { status: 'syncing' });
       const result = await this.sender.send(record);
       if (result.status === 'created' || result.status === 'duplicate') {
-        await this.store.remove(idempotencyKey);
+        try {
+          await this.store.remove(idempotencyKey);
+        } catch {
+          // The server has accepted this idempotency key. Keep the canonical
+          // result even when local storage is full or unavailable during cleanup.
+        }
         return { status: 'synced', result };
       }
       if (result.status === 'confirmation_required') {
@@ -66,8 +89,12 @@ export class OutboxCoordinator {
       return { status: 'retryable_failure', message: result.message };
     } catch {
       const message =
-        'Connection lost. This entry is saved on this device and will be sent when you are back online.';
-      await this.store.markFailed(idempotencyKey, message);
+        'This entry remains on this device. Retry when your connection or browser storage returns.';
+      try {
+        await this.store.markFailed(idempotencyKey, message);
+      } catch {
+        // A blocked/full store cannot be repaired from this request.
+      }
       return { status: 'retryable_failure', message };
     }
   }

@@ -1,12 +1,14 @@
 # Architecture
 
+September 8–14 verification: notification inboxes poll an authenticated, uncached GET endpoint while visible and create due reminders for their recipient independently of Web Push. Polling cancels on unmount. Push dispatch rechecks active membership, preferences, expiry, and the current planned end, and uses recoverable leases with attempt tokens. The service worker verifies current-account access before using an event’s text or night link; unverifiable pushes use a generic visible fallback to preserve Safari subscriptions. See `docs/deployment.md` for the corrected migration and delivery limitations. Personal history calculates the final plan from unarchived rows even though its restricted RPC includes archived versions for history.
+
 ## Assumptions recorded before implementation
 
 - “Mobile-first” means a narrow, one-handed mobile browser interface. This iteration contains no native or React Native code.
 - A cocktail preset is an editable estimate of 200 ml at 15% ABV and is clearly marked as estimated.
 - A client may preview plan/end warnings for responsiveness, but the `log_drink` RPC is the sole authority and may require additional confirmation.
 - Delayed activity older than seven days is obviously stale and rejected; the stricter 24-hour post-end grace still controls ended nights.
-- Removed guests and members who leave remain in snapshots for historical summaries, while a user who left loses all night read access.
+- Removed guests and members who leave remain in snapshots for historical summaries. A user who left loses live-night access but keeps a restricted personal summary after the night ends.
 - Invite rate limiting is best-effort in process for the MVP; token entropy, SHA-256 hashing, generic errors, expiry, revocation, and transactional use counting remain the primary controls.
 
 ## Boundaries
@@ -87,3 +89,17 @@ Reaching `ends_at` does not mutate status. Only the host can prospectively exten
 ## Package use by a future mobile client
 
 An Expo app can consume `core`, `contracts`, and `data`, plus the same Supabase schema/RPC/RLS backend. It must build a native UI and native implementations for storage, visibility, sharing, notifications, deep links, and session persistence. See [mobile-portability.md](mobile-portability.md).
+
+## Handoff additions
+
+The notification migration adds recipient-scoped in-app events, account preferences, device push subscriptions, durable reminder schedules, delivery attempts, and check-in requests. Alert inserts create one event per event key and recipient. Group attention goes to current account members who are not the affected account or its guest manager; private pace and reminder events go only to the affected account or managed-guest manager. A check-in uses the same recipient rule, a locked night row, a request key, and a 60-second sender/recipient/night cooldown. Browser permission is a device capability separate from account preferences, and push remains disabled until the server-only VAPID and dispatch configuration is installed. In-app events do not depend on browser permission.
+
+The `plan_setup_completed_at` marker separates unfinished account setup from a deliberately empty water-only plan. `plan_revision` is checked atomically by plan replacement, so a stale tab receives a reload/review error. Logs continue to use immutable historical drink snapshots and archived plan references; group cards build their breakdown from those snapshots and filter local entries by idempotency key before adding pending activity.
+
+Finished history uses a dedicated RPC. It includes every ended night with an account membership, including memberships that left before the night ended and memberships with only water entries. A former member receives only their own finished summary and plan/activity history. Live snapshot authorization still requires current membership. `display_name_at_end` captures names when a night ends; profile changes update active membership copies and do not rewrite a finished summary.
+
+All stored instants remain offset-aware timestamps. `nights.timezone` is the wall-clock display zone and the setup zone used to resolve a selected date and time. Invalid legacy zones fall back to UTC for display without changing the stored instant. DST gaps are rejected and repeated wall times use the earlier occurrence. Server and client formatters both receive the stored zone to keep initial and hydrated text stable.
+
+## Deferred avatar follow-up
+
+The current initials avatar follows the active display name. A later feature may add editable avatar choices and reduced-motion-aware animation after product and accessibility review. This handoff intentionally adds no uploads, storage bucket, avatar editor, animation assets, or animation library.

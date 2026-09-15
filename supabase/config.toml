@@ -92,7 +92,7 @@ openai_api_key = "env(OPENAI_API_KEY)"
 
 # Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
 # are monitored, and you can view the emails that would have been sent from the web interface.
-[local_smtp]
+[inbucket]
 enabled = true
 # Port to use for the email testing server web interface.
 port = 54324
@@ -377,6 +377,10 @@ enabled = true
 port = 54327
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"
+
+# Scheduled calls authenticate inside the handler using x-dwd-dispatch-secret.
+[functions.dispatch-notifications]
+verify_jwt = false
 
 # Experimental features may be deprecated any time
 [experimental]

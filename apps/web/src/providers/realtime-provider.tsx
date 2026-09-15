@@ -98,8 +98,15 @@ export function NightRealtimeProvider({
       }
     });
 
+    // A subscribed socket is not proof every invalidation was delivered.
+    // Recover snapshots periodically while the user is viewing this night.
+    const reconcileTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') invalidate();
+    }, 15_000);
+
     return () => {
       if (timer !== undefined) clearTimeout(timer);
+      window.clearInterval(reconcileTimer);
       void supabase.removeChannel(channel);
     };
   }, [nightId, memberFilter, online]);

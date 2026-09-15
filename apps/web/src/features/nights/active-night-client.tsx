@@ -1,6 +1,7 @@
 'use client';
 
-import { BellRing, ChevronDown, Clock3, LogOut, Pencil, Share2, UserPlus } from 'lucide-react';
+import { Bell, ChevronDown, Clock3, LogOut, Pencil, Share2, UserPlus } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -11,7 +12,7 @@ import {
   type CustomDrinkInput,
   type MemberSnapshot,
   type NightSnapshot,
-  type PlanItemInput,
+  type PlanSetupMode,
 } from '@dwd/core';
 import type { PendingDrinkLog } from '@dwd/contracts';
 import { Button } from '@/components/ui/button';
@@ -24,8 +25,14 @@ import { deleteActivityAction } from '@/features/drink-logging/actions';
 import { ShareInviteDialog } from '@/features/invites/share-invite-dialog';
 import { createBrowserOutbox, type BrowserOutboxBundle } from '@/features/offline/browser-outbox';
 import type { SyncOutcome } from '@/features/offline/outbox';
-import { PlanEditor, newPlanItem } from '@/features/plans/plan-editor';
-import { BrowserNotificationService } from '@/adapters/notifications.browser';
+import {
+  PlanEditor,
+  draftItemsFromPlan,
+  materializePlanDraft,
+  type PlanDraftItem,
+} from '@/features/plans/plan-editor';
+import { NotificationInbox } from '@/features/notifications/notification-inbox';
+import { sendCheckInAction } from '@/features/notifications/actions';
 import {
   addGuestAction,
   endNightAction,
@@ -48,6 +55,7 @@ interface DrinkDraft {
   customDrink?: CustomDrinkInput;
   consumedAt: string;
   idempotencyKey: string;
+  pendingKey?: string;
   warnings?: Array<'plan_exceeded' | 'after_end'>;
 }
 
@@ -70,11 +78,17 @@ export function ActiveNightClient({
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const router = useRouter();
   const refresh = useCallback(async () => {
-    const result = await getNightSnapshotAction(snapshot.night.id);
-    if (!result.ok) return;
-    setSnapshot(result.data);
-    if (result.data.night.status === 'ended') {
-      router.replace(`/night/${result.data.night.id}/summary`);
+    if (!navigator.onLine) return;
+    try {
+      const result = await getNightSnapshotAction(snapshot.night.id);
+      if (!result.ok) return;
+      setSnapshot(result.data);
+      if (result.data.night.status === 'ended') {
+        router.replace(`/night/${result.data.night.id}/summary`);
+      }
+    } catch {
+      // Keep the last snapshot through transport failures. Reconnect/focus and
+      // the visible-page reconciliation timer retry without losing local work.
     }
   }, [router, snapshot.night.id]);
 
@@ -112,8 +126,6 @@ function ActiveNightView({
   const realtimeStatus = useRealtimeStatus();
   const { online, activityVersion } = useConnection();
   const [{ store, outbox }] = useState<BrowserOutboxBundle>(createBrowserOutbox);
-  const [notificationService] = useState(() => new BrowserNotificationService());
-  const notifiedEndRef = useRef<string | null>(null);
   const [segment, setSegment] = useState<Segment>('tonight');
   const [now, setNow] = useState(() => new Date());
   const currentMember = snapshot.members.find((member) => member.id === snapshot.currentMemberId);
@@ -124,13 +136,23 @@ function ActiveNightView({
   const [drinkChooser, setDrinkChooser] = useState<MemberSnapshot | null>(null);
   const [confirmation, setConfirmation] = useState<DrinkDraft | null>(null);
   const [planMember, setPlanMember] = useState<MemberSnapshot | null>(
-    setupPlanInitially ? currentMember : null,
+    setupPlanInitially && currentMember.planSetupCompletedAt === null ? currentMember : null,
   );
-  const [planDraft, setPlanDraft] = useState<PlanItemInput[]>(() => currentMember.planItems);
+  const [planDraft, setPlanDraft] = useState<PlanDraftItem[]>(() =>
+    draftItemsFromPlan(currentMember.planItems),
+  );
+  const [planMode, setPlanMode] = useState<PlanSetupMode>(
+    currentMember.planSetupCompletedAt === null
+      ? 'unselected'
+      : currentMember.planItems.length === 0
+        ? 'water_only'
+        : 'drinks',
+  );
   const [guestOpen, setGuestOpen] = useState(false);
   const [guestToRemove, setGuestToRemove] = useState<MemberSnapshot | null>(null);
   const [guestName, setGuestName] = useState('');
-  const [guestPlan, setGuestPlan] = useState<PlanItemInput[]>(() => [newPlanItem()]);
+  const [guestPlan, setGuestPlan] = useState<PlanDraftItem[]>([]);
+  const [guestPlanMode, setGuestPlanMode] = useState<PlanSetupMode>('unselected');
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
@@ -139,6 +161,14 @@ function ActiveNightView({
   const [message, setMessage] = useState<string | null>(null);
   const [undoTarget, setUndoTarget] = useState<UndoTarget | null>(null);
   const [pendingLogs, setPendingLogs] = useState<PendingDrinkLog[]>([]);
+  const [checkInStates, setCheckInStates] = useState<
+    Record<string, 'idle' | 'sending' | 'sent' | 'error'>
+  >({});
+  const checkInInFlight = useRef(new Set<string>());
+  const checkInKeys = useRef(new Map<string, string>());
+  const activityInFlight = useRef(false);
+  const planSaveInFlight = useRef(false);
+  const guestAddInFlight = useRef(false);
   const [customDrink, setCustomDrink] = useState<CustomDrinkInput>({
     label: 'Custom drink',
     category: 'other',
@@ -170,8 +200,18 @@ function ActiveNightView({
       if (inviteError !== null) setMessage(inviteError);
       setInviteOpen(true);
     });
-    window.history.replaceState({}, '', `/night/${snapshot.night.id}`);
-  }, [isHost, openInviteInitially, snapshot.night.id]);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invite');
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+  }, [isHost, openInviteInitially, router, snapshot.night.id]);
+
+  useEffect(() => {
+    if (!setupPlanInitially) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('setup')) return;
+    url.searchParams.delete('setup');
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+  }, [router, setupPlanInitially]);
 
   useEffect(() => {
     if (message === null) return;
@@ -202,7 +242,9 @@ function ActiveNightView({
       await loadPending();
       if (outcomes.some((outcome) => outcome.status === 'synced')) await refresh();
     };
-    void synchronize();
+    void synchronize().catch(() => {
+      if (active) setMessage('Pending entries could not refresh. Retry when connected.');
+    });
     return () => {
       active = false;
     };
@@ -240,18 +282,30 @@ function ActiveNightView({
     (record) => !canonicalIdempotencyKeys.has(record.idempotencyKey),
   );
 
-  useEffect(() => {
-    if (timeStatus !== 'overdue' || notifiedEndRef.current === snapshot.night.endsAt) return;
-    notifiedEndRef.current = snapshot.night.endsAt;
-    notificationService.vibrate();
-    void notificationService.show({
-      title: 'Your planned night has ended',
-      body: 'DWD is still open. Continue tracking, or ask the host to extend or end the night.',
-      tag: `dwd-end-${snapshot.night.id}`,
-    });
-  }, [notificationService, snapshot.night.endsAt, snapshot.night.id, timeStatus]);
-
   async function submitDrink(draft: DrinkDraft, acknowledge = false) {
+    if (activityInFlight.current) return;
+    activityInFlight.current = true;
+    if (acknowledge && draft.pendingKey !== undefined) {
+      setBusy(true);
+      try {
+        const stored = (await store.getAll()).find(
+          (record) => record.idempotencyKey === draft.pendingKey,
+        );
+        if (stored === undefined) {
+          setMessage('That pending entry is no longer on this device.');
+          return;
+        }
+        const outcome = await outbox.confirmAndRetry(draft.pendingKey, draft.warnings ?? []);
+        await loadPending();
+        await handleSyncOutcome(outcome, stored);
+      } catch {
+        setMessage('The entry remains saved on this device. Retry when you are online.');
+      } finally {
+        setBusy(false);
+        activityInFlight.current = false;
+      }
+      return;
+    }
     const planItem =
       draft.planItemId === undefined
         ? undefined
@@ -259,21 +313,30 @@ function ActiveNightView({
     const drinkValues = draft.customDrink ?? planItem ?? draft.drinkSnapshot;
     if (drinkValues === undefined) {
       setMessage('That plan item is no longer available. Choose another drink.');
+      activityInFlight.current = false;
       return;
     }
 
-    const previewWarnings = requiredLogConfirmations(
-      projectedPlanStatus(
-        draft.member.drinkLogs,
-        draft.member.planItems,
-        calculateEthanolGrams(drinkValues.volumeMl, drinkValues.abvPercent),
-      ),
-      Date.parse(draft.consumedAt) > Date.parse(snapshot.night.endsAt),
-    );
+    let previewWarnings: Array<'plan_exceeded' | 'after_end'>;
+    try {
+      previewWarnings = requiredLogConfirmations(
+        projectedPlanStatus(
+          draft.member.drinkLogs,
+          draft.member.planItems,
+          calculateEthanolGrams(drinkValues.volumeMl, drinkValues.abvPercent),
+        ),
+        Date.parse(draft.consumedAt) > Date.parse(snapshot.night.endsAt),
+      );
+    } catch {
+      setMessage('Check the drink size and strength before logging.');
+      activityInFlight.current = false;
+      return;
+    }
     const warnings = [...new Set([...(draft.warnings ?? []), ...previewWarnings])];
     if (!acknowledge && warnings.length > 0) {
       setDrinkChooser(null);
       setConfirmation({ ...draft, warnings });
+      activityInFlight.current = false;
       return;
     }
 
@@ -314,6 +377,7 @@ function ActiveNightView({
       );
     } finally {
       setBusy(false);
+      activityInFlight.current = false;
     }
   }
 
@@ -338,7 +402,13 @@ function ActiveNightView({
           memberName: record.memberDisplayName,
         });
       }
-      await refresh();
+      try {
+        await refresh();
+      } catch {
+        setMessage(
+          `${record.memberDisplayName}: ${record.kind === 'water' ? 'water' : 'drink'} saved. Refresh to update this night.`,
+        );
+      }
       return;
     }
     if (outcome.status === 'needs_confirmation') {
@@ -352,6 +422,7 @@ function ActiveNightView({
           ...(record.customDrink === undefined ? {} : { customDrink: record.customDrink }),
           consumedAt: record.consumedAt,
           idempotencyKey: record.idempotencyKey,
+          pendingKey: record.idempotencyKey,
           warnings: outcome.warnings,
         });
       }
@@ -383,7 +454,8 @@ function ActiveNightView({
     const quick = member.planItems.find((item) => item.isQuickLog) ?? member.planItems[0];
     if (quick === undefined) {
       setPlanMember(member);
-      setPlanDraft([newPlanItem()]);
+      setPlanDraft(draftItemsFromPlan(member.planItems));
+      setPlanMode(member.planSetupCompletedAt === null ? 'unselected' : 'water_only');
       return;
     }
     logPlanned(member, quick.id);
@@ -399,6 +471,8 @@ function ActiveNightView({
   }
 
   async function logWater(member: MemberSnapshot) {
+    if (activityInFlight.current) return;
+    activityInFlight.current = true;
     const consumedAt = new Date().toISOString();
     const record: PendingDrinkLog = {
       idempotencyKey: crypto.randomUUID(),
@@ -423,18 +497,29 @@ function ActiveNightView({
       setMessage('This water entry could not be saved on this device.');
     } finally {
       setBusy(false);
+      activityInFlight.current = false;
     }
   }
 
   async function undo(member: MemberSnapshot, explicit: UndoTarget | null = null) {
+    if (activityInFlight.current) return;
+    activityInFlight.current = true;
     const local = optimisticLogs
       .filter((record) => record.nightMemberId === member.id)
       .sort((a, b) => Date.parse(b.createdLocallyAt) - Date.parse(a.createdLocallyAt))[0];
     if (explicit === null && local !== undefined) {
       setBusy(true);
-      const result = await outbox.undo(local.idempotencyKey);
-      await loadPending();
-      setBusy(false);
+      let result: Awaited<ReturnType<typeof outbox.undo>>;
+      try {
+        result = await outbox.undo(local.idempotencyKey);
+        await loadPending();
+      } catch {
+        setMessage('That pending entry could not be changed. Retry when you are online.');
+        return;
+      } finally {
+        setBusy(false);
+        activityInFlight.current = false;
+      }
       if (result === 'server_deleted') await refresh();
       setMessage(
         result === 'not_found'
@@ -446,11 +531,17 @@ function ActiveNightView({
     const target = explicit ?? latestActivity(member);
     if (target === null) {
       setMessage(`Nothing recent to undo for ${member.displayName}.`);
+      activityInFlight.current = false;
       return;
     }
     setBusy(true);
-    const result = await deleteActivityAction({ logId: target.id, kind: target.kind });
-    setBusy(false);
+    let result: Awaited<ReturnType<typeof deleteActivityAction>>;
+    try {
+      result = await deleteActivityAction({ logId: target.id, kind: target.kind });
+    } finally {
+      setBusy(false);
+      activityInFlight.current = false;
+    }
     if (result.ok) {
       setMessage(
         `${member.displayName}: last ${target.kind === 'alcohol' ? 'drink' : 'water'} entry undone.`,
@@ -462,35 +553,70 @@ function ActiveNightView({
 
   function editPlan(member: MemberSnapshot) {
     setPlanMember(member);
-    setPlanDraft(member.planItems);
+    setPlanDraft(draftItemsFromPlan(member.planItems));
+    setPlanMode(
+      member.planSetupCompletedAt === null
+        ? 'unselected'
+        : member.planItems.length === 0
+          ? 'water_only'
+          : 'drinks',
+    );
   }
 
   async function savePlan() {
-    if (planMember === null) return;
+    if (planMember === null || planSaveInFlight.current) return;
+    const materialized = materializePlanDraft(planMode, planDraft);
+    if (!materialized.success) {
+      setMessage(materialized.message);
+      return;
+    }
+    planSaveInFlight.current = true;
     setBusy(true);
-    const result = await replacePlanAction({ memberId: planMember.id, items: planDraft });
-    setBusy(false);
-    if (result.ok) {
-      setSnapshot(result.data);
-      setPlanMember(null);
-      setMessage(`${planMember.displayName}: plan saved.`);
-    } else setMessage(result.error);
+    try {
+      const result = await replacePlanAction({
+        memberId: planMember.id,
+        items: materialized.data,
+        expectedRevision: planMember.planRevision,
+      });
+      if (result.ok) {
+        setSnapshot(result.data);
+        setPlanMember(null);
+        setMessage(`${planMember.displayName}: plan saved.`);
+      } else setMessage(result.error);
+    } catch {
+      setMessage('This plan could not be saved. Your draft is still here; retry when connected.');
+    } finally {
+      setBusy(false);
+      planSaveInFlight.current = false;
+    }
   }
 
   async function addGuest() {
+    if (guestAddInFlight.current) return;
+    const materialized = materializePlanDraft(guestPlanMode, guestPlan);
+    if (!materialized.success) {
+      setMessage(materialized.message);
+      return;
+    }
+    guestAddInFlight.current = true;
     setBusy(true);
-    const result = await addGuestAction({
-      nightId: snapshot.night.id,
-      guest: { displayName: guestName, planItems: guestPlan },
-    });
-    setBusy(false);
-    if (result.ok) {
-      setSnapshot(result.data);
-      setGuestOpen(false);
-      setGuestName('');
-      setGuestPlan([newPlanItem()]);
-      setMessage('Guest added.');
-    } else setMessage(result.error);
+    try {
+      const result = await addGuestAction({
+        nightId: snapshot.night.id,
+        guest: { displayName: guestName, planItems: materialized.data },
+      });
+      if (result.ok) {
+        setSnapshot(result.data);
+        setGuestOpen(false);
+        setGuestName('');
+        setGuestPlan([]);
+        setGuestPlanMode('unselected');
+        setMessage('Guest added.');
+      } else setMessage(result.error);
+    } finally {
+      setBusy(false);
+      guestAddInFlight.current = false;
+    }
   }
 
   async function removeGuest() {
@@ -545,11 +671,19 @@ function ActiveNightView({
   }
 
   async function retryPending(record: PendingDrinkLog) {
+    if (activityInFlight.current) return;
+    activityInFlight.current = true;
     setBusy(true);
-    const outcome = await outbox.syncOne(record.idempotencyKey, true);
-    await loadPending();
-    await handleSyncOutcome(outcome, record);
-    setBusy(false);
+    try {
+      const outcome = await outbox.syncOne(record.idempotencyKey, true);
+      await loadPending();
+      await handleSyncOutcome(outcome, record);
+    } catch {
+      setMessage('This entry remains on this device. Retry when you are online.');
+    } finally {
+      setBusy(false);
+      activityInFlight.current = false;
+    }
   }
 
   function reviewPending(record: PendingDrinkLog) {
@@ -562,6 +696,7 @@ function ActiveNightView({
       ...(record.customDrink === undefined ? {} : { customDrink: record.customDrink }),
       consumedAt: record.consumedAt,
       idempotencyKey: record.idempotencyKey,
+      pendingKey: record.idempotencyKey,
       warnings: record.requiredWarnings ?? [],
     });
   }
@@ -572,13 +707,40 @@ function ActiveNightView({
     setMessage('Unsaved entry removed from this device.');
   }
 
-  async function enableBrowserAlert() {
-    const permission = await notificationService.requestPermission();
-    if (permission === 'granted')
-      setMessage('Browser end alert enabled while browser support allows it.');
-    else if (permission === 'unsupported')
-      setMessage('Browser notifications are unavailable here. The in-app alert remains active.');
-    else setMessage('Notification permission was not granted. The in-app alert remains active.');
+  async function checkIn(member: MemberSnapshot) {
+    if (member.id === snapshot.currentMemberId || member.leftAt !== null) return;
+    if (!online) {
+      setMessage('Check-in needs a live connection. Try again when you are online.');
+      return;
+    }
+    if (checkInInFlight.current.has(member.id)) return;
+    checkInInFlight.current.add(member.id);
+    setCheckInStates((current) => ({ ...current, [member.id]: 'sending' }));
+    try {
+      const requestKey = checkInKeys.current.get(member.id) ?? crypto.randomUUID();
+      checkInKeys.current.set(member.id, requestKey);
+      const result = await sendCheckInAction({
+        nightId: snapshot.night.id,
+        targetMemberId: member.id,
+        requestKey,
+      });
+      if (!result.ok) {
+        setCheckInStates((current) => ({ ...current, [member.id]: 'error' }));
+        setMessage(result.error);
+      } else if (result.data.status === 'cooldown') {
+        setCheckInStates((current) => ({ ...current, [member.id]: 'error' }));
+        setMessage(result.data.message);
+      } else {
+        setCheckInStates((current) => ({ ...current, [member.id]: 'sent' }));
+        setMessage(result.data.message || `Check-in sent to ${member.displayName}.`);
+        checkInKeys.current.delete(member.id);
+      }
+    } catch {
+      setCheckInStates((current) => ({ ...current, [member.id]: 'error' }));
+      setMessage('Check-in could not be sent. Retry when connected.');
+    } finally {
+      checkInInFlight.current.delete(member.id);
+    }
   }
 
   return (
@@ -591,6 +753,7 @@ function ActiveNightView({
       remainingText={remainingText}
       overdue={timeStatus === 'overdue'}
     >
+      <NotificationInbox key={snapshot.currentUserId} nightId={snapshot.night.id} />
       {segment === 'tonight' ? (
         <TonightView
           member={currentMember}
@@ -626,6 +789,21 @@ function ActiveNightView({
                 onEditPlan={() => editPlan(member)}
                 onRemove={() => setGuestToRemove(member)}
                 pendingLogs={optimisticLogs.filter((record) => record.nightMemberId === member.id)}
+                canCheckIn={
+                  member.userId !== snapshot.currentUserId &&
+                  member.managedByUserId !== snapshot.currentUserId &&
+                  member.leftAt === null
+                }
+                checkInLabel={member.memberType === 'guest' ? 'Ask host to check in' : 'Check in'}
+                checkInState={checkInStates[member.id] ?? 'idle'}
+                onCheckIn={() => void checkIn(member)}
+                guestNote={
+                  member.memberType === 'guest'
+                    ? member.managedByUserId === snapshot.currentUserId
+                      ? 'Managed guest: check in with them directly on this device.'
+                      : 'Ask the host to check in.'
+                    : undefined
+                }
               />
             );
           })}
@@ -665,11 +843,10 @@ function ActiveNightView({
                 <Clock3 aria-hidden="true" /> Extend by 30 minutes
               </button>
             ) : null}
-            <button type="button" onClick={() => void enableBrowserAlert()}>
-              <BellRing aria-hidden="true" /> Remind me when the night ends
-            </button>
+            <Link href="/account#notifications">
+              <Bell aria-hidden="true" /> Notification settings
+            </Link>
           </Card>
-          <p className="muted small">Keep this page open to receive your end reminder.</p>
           <PendingQueuePanel
             records={optimisticLogs}
             busy={busy}
@@ -730,15 +907,21 @@ function ActiveNightView({
       <ConfirmationDialog
         draft={confirmation}
         busy={busy}
-        onClose={() => setConfirmation(null)}
+        onClose={() => {
+          if (!busy) setConfirmation(null);
+        }}
         onConfirm={(draft) => void submitDrink(draft, true)}
       />
       <PlanDialog
         member={planMember}
         items={planDraft}
         setItems={setPlanDraft}
+        mode={planMode}
+        setMode={setPlanMode}
         busy={busy}
-        onClose={() => setPlanMember(null)}
+        onClose={() => {
+          if (!busy) setPlanMember(null);
+        }}
         onSave={() => void savePlan()}
       />
       <GuestDialog
@@ -747,14 +930,20 @@ function ActiveNightView({
         setName={setGuestName}
         plan={guestPlan}
         setPlan={setGuestPlan}
+        mode={guestPlanMode}
+        setMode={setGuestPlanMode}
         busy={busy}
-        onClose={() => setGuestOpen(false)}
+        onClose={() => {
+          if (!busy) setGuestOpen(false);
+        }}
         onSave={() => void addGuest()}
       />
       <GuestRemovalDialog
         guest={guestToRemove}
         busy={busy}
-        onClose={() => setGuestToRemove(null)}
+        onClose={() => {
+          if (!busy) setGuestToRemove(null);
+        }}
         onRemove={() => void removeGuest()}
       />
       <ShareInviteDialog
@@ -947,13 +1136,17 @@ function PlanDialog({
   member,
   items,
   setItems,
+  mode,
+  setMode,
   busy,
   onClose,
   onSave,
 }: {
   member: MemberSnapshot | null;
-  items: PlanItemInput[];
-  setItems: (items: PlanItemInput[]) => void;
+  items: PlanDraftItem[];
+  setItems: (items: PlanDraftItem[]) => void;
+  mode: PlanSetupMode;
+  setMode: (mode: PlanSetupMode) => void;
   busy: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -965,7 +1158,7 @@ function PlanDialog({
       description="Changes apply to future entries."
       onClose={onClose}
     >
-      <PlanEditor items={items} onChange={setItems} />
+      <PlanEditor items={items} mode={mode} onModeChange={setMode} onChange={setItems} />
       <Button type="button" full disabled={busy} onClick={onSave}>
         {busy ? 'Saving…' : 'Save plan'}
       </Button>
@@ -979,6 +1172,8 @@ function GuestDialog({
   setName,
   plan,
   setPlan,
+  mode,
+  setMode,
   busy,
   onClose,
   onSave,
@@ -986,8 +1181,10 @@ function GuestDialog({
   open: boolean;
   name: string;
   setName: (name: string) => void;
-  plan: PlanItemInput[];
-  setPlan: (plan: PlanItemInput[]) => void;
+  plan: PlanDraftItem[];
+  setPlan: (plan: PlanDraftItem[]) => void;
+  mode: PlanSetupMode;
+  setMode: (mode: PlanSetupMode) => void;
   busy: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -1009,7 +1206,7 @@ function GuestDialog({
           onChange={(event) => setName(event.target.value)}
         />
       </div>
-      <PlanEditor compact items={plan} onChange={setPlan} />
+      <PlanEditor compact items={plan} mode={mode} onModeChange={setMode} onChange={setPlan} />
       <Button type="button" full disabled={busy} onClick={onSave}>
         {busy ? 'Adding…' : 'Track for someone'}
       </Button>

@@ -42,6 +42,7 @@ export function Dialog({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
+        event.stopImmediatePropagation();
         closeRef.current();
         return;
       }
@@ -72,7 +73,13 @@ export function Dialog({
 
   if (!open) return null;
   return (
-    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+    <div
+      className="dialog-backdrop"
+      role="presentation"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <section
         ref={dialogRef}
         tabIndex={-1}
@@ -81,7 +88,7 @@ export function Dialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description === undefined ? undefined : descriptionId}
-        onMouseDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
       >
         <button className="dialog-close" type="button" onClick={onClose} aria-label="Close dialog">
           <X aria-hidden="true" size={24} />

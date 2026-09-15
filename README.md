@@ -12,7 +12,7 @@ Drink with Desire is not a drinking game, competition, medical device, BAC calcu
 
 The working web MVP includes email/password authentication, audited profile creation, transactional night creation, personal and managed-guest plans, hashed invitations, idempotent redemption, one-tap alcohol and water logging, deterministic checkpoints, Realtime snapshot refresh, offline queuing, corrections, prospective end-time extensions, irreversible ending, and factual summaries.
 
-It deliberately has no marketing site, native/mobile project, social login, PIN or delegated-edit flow, spending, food logging, GPS, analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation, or reliable notifications after a browser is fully closed.
+It deliberately has no marketing site, native/mobile project, social login, PIN or delegated-edit flow, spending, food logging, GPS, analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation, or guaranteed notification delivery when a browser is fully closed.
 
 ## Self-service onboarding
 
@@ -76,12 +76,13 @@ All commands run from the repository root. `npm test` runs both Vitest and the i
 
 ## Environment variables
 
-| Variable                               | Exposure                   | Purpose                                                     |
-| -------------------------------------- | -------------------------- | ----------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | Browser and server         | Dedicated Drink with Desire Supabase URL                    |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser and server         | Supabase publishable key                                    |
-| `NEXT_PUBLIC_SITE_URL`                 | Browser-safe configuration | Canonical application origin used for auth and invite links |
-| `SUPABASE_SECRET_KEY`                  | Server only, optional      | Reserved for future maintenance; unused by normal MVP flows |
+| Variable                               | Exposure                   | Purpose                                                                 |
+| -------------------------------------- | -------------------------- | ----------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Browser and server         | Dedicated Drink with Desire Supabase URL                                |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser and server         | Supabase publishable key                                                |
+| `NEXT_PUBLIC_SITE_URL`                 | Browser-safe configuration | Canonical application origin used for auth and invite links             |
+| `NEXT_PUBLIC_DWD_VAPID_PUBLIC_KEY`     | Browser and server         | Optional public Web Push key; leave unset for in-app-only notifications |
+| `SUPABASE_SECRET_KEY`                  | Server only, optional      | Reserved for future maintenance; unused by normal MVP flows             |
 
 Never use a Baby Steps project credential. Never prefix a Supabase secret or service-role key with `NEXT_PUBLIC_`.
 
@@ -128,7 +129,7 @@ See [docs/deployment.md](docs/deployment.md) for the live project settings, CLI 
 
 ## Known MVP limitations
 
-- A normal browser notification is opportunistic and is not reliable after the browser is fully closed. There is no Web Push server.
+- Persistent in-app notifications are available without browser permission. Standards-based Web Push integration is included but remains disabled until the server-only VAPID keys, dispatch Edge Function, and scheduler are configured; see [deployment](docs/deployment.md).
 - The compact outbox uses guarded `localStorage`, not a general offline database. It stores only pending activity data needed for retry and is isolated by account and night.
 - Invite lookup throttling is an in-process best-effort limiter. Production should add an edge or durable rate limiter after the vertical MVP is stable.
 - Account deletion is a private request for operator review, not an automatic destructive action. Data export is not implemented.

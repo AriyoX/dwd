@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   ActiveNightSummary,
   Database,
+  FinishedNight,
   Json,
   NightSnapshot,
   StartNightInput,
@@ -40,17 +41,19 @@ export async function getActiveNights(
 }
 
 export async function getFinishedNights(client: SupabaseClient<Database>, page = 0) {
-  const offset = Math.max(0, Math.floor(page)) * 20;
-  // The nights SELECT policy requires current membership, including for ended nights.
-  const { data, error } = await client
-    .from('nights')
-    .select('id, title, starts_at, ended_at')
-    .eq('status', 'ended')
-    .order('ended_at', { ascending: false })
-    .order('id')
-    .range(offset, offset + 20);
-  if (error) throw error;
-  return { nights: data.slice(0, 20), hasMore: data.length > 20 };
+  const { data, error } = await client.rpc('get_finished_nights', {
+    p_page: Math.max(0, Math.floor(page)),
+  });
+  const nights = unwrapRpc<FinishedNight[]>(data, error);
+  return { nights: nights.slice(0, 20), hasMore: nights.length > 20 };
+}
+
+export async function getFinishedNightSummary(
+  client: SupabaseClient<Database>,
+  nightId: string,
+): Promise<NightSnapshot> {
+  const { data, error } = await client.rpc('get_finished_night_summary', { p_night_id: nightId });
+  return unwrapRpc<NightSnapshot>(data, error);
 }
 
 export async function extendNight(

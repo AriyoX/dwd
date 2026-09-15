@@ -4,6 +4,11 @@ import {
   determineNightTimeStatus,
   determinePostEndSyncEligibility,
   isAfterApplicableEnd,
+  formatNightDateTime,
+  isValidIanaTimeZone,
+  resolveWallTimeInTimeZone,
+  safeTimeZone,
+  wallClockFromInstant,
   resolveApplicablePlannedEnd,
 } from './time';
 
@@ -70,5 +75,39 @@ describe('night time behavior', () => {
         '2026-08-01T22:00:01Z',
       ),
     ).toBe('grace_expired');
+  });
+});
+
+describe('named time zones', () => {
+  it('resolves Nairobi, UTC, Kathmandu, and a midnight boundary deterministically', () => {
+    expect(resolveWallTimeInTimeZone('2026-01-01', '00:15', 'Africa/Nairobi')).toBe(
+      '2025-12-31T21:15:00.000Z',
+    );
+    expect(resolveWallTimeInTimeZone('2026-01-01', '00:15', 'UTC')).toBe(
+      '2026-01-01T00:15:00.000Z',
+    );
+    expect(resolveWallTimeInTimeZone('2026-01-01', '00:15', 'Asia/Kathmandu')).toBe(
+      '2025-12-31T18:30:00.000Z',
+    );
+    expect(wallClockFromInstant('2025-12-31T21:15:00Z', 'Africa/Nairobi')).toEqual({
+      date: '2026-01-01',
+      time: '00:15',
+    });
+  });
+
+  it('rejects a spring DST gap and picks the earlier repeated fall time', () => {
+    expect(() => resolveWallTimeInTimeZone('2026-03-08', '02:30', 'America/New_York')).toThrow(
+      'does not exist',
+    );
+    expect(resolveWallTimeInTimeZone('2026-11-01', '01:30', 'America/New_York')).toBe(
+      '2026-11-01T05:30:00.000Z',
+    );
+  });
+
+  it('falls back only for display when legacy metadata is invalid', () => {
+    expect(isValidIanaTimeZone('America/New_York')).toBe(true);
+    expect(isValidIanaTimeZone('not/a-zone')).toBe(false);
+    expect(safeTimeZone('not/a-zone')).toBe('UTC');
+    expect(formatNightDateTime('2026-01-01T00:00:00Z', 'UTC')).toContain('Jan 1, 2026');
   });
 });

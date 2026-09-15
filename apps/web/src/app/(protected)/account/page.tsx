@@ -3,10 +3,19 @@ import { Wordmark } from '@/components/layout/wordmark';
 import { Card } from '@/components/ui/card';
 import { RequestForm } from '@/features/support/request-form';
 import { TourButton } from '@/features/tour/tour-provider';
+import { DisplayNameForm, NotificationSettings } from '@/features/account/account-controls';
+import { NotificationInbox } from '@/features/notifications/notification-inbox';
+import { getMyNotificationEvents, getNotificationPreferences } from '@dwd/data';
+import type { NotificationEvent } from '@dwd/core';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 export const metadata = { title: 'Your account' };
 export default async function AccountPage() {
   const client = await createServerSupabaseClient();
+  const { data: claims } = await client.auth.getClaims();
+  const userId = claims?.claims.sub;
+  const profile = userId
+    ? (await client.from('profiles').select('display_name').eq('id', userId).maybeSingle()).data
+    : null;
   const result = await client
     .from('support_requests')
     .select('id, kind, status, response, created_at')
@@ -16,6 +25,10 @@ export default async function AccountPage() {
   const deletion = requests.find(
     (request) => request.kind === 'deletion' && request.status !== 'completed',
   );
+  const [preferences, events] = await Promise.all([
+    getNotificationPreferences(client).catch(() => null),
+    getMyNotificationEvents(client).catch((): NotificationEvent[] => []),
+  ]);
   return (
     <main id="main-content" className="page-shell">
       <header className="topbar">
@@ -26,6 +39,29 @@ export default async function AccountPage() {
       </header>
       <section className="stack-lg">
         <h1>Your account.</h1>
+        <Card className="stack">
+          <h2>Your profile</h2>
+          <DisplayNameForm initialName={profile?.display_name ?? ''} />
+          <p className="muted small">
+            Changes apply to active nights. Past nights keep the name you used then.
+          </p>
+        </Card>
+        <Card className="stack">
+          {preferences ? (
+            <NotificationSettings initialPreferences={preferences} initialEvents={events} />
+          ) : (
+            <>
+              <h2>Notifications</h2>
+              <p className="error-box" role="alert">
+                Notification settings could not load.{' '}
+                <Link className="text-link" href="/account">
+                  Retry
+                </Link>
+              </p>
+              <NotificationInbox initialEvents={events} />
+            </>
+          )}
+        </Card>
         <Card className="stack">
           <h2>Your requests</h2>
           {result.error ? (

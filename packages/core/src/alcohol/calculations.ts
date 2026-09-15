@@ -40,6 +40,59 @@ export interface MemberTotals {
   afterEndCount: number;
 }
 
+export interface DrinkBreakdownEntry {
+  label: string;
+  category: DrinkCategory;
+  volumeMl: number;
+  abvPercent: number;
+  count: number;
+  pending?: boolean;
+}
+
+/**
+ * Builds a display breakdown from immutable log snapshots. Deleted rows are
+ * excluded, and identical snapshots are grouped while different custom
+ * drinks remain distinguishable.
+ */
+export function buildDrinkBreakdown(
+  drinkLogs: readonly AlcoholLog[],
+  pending: readonly DrinkBreakdownEntry[] = [],
+): DrinkBreakdownEntry[] {
+  const grouped = new Map<string, DrinkBreakdownEntry>();
+  for (const log of drinkLogs) {
+    if (log.deletedAt !== null) continue;
+    const key = JSON.stringify([
+      log.labelSnapshot,
+      log.categorySnapshot,
+      log.volumeMl,
+      log.abvPercent,
+    ]);
+    const current = grouped.get(key);
+    if (current === undefined) {
+      grouped.set(key, {
+        label: log.labelSnapshot,
+        category: log.categorySnapshot,
+        volumeMl: log.volumeMl,
+        abvPercent: log.abvPercent,
+        count: 1,
+      });
+    } else current.count += 1;
+  }
+  for (const entry of pending) {
+    const key = JSON.stringify([
+      entry.label,
+      entry.category,
+      entry.volumeMl,
+      entry.abvPercent,
+      'pending',
+    ]);
+    const current = grouped.get(key);
+    if (current === undefined) grouped.set(key, { ...entry, pending: true });
+    else current.count += entry.count;
+  }
+  return [...grouped.values()];
+}
+
 export function calculateMemberTotals(
   drinkLogs: readonly AlcoholLog[],
   waterLogs: readonly WaterLog[] = [],

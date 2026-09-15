@@ -12,6 +12,8 @@ export default defineConfig(
       '**/dist/**',
       '**/coverage/**',
       'supabase/.temp/**',
+      'supabase/functions/**',
+      'apps/web/public/sw.js',
       '.tmp/**',
     ],
   },

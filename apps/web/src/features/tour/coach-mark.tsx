@@ -188,7 +188,10 @@ export function CoachMark({
       }
     };
     const keyboard = (event: KeyboardEvent) => {
-      if (modalOpen) return;
+      // The animation-frame geometry state may lag behind a newly opened
+      // dialog. Let the current modal consume Escape/Tab before the tour.
+      if (modalOpen || event.defaultPrevented || document.querySelector('[aria-modal="true"]'))
+        return;
       if (event.key === 'Escape') {
         event.preventDefault();
         callbacks.current.onClose();

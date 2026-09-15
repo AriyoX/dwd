@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, LogOut, Moon, Plus, Users } from 'lucide-react';
+import { ArrowRight, ChevronDown, Moon, Plus, Users } from 'lucide-react';
 import { getActiveNights } from '@dwd/data';
 import { Card } from '@/components/ui/card';
 import { Wordmark } from '@/components/layout/wordmark';
 import { NightIllustration } from '@/components/layout/night-illustration';
-import { signOutAction } from '@/features/auth/actions';
+import { SignOutButton } from '@/features/auth/sign-out-button';
 import { TourButton } from '@/features/tour/tour-provider';
 import { JoinCodeForm } from '@/features/nights/join-code-form';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -47,11 +47,7 @@ export default async function HomePage() {
               Feedback & support
             </Link>
             <TourButton />
-            <form action={signOutAction}>
-              <button className="icon-text-button" type="submit">
-                <LogOut aria-hidden="true" size={18} /> Sign out
-              </button>
-            </form>
+            <SignOutButton />
           </div>
         </details>
       </header>

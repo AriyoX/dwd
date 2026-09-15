@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { getNightSnapshot } from '@dwd/data';
+import { getFinishedNightSummary, getNightSnapshot } from '@dwd/data';
 import { EndedNightOutbox } from '@/features/offline/ended-night-outbox';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { SummaryScreen } from '@/features/nights/summary-screen';
@@ -14,7 +14,9 @@ export default async function NightSummaryPage({
   const { nightId } = await params;
   if (nightId === 'tour') return <TourSummaryScreen />;
   const client = await createServerSupabaseClient();
-  const snapshot = await getNightSnapshot(client, nightId).catch(() => null);
+  const snapshot = await getNightSnapshot(client, nightId).catch(() =>
+    getFinishedNightSummary(client, nightId).catch(() => null),
+  );
   if (snapshot === null) notFound();
   if (snapshot.night.status !== 'ended') redirect(`/night/${nightId}`);
   return (

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { CalendarClock, UserRound } from 'lucide-react';
+import { formatNightDateTime } from '@dwd/core';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Card, Eyebrow } from '@/components/ui/card';
 import { JoinInvitation } from '@/features/invites/join-invitation';
@@ -11,12 +12,6 @@ import { getAuthenticatedUserId } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Join a night' };
 export const dynamic = 'force-dynamic';
-
-function formatTime(value: string): string {
-  return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(
-    new Date(value),
-  );
-}
 
 export default async function JoinPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -36,7 +31,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
           <Card className="stack">
             <h1>
               {preview.reason === 'network'
-                ? 'Couldn?t load this invitation.'
+                ? 'Could not load this invitation.'
                 : 'This link cannot be used.'}
             </h1>
             <p className="muted">
@@ -67,7 +62,10 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
               <div className="row">
                 <CalendarClock aria-hidden="true" size={21} color="var(--amber)" />
                 <span>
-                  {formatTime(preview.startsAt)} – {formatTime(preview.endsAt)}
+                  {formatNightDateTime(preview.startsAt, preview.timezone)} –{' '}
+                  {formatNightDateTime(preview.endsAt, preview.timezone)}
+                  <br />
+                  <span className="muted small">Shared time zone: {preview.timezone}</span>
                 </span>
               </div>
             </div>

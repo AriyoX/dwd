@@ -125,7 +125,7 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   await page.locator('[data-tour="history-entry"]').click();
   card = await coach(page, 'history');
   await expect(page).toHaveURL(/\/night\/tour\/summary\?tour=history$/);
-  await expect(page.locator('[data-tour="history-summary"]')).toContainText('1 drinks');
+  await expect(page.locator('[data-tour="history-summary"]')).toContainText('1 drink');
   await card.getByRole('button', { name: 'Finish tour' }).click();
   await expect(page).toHaveURL(/\/home$/);
   await expect(page.getByText('No active nights yet.')).toBeVisible();
@@ -201,8 +201,17 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   await coach(page, 'join');
   await page.screenshot({ path: `.tmp/tour-${info.project.name}-dark.png` });
   await page.goto('/account');
-  await expect(page.getByRole('button', { name: 'Take a tour' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Take a tour' })).toBeEnabled();
   await expect(page.locator('[data-tour-coach]')).toHaveCount(0);
+  // Account HTML can arrive before hydration has cleared a previous tour.
+  // Verify durable cleanup before testing a fresh navigation to an old link.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(sessionStorage).filter((key) => key.startsWith('dwd-tour-session:')),
+      ),
+    )
+    .toEqual([]);
   await page.goto('/night/tour?tour=log');
   await expect(page).toHaveURL(/\/home$/);
   await expect(page.getByText('Friday with friends')).toHaveCount(0);

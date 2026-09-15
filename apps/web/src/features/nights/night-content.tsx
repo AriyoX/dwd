@@ -2,6 +2,7 @@
 
 import { BellRing, Droplets, Pencil, Plus, Undo2 } from 'lucide-react';
 import {
+  buildDrinkBreakdown,
   calculateMemberTotals,
   calculatePlanTotal,
   determinePlanStatus,
@@ -116,6 +117,11 @@ export function ParticipantCard({
   onEditPlan,
   onRemove,
   pendingLogs,
+  canCheckIn,
+  checkInLabel,
+  checkInState,
+  onCheckIn,
+  guestNote,
 }: {
   member: MemberSnapshot;
   alerts: NightSnapshot['alerts'];
@@ -128,9 +134,20 @@ export function ParticipantCard({
   onEditPlan: () => void;
   onRemove: () => void;
   pendingLogs: readonly PendingDrinkLog[];
+  canCheckIn?: boolean | undefined;
+  checkInLabel?: string | undefined;
+  checkInState?: 'idle' | 'sending' | 'sent' | 'error' | undefined;
+  onCheckIn?: (() => void) | undefined;
+  guestNote?: string | undefined;
 }) {
   const totals = calculateMemberTotals(member.drinkLogs, member.waterLogs);
-  const pendingAlcohol = pendingLogs.filter((record) => record.kind === 'alcohol').length;
+  const pendingAlcoholEntries = pendingLogs.flatMap((record) => {
+    if (record.kind !== 'alcohol' || record.drinkSnapshot === undefined) return [];
+    return [{ ...record.drinkSnapshot, count: 1, pending: true }];
+  });
+  const pendingAlcohol = pendingAlcoholEntries.length;
+  const pendingWater = pendingLogs.filter((record) => record.kind === 'water').length;
+  const breakdown = buildDrinkBreakdown(member.drinkLogs, pendingAlcoholEntries);
   const planned = member.planItems.reduce((sum, item) => sum + item.plannedQuantity, 0);
   const quick = member.planItems.find((item) => item.isQuickLog) ?? member.planItems[0];
   const lastActivity = [...member.drinkLogs, ...member.waterLogs].sort(
@@ -149,22 +166,69 @@ export function ParticipantCard({
             </p>
           </div>
         </div>
-        {alerts.length === 0 ? null : <span className="pill pill-warning">Check in</span>}
+        {canCheckIn && onCheckIn ? (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || checkInState === 'sending'}
+            onClick={onCheckIn}
+          >
+            {checkInState === 'sending'
+              ? 'Sending…'
+              : checkInState === 'sent'
+                ? 'Check in again'
+                : (checkInLabel ?? 'Check in')}
+          </Button>
+        ) : alerts.length > 0 ? (
+          <span className="pill pill-warning">Attention</span>
+        ) : null}
       </div>
       <div className="row-between">
         <span>
-          {totals.alcoholCount + pendingAlcohol} logged · Plan {planned}
-          {pendingLogs.length === 0 ? '' : ` · ${pendingLogs.length} waiting to save`}
+          {totals.alcoholCount} {totals.alcoholCount === 1 ? 'drink' : 'drinks'}
+          {pendingAlcohol === 0 ? '' : ` · ${pendingAlcohol} pending`}
+          {' · '}
+          {member.planSetupCompletedAt === null
+            ? 'Plan not set'
+            : member.planItems.length === 0
+              ? 'Water only'
+              : `Planned · ${planned} ${planned === 1 ? 'drink' : 'drinks'}`}
         </span>
         {lastActivity === undefined ? null : (
           <span className="muted small">{relativeTime(lastActivity.consumedAt)}</span>
         )}
       </div>
+      <p className="muted small">{formatCategories(totals.categoryCounts)}</p>
       {alerts.map((alert) => (
         <div className="warning-box small" key={alert.id}>
           {alert.message}
         </div>
       ))}
+      {breakdown.length === 0 ? (
+        <p className="muted small">No alcohol logged.</p>
+      ) : (
+        <details className="small">
+          <summary>{breakdown.map((entry) => `${entry.count} ${entry.label}`).join(' · ')}</summary>
+          <ul className="compact-list">
+            {breakdown.map((entry) => (
+              <li
+                key={`${entry.label}-${entry.category}-${entry.volumeMl}-${entry.abvPercent}-${entry.pending ? 'pending' : 'saved'}`}
+              >
+                {entry.count} × {entry.label} · {entry.volumeMl} ml · {entry.abvPercent}%
+                {entry.pending ? ' · pending on this device' : ''}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <p className="muted small">
+        Water: {totals.waterCount}
+        {pendingWater === 0 ? '' : ` · ${pendingWater} pending on this device`}
+      </p>
+      {checkInState === 'error' ? (
+        <p className="error-box small">Check-in could not be sent. Try again while online.</p>
+      ) : null}
+      {guestNote ? <p className="muted small">{guestNote}</p> : null}
       {managed && member.leftAt === null ? (
         <div className="guest-controls stack">
           <Button type="button" full disabled={busy} onClick={onQuick}>

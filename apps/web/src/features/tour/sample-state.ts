@@ -32,6 +32,8 @@ export function createTourNight(now = Date.now()): NightSnapshot {
         managedByUserId: null,
         joinedAt: started,
         leftAt: null,
+        planSetupCompletedAt: started,
+        planRevision: 0,
         planItems: [
           {
             id: `tour-plan-${index}`,

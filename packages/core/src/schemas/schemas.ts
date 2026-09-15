@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { INPUT_LIMITS, MAX_NIGHT_DURATION_HOURS } from '../config/constants';
+import { isValidIanaTimeZone } from '../time/time';
 
 export const drinkCategorySchema = z.enum(['beer', 'wine', 'spirit', 'cocktail', 'other']);
 
@@ -37,11 +38,20 @@ export const planItemInputSchema = z.object({
   clientId: z.string().max(80).optional(),
   label: trimmedString(INPUT_LIMITS.label.min, INPUT_LIMITS.label.max, 'Drink label'),
   category: drinkCategorySchema,
-  volumeMl: z.number().min(INPUT_LIMITS.volumeMl.min).max(INPUT_LIMITS.volumeMl.max),
-  abvPercent: z.number().positive().max(INPUT_LIMITS.abvPercent.max),
+  volumeMl: z
+    .number()
+    .refine(Number.isFinite, 'Volume must be a finite number.')
+    .min(INPUT_LIMITS.volumeMl.min)
+    .max(INPUT_LIMITS.volumeMl.max),
+  abvPercent: z
+    .number()
+    .refine(Number.isFinite, 'ABV must be a finite number.')
+    .positive()
+    .max(INPUT_LIMITS.abvPercent.max),
   plannedQuantity: z
     .number()
     .int()
+    .refine(Number.isFinite, 'Quantity must be a finite number.')
     .min(INPUT_LIMITS.plannedQuantity.min)
     .max(INPUT_LIMITS.plannedQuantity.max),
   isQuickLog: z.boolean(),
@@ -72,7 +82,12 @@ export const startNightSchema = z
       'Tonight',
     ),
     endsAt: z.iso.datetime({ offset: true }),
-    timezone: z.string().trim().min(1).max(80),
+    timezone: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .refine(isValidIanaTimeZone, 'Choose a valid IANA time zone.'),
     withPeople: z.boolean(),
     hostPlanItems: planItemsSchema,
     guests: z.array(guestInputSchema).max(INPUT_LIMITS.guests.max),
@@ -95,8 +110,16 @@ export const startNightSchema = z
 export const customDrinkSchema = z.object({
   label: trimmedString(INPUT_LIMITS.label.min, INPUT_LIMITS.label.max, 'Drink label'),
   category: drinkCategorySchema,
-  volumeMl: z.number().min(INPUT_LIMITS.volumeMl.min).max(INPUT_LIMITS.volumeMl.max),
-  abvPercent: z.number().positive().max(INPUT_LIMITS.abvPercent.max),
+  volumeMl: z
+    .number()
+    .refine(Number.isFinite, 'Volume must be a finite number.')
+    .min(INPUT_LIMITS.volumeMl.min)
+    .max(INPUT_LIMITS.volumeMl.max),
+  abvPercent: z
+    .number()
+    .refine(Number.isFinite, 'ABV must be a finite number.')
+    .positive()
+    .max(INPUT_LIMITS.abvPercent.max),
 });
 
 export const drinkLogCommandSchema = z
@@ -132,6 +155,7 @@ export const softDeleteLogSchema = z.object({
 export const replacePlanSchema = z.object({
   memberId: z.uuid(),
   items: planItemsSchema,
+  expectedRevision: z.number().int().nonnegative().optional(),
 });
 
 export const inviteTokenSchema = z

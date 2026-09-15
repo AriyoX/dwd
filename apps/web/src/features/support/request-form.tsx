@@ -2,12 +2,10 @@
 
 import Link from 'next/link';
 import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { submitSupportRequest } from './actions';
 
 export function RequestForm({ deletion = false }: { deletion?: boolean }) {
-  const router = useRouter();
   const [kind, setKind] = useState<'feedback' | 'problem'>('problem');
   const [message, setMessage] = useState(
     deletion ? 'Please review my account and personal data for deletion.' : '',
@@ -18,6 +16,7 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
   const inFlight = useRef(false);
+  const messageInput = useRef<HTMLTextAreaElement>(null);
   const attempt = useRef<{
     requestKey: string;
     kind: 'feedback' | 'problem' | 'deletion';
@@ -48,7 +47,8 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
       onSubmit={async (e) => {
         e.preventDefault();
         if (inFlight.current) return;
-        if (!attempt.current && message.trim().length < 10) {
+        const currentMessage = messageInput.current?.value ?? message;
+        if (!attempt.current && currentMessage.trim().length < 10) {
           setError('Write at least 10 characters, excluding surrounding spaces.');
           return;
         }
@@ -59,7 +59,7 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
           const payload = attempt.current ?? {
             requestKey: crypto.randomUUID(),
             kind: deletion ? 'deletion' : kind,
-            message,
+            message: currentMessage,
             confirmed,
           };
           attempt.current = payload;
@@ -67,7 +67,6 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
           const result = await submitSupportRequest(payload);
           if (result.ok) {
             setReceipt(result.id);
-            router.refresh();
           } else setError(result.error);
         } catch {
           setError('Couldn’t connect. Retry this request.');
@@ -92,9 +91,11 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
           </label>
         )}
         <label className="field">
-          {deletion ? 'Request details' : 'What happened?'}
+          <span>{deletion ? 'Request details' : 'What happened?'}</span>
           <textarea
+            id="support-message"
             className="input"
+            ref={messageInput}
             rows={5}
             value={message}
             onChange={(e) => setMessage(e.target.value)}

@@ -99,3 +99,28 @@ Record the dedicated Supabase project name, organization, and project reference 
 - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npm run format:check`, and `npm run build` from root.
 - [ ] Run migration status, RLS/policy/index queries, and Supabase advisors.
 - [ ] Record failures honestly before release; do not mark this checklist complete from code inspection alone.
+
+## DWD handoff regressions
+
+- [ ] Start a fresh host setup and confirm every new drink row says `Choose a drink`; Beer appears only after selecting Beer. Test a custom row, removing all rows, switching to water only, and saving an intentional water-only plan.
+- [ ] Join with an account, finish setup, log a drink, refresh the original `setup=1` URL, use back/forward, hide/show the tab, and reconnect. No new plan or drink chooser should open after setup is complete. Repeat with a water-only setup and blocked browser storage.
+- [ ] In A, B, and the host-managed guest card, compare the saved drink count, label/category breakdown, serving ml/ABV detail, water count, planned count, and departed label. Undo a log and verify both count and breakdown update. Queue one log offline and confirm only A shows it as pending until synchronization.
+- [ ] Trigger plan-exceeded and after-end warnings together. Tap `Log anyway` repeatedly on a phone-sized viewport, reload during confirmation, lose the response after commit, restore connectivity, and retry. Verify one canonical idempotency key and a recoverable local record for storage/auth failures.
+- [ ] Edit a plan in two tabs. Save one tab, then save the stale tab and verify the draft remains with a reload/review error. Confirm archived logs retain their old label, category, volume, ABV, and plan version.
+- [ ] From the group segment, send a check-in to another active account. Verify the sender receives sent feedback, the recipient sees one in-app event without reloading, denied browser permission does not block it, and repeated taps obey the cooldown. For a guest managed by someone else, use `Ask host to check in` and verify the host receives the request.
+- [ ] Rename an account in two sessions. Active cards and initials update after canonical refresh; a finished summary keeps the captured historical name. Try whitespace-only and a 61-character name.
+- [ ] Create finished nights as host, joined member, water-only member, and a member who leaves before the end. Verify history contains each real account participant, former members see only their own summary, and an outsider sees neither list nor summary.
+- [ ] Create nights in `Africa/Nairobi`, `UTC`, `America/New_York` across both DST transitions, and `Asia/Kathmandu`. Compare creator/viewer text, midnight/month rollover, draft restore after travel, invite preview, summary, and reminder schedule. Verify all shared times carry the night zone label.
+- [ ] In Account, enable/disable each notification category, change periodic interval, refresh in two tabs, leave/end/extend a night, and verify no stale or duplicate schedules. Test unsupported, default, granted, denied, and revoked browser permission states; in-app events must still work.
+- [ ] Run the mobile confirmation and dialog cases in Chromium and the `webkit-mobile` Playwright project. Chromium mobile emulation is Android-like coverage; it is not Safari coverage.
+
+## Device-only checks
+
+- [ ] Receive a push queued before signing out, then sign in as another user on that device. It must show only a generic update, without the old account’s event text or night link. Test a temporarily unreachable push-verification endpoint: a generic notification must still appear (Safari requires visible push), and the correct account’s inbox must retain the event after reconnect.
+
+- [ ] On a real iOS/iPadOS 16.4+ Home Screen web app, grant push permission from the Account gesture, background/close the app, receive a generic push, and follow its deep link. Test uninstall/reinstall and account switching.
+- [ ] On real Android Chrome, repeat permission, background, endpoint replacement, logout/account switch, and expired endpoint checks.
+- [ ] If those devices or configured VAPID/scheduler credentials are unavailable, record them as unverified. Do not treat a foreground timer or a Chromium mobile run as closed-browser push evidence.
+
+- [ ] Grant permission, simulate a push-provider or registration failure, retry setup, refresh, and turn off this device. Verify the server registration is removed and category preferences persist. Test stale/expired subscriptions and VAPID key rotation.
+- [ ] On phone and desktop, inspect Account in both themes, expand/collapse the active-night inbox, mark an event read while refreshing, and check that settings/notification links have usable touch targets and no horizontal overflow.
