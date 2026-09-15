@@ -8,10 +8,10 @@ const draftPlan = z
       id: z.uuid().optional(),
       clientId: z.string().max(80).optional(),
       label: z.string().max(60),
-      category: drinkCategorySchema,
-      volumeMl: z.number(),
-      abvPercent: z.number(),
-      plannedQuantity: z.number(),
+      category: drinkCategorySchema.or(z.literal('')),
+      volumeMl: z.union([z.number(), z.string()]),
+      abvPercent: z.union([z.number(), z.string()]),
+      plannedQuantity: z.union([z.number(), z.string()]),
       isQuickLog: z.boolean(),
     }),
   )
@@ -25,7 +25,9 @@ export const nightDraftSchema = z.object({
   title: z.string().max(80),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  timezone: z.string().max(80).optional(),
   withPeople: z.boolean(),
+  hostPlanMode: z.enum(['unselected', 'water_only', 'drinks']).optional(),
   hostPlan: draftPlan,
   guests: z
     .array(
@@ -33,6 +35,7 @@ export const nightDraftSchema = z.object({
         clientId: z.string().max(80),
         displayName: z.string().max(60),
         planItems: draftPlan,
+        planMode: z.enum(['unselected', 'water_only', 'drinks']).optional(),
       }),
     )
     .max(20),

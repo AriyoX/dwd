@@ -4,41 +4,69 @@ import { ArrowLeft, ArrowRight, Check, Clock3, User, UserPlus, Users } from 'luc
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import {
-  planItemsSchema,
+  resolveWallTimeInTimeZone,
   startNightSchema,
-  type PlanItemInput,
+  type PlanSetupMode,
   type StartNightInput,
 } from '@dwd/core';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlanEditor, newPlanItem } from '@/features/plans/plan-editor';
+import { PlanEditor, materializePlanDraft, type PlanDraftItem } from '@/features/plans/plan-editor';
 import { startNightAction } from './actions';
 import { newInviteRequestToken } from '@/features/invites/invite-request';
 import { nightDraftKey, readNightDraft } from './night-draft';
 
-type GuestDraft = { clientId: string; displayName: string; planItems: PlanItemInput[] };
+type GuestDraft = {
+  clientId: string;
+  displayName: string;
+  planItems: PlanDraftItem[];
+  planMode: PlanSetupMode;
+};
 
-function defaultEndTime(): string {
+function defaultEndParts(timeZone: string): { date: string; time: string } {
   const date = new Date(Date.now() + 2 * 60 * 60 * 1000);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value])) as Record<
+    string,
+    string
+  >;
+  return {
+    date: `${values['year'] ?? '1970'}-${values['month'] ?? '01'}-${values['day'] ?? '01'}`,
+    time: `${values['hour'] ?? '00'}:${values['minute'] ?? '00'}`,
+  };
 }
 
-function defaultEndDate() {
-  const date = new Date(Date.now() + 2 * 60 * 60 * 1000);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+function detectedTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
 }
 
 export function NewNightWizard({ userId }: { userId: string }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('Tonight');
-  const [endTime, setEndTime] = useState(defaultEndTime);
-  const [endDate, setEndDate] = useState(defaultEndDate);
+  const [initialTimeZone] = useState(() => detectedTimeZone());
+  const [initialEnd] = useState(() => defaultEndParts(initialTimeZone));
+  const [timeZone, setTimeZone] = useState(initialTimeZone);
+  const [endTime, setEndTime] = useState(initialEnd.time);
+  const [endDate, setEndDate] = useState(initialEnd.date);
   const [draftReady, setDraftReady] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [withPeople, setWithPeople] = useState(true);
-  const [hostPlan, setHostPlan] = useState<PlanItemInput[]>(() => [newPlanItem()]);
+  const [hostPlan, setHostPlan] = useState<PlanDraftItem[]>([]);
+  const [hostPlanMode, setHostPlanMode] = useState<PlanSetupMode>('unselected');
   const [guests, setGuests] = useState<GuestDraft[]>([]);
   const [inviteToken, setInviteToken] = useState(newInviteRequestToken);
   const [creationKey, setCreationKey] = useState(() => crypto.randomUUID());
@@ -60,9 +88,18 @@ export function NewNightWizard({ userId }: { userId: string }) {
           setTitle(draft.title);
           setEndTime(draft.endTime);
           setEndDate(draft.endDate);
+          setTimeZone(draft.timezone ?? initialTimeZone);
           setWithPeople(draft.withPeople);
           setHostPlan(draft.hostPlan);
-          setGuests(draft.guests);
+          setHostPlanMode(
+            draft.hostPlanMode ?? (draft.hostPlan.length > 0 ? 'drinks' : 'unselected'),
+          );
+          setGuests(
+            draft.guests.map((guest) => ({
+              ...guest,
+              planMode: guest.planMode ?? (guest.planItems.length > 0 ? 'drinks' : 'unselected'),
+            })),
+          );
           setCreationKey(draft.creationKey);
           setInviteToken(draft.inviteToken);
           setHasDraft(true);
@@ -73,7 +110,7 @@ export function NewNightWizard({ userId }: { userId: string }) {
       }
       setDraftReady(true);
     });
-  }, [userId]);
+  }, [initialTimeZone, userId]);
 
   useEffect(() => {
     if (!draftReady) return;
@@ -91,8 +128,10 @@ export function NewNightWizard({ userId }: { userId: string }) {
             title,
             endTime,
             endDate,
+            timezone: timeZone,
             withPeople,
             hostPlan,
+            hostPlanMode,
             guests,
           }),
         );
@@ -111,19 +150,25 @@ export function NewNightWizard({ userId }: { userId: string }) {
     title,
     endTime,
     endDate,
+    timeZone,
     withPeople,
     hostPlan,
+    hostPlanMode,
     guests,
   ]);
 
   function discard() {
+    const nextTimeZone = detectedTimeZone();
+    const nextEnd = defaultEndParts(nextTimeZone);
     setHasDraft(false);
     setStep(1);
     setTitle('Tonight');
-    setEndTime(defaultEndTime());
-    setEndDate(defaultEndDate());
+    setTimeZone(nextTimeZone);
+    setEndTime(nextEnd.time);
+    setEndDate(nextEnd.date);
     setWithPeople(true);
-    setHostPlan([newPlanItem()]);
+    setHostPlan([]);
+    setHostPlanMode('unselected');
     setGuests([]);
     setCreationKey(crypto.randomUUID());
     setInviteToken(newInviteRequestToken());
@@ -132,8 +177,11 @@ export function NewNightWizard({ userId }: { userId: string }) {
   }
 
   function resolveEndsAt(): string {
-    const end = new Date(`${endDate}T${endTime}:00`);
-    return Number.isNaN(end.getTime()) ? '' : end.toISOString();
+    try {
+      return resolveWallTimeInTimeZone(endDate, endTime, timeZone);
+    } catch {
+      return '';
+    }
   }
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
@@ -142,25 +190,39 @@ export function NewNightWizard({ userId }: { userId: string }) {
     setError(null);
     if (step < 3) {
       if (step === 2) {
-        const parsed = planItemsSchema.safeParse(hostPlan);
+        const parsed = materializePlanDraft(hostPlanMode, hostPlan);
         if (!parsed.success) {
-          setError(parsed.error.issues[0]?.message ?? 'Check your drink details.');
+          setError(parsed.message);
           return;
         }
       }
       setStep((current) => current + 1);
       return;
     }
+    const hostParsed = materializePlanDraft(hostPlanMode, hostPlan);
+    if (!hostParsed.success) {
+      setError(hostParsed.message);
+      return;
+    }
+    const guestInputs: StartNightInput['guests'] = [];
+    if (withPeople) {
+      for (const guest of guests) {
+        const parsedGuest = materializePlanDraft(guest.planMode, guest.planItems);
+        if (!parsedGuest.success) {
+          setError(`${guest.displayName || 'Guest'}: ${parsedGuest.message}`);
+          return;
+        }
+        guestInputs.push({ displayName: guest.displayName, planItems: parsedGuest.data });
+      }
+    }
     const input: StartNightInput = {
       creationKey,
       title: title.trim() || 'Tonight',
       endsAt: resolveEndsAt(),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      timezone: timeZone,
       withPeople,
-      hostPlanItems: hostPlan,
-      guests: withPeople
-        ? guests.map(({ displayName, planItems }) => ({ displayName, planItems }))
-        : [],
+      hostPlanItems: hostParsed.data,
+      guests: guestInputs,
     };
     const parsed = startNightSchema.safeParse(input);
     if (!parsed.success) {
@@ -238,6 +300,19 @@ export function NewNightWizard({ userId }: { userId: string }) {
               Make it your night.
             </h1>
             <div className="field">
+              <label htmlFor="night-timezone">Night time zone</label>
+              <input
+                className="input"
+                id="night-timezone"
+                value={timeZone}
+                onChange={(event) => setTimeZone(event.target.value)}
+                aria-describedby="night-timezone-hint"
+              />
+              <span id="night-timezone-hint" className="muted small">
+                Shared times use this IANA zone, even if someone is travelling.
+              </span>
+            </div>
+            <div className="field">
               <label htmlFor="night-title">Night name</label>
               <input
                 className="input"
@@ -305,7 +380,12 @@ export function NewNightWizard({ userId }: { userId: string }) {
             <p className="muted small">
               Choose water only, or set an alcohol plan with a quick-log drink.
             </p>
-            <PlanEditor items={hostPlan} onChange={setHostPlan} />
+            <PlanEditor
+              items={hostPlan}
+              mode={hostPlanMode}
+              onModeChange={setHostPlanMode}
+              onChange={setHostPlan}
+            />
           </Card>
         ) : null}
         {step === 3 ? (
@@ -332,8 +412,13 @@ export function NewNightWizard({ userId }: { userId: string }) {
                 <div>
                   <dt>Your plan</dt>
                   <dd>
-                    {hostPlan.map((item) => `${item.plannedQuantity} × ${item.label}`).join(', ') ||
-                      'Water only'}
+                    {hostPlanMode === 'unselected'
+                      ? 'Choose a plan'
+                      : hostPlanMode === 'water_only'
+                        ? 'Water only'
+                        : hostPlan
+                            .map((item) => `${item.plannedQuantity} × ${item.label}`)
+                            .join(', ')}
                   </dd>
                 </div>
               </dl>
@@ -386,6 +471,14 @@ export function NewNightWizard({ userId }: { userId: string }) {
                       <PlanEditor
                         compact
                         items={guest.planItems}
+                        mode={guest.planMode}
+                        onModeChange={(mode) =>
+                          setGuests((current) =>
+                            current.map((item) =>
+                              item.clientId === guest.clientId ? { ...item, planMode: mode } : item,
+                            ),
+                          )
+                        }
                         onChange={(items) =>
                           setGuests((current) =>
                             current.map((item) =>
@@ -409,7 +502,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
                         {
                           clientId: crypto.randomUUID(),
                           displayName: '',
-                          planItems: [newPlanItem()],
+                          planItems: [],
+                          planMode: 'unselected',
                         },
                       ])
                     }

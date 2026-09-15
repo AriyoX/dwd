@@ -11,6 +11,13 @@ export interface NotificationService {
   vibrate(pattern?: readonly number[]): boolean;
 }
 
+export interface BrowserPushSubscription {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  expirationTime: string | null;
+}
+
 export interface ShareService {
   canShare(): boolean;
   share(title: string, text: string, url: string): Promise<'shared' | 'cancelled' | 'unavailable'>;

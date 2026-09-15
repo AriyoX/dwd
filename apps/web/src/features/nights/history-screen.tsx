@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { formatNightDateTime, type FinishedNight } from '@dwd/core';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Card } from '@/components/ui/card';
+
 export interface HistoryResult {
-  nights: Array<{ id: string; title: string; ended_at: string | null }>;
+  nights: FinishedNight[];
   hasMore: boolean;
 }
+
 export function HistoryScreen({
   result,
   page = 0,
@@ -28,7 +31,7 @@ export function HistoryScreen({
         {sample && <span className="pill">Tour practice</span>}
         {result === null ? (
           <Card className="stack">
-            <p role="alert">Couldn’t load your history. Check your connection and retry.</p>
+            <p role="alert">Could not load your history. Check your connection and retry.</p>
             <Link className="button button-secondary" href={`/history?page=${page}`}>
               Retry history
             </Link>
@@ -39,8 +42,8 @@ export function HistoryScreen({
               <Card className="stack">
                 <h2>{page === 0 ? 'No finished nights yet' : 'No more nights'}</h2>
                 <p className="muted small">
-                  Finished nights appear here while you remain a member. Leaving a night removes
-                  access to its summary.
+                  Finished nights you joined stay in your personal history, including nights you
+                  left. Former members see their own activity only.
                 </p>
                 <Link href={page === 0 ? '/home' : '/history'} className="text-link">
                   {page === 0 ? 'Go to your nights' : 'Back to latest nights'}
@@ -57,12 +60,11 @@ export function HistoryScreen({
                   <div>
                     <strong>{night.title}</strong>
                     <span className="muted small">
-                      Ended{' '}
-                      {night.ended_at
-                        ? new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(
-                            new Date(night.ended_at),
-                          )
-                        : '—'}
+                      {night.role === 'host' ? 'Hosted' : 'Joined'} · Ended{' '}
+                      {formatNightDateTime(night.endedAt, night.timezone)}
+                      <br />
+                      {night.alcoholCount} {night.alcoholCount === 1 ? 'drink' : 'drinks'} ·{' '}
+                      {night.waterCount} water
                     </span>
                   </div>
                   <span className="row">

@@ -5,6 +5,7 @@ export type MemberRole = 'host' | 'member';
 export type AlertVisibility = 'private' | 'group';
 export type PlanStatus = 'within_plan' | 'reached' | 'exceeded';
 export type NightTimeStatus = 'active' | 'overdue' | 'ended';
+export type PlanSetupMode = 'unselected' | 'water_only' | 'drinks';
 
 export interface Night {
   id: string;
@@ -37,6 +38,8 @@ export interface NightMember {
   managedByUserId: string | null;
   joinedAt: string;
   leftAt: string | null;
+  planSetupCompletedAt: string | null;
+  planRevision: number;
 }
 
 export interface PlanItemInput {
@@ -114,7 +117,57 @@ export interface NightSnapshot {
   members: MemberSnapshot[];
   alerts: NightAlert[];
   endTimeChanges: NightEndTimeChange[];
+  historyScope?: 'group' | 'personal';
 }
+
+export interface FinishedNight {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  endedAt: string | null;
+  timezone: string;
+  role: MemberRole;
+  memberId: string;
+  alcoholCount: number;
+  waterCount: number;
+  categoryCounts: Partial<Record<DrinkCategory, number>>;
+}
+
+export type NotificationCategory = 'group_attention' | 'direct_checkin' | 'personal_reminder';
+export type NotificationEventType =
+  'group_attention' | 'direct_checkin' | 'personal_pace' | 'planned_end' | 'periodic_water';
+
+export interface NotificationPreferences {
+  groupAttentionEnabled: boolean;
+  directCheckinsEnabled: boolean;
+  personalPaceEnabled: boolean;
+  plannedEndEnabled: boolean;
+  periodicWaterEnabled: boolean;
+  periodicIntervalMinutes: 30 | 60 | 90;
+}
+
+export interface NotificationEvent {
+  id: string;
+  eventKey: string;
+  recipientUserId: string;
+  senderUserId: string | null;
+  nightId: string | null;
+  targetMemberId: string | null;
+  category: NotificationCategory;
+  eventType: NotificationEventType;
+  title: string;
+  body: string;
+  deepLink: string;
+  createdAt: string;
+  expiresAt: string | null;
+  acknowledgedAt: string | null;
+}
+
+export type CheckInResult =
+  | { status: 'sent'; requestId: string; recipientUserId: string; message: string }
+  | { status: 'local_only'; requestId: string | null; message: string }
+  | { status: 'cooldown'; message: string };
 
 export interface ActiveNightSummary {
   id: string;
@@ -167,6 +220,7 @@ export type InvitationPreview =
       hostDisplayName: string;
       startsAt: string;
       endsAt: string;
+      timezone: string;
     }
   | {
       valid: false;

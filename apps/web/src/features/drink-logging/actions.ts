@@ -34,7 +34,13 @@ export async function logDrinkAction(input: unknown): Promise<DrinkLogResult> {
   try {
     const client = await authenticatedClient();
     return await createDrinkLog(client, parsed.data);
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required.') {
+      return {
+        status: 'temporarily_failed',
+        message: 'Your session expired. Sign in again before retrying this entry.',
+      };
+    }
     return {
       status: 'temporarily_failed',
       message: 'The drink is queued and will retry when the connection returns.',
@@ -54,7 +60,13 @@ export async function logWaterAction(input: unknown): Promise<WaterLogResult> {
   try {
     const client = await authenticatedClient();
     return await createWaterLog(client, parsed.data);
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required.') {
+      return {
+        status: 'temporarily_failed',
+        message: 'Your session expired. Sign in again before retrying this entry.',
+      };
+    }
     return {
       status: 'temporarily_failed',
       message: 'The water entry is queued and will retry when the connection returns.',

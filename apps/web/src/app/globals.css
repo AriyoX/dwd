@@ -957,7 +957,7 @@ p {
   padding: 0;
   overflow: hidden;
 }
-.action-list button {
+.action-list > :is(button, a) {
   display: flex;
   min-height: 64px;
   align-items: center;
@@ -970,7 +970,7 @@ p {
   text-align: left;
   cursor: pointer;
 }
-.action-list button:last-child {
+.action-list > :is(button, a):last-child {
   border-bottom: 0;
 }
 .action-list button:disabled {
@@ -980,6 +980,95 @@ p {
 .action-list svg {
   width: 20px;
   color: var(--amber);
+}
+.notification-device {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--surface-soft);
+  gap: 10px;
+}
+.notification-options {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.notification-options legend {
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+.notification-options .field {
+  margin-top: 8px;
+}
+.settings-save-status {
+  min-height: 1.55em;
+}
+.notification-inbox {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.notification-inbox .pill {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.notification-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  text-align: left;
+  font-weight: 650;
+  cursor: pointer;
+  color: var(--text);
+}
+.notification-toggle .pill {
+  margin-left: auto;
+}
+.notification-toggle[aria-expanded='true'] > svg:last-child {
+  transform: rotate(180deg);
+}
+.notification-preview {
+  margin-top: -12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notification-inbox [hidden] {
+  display: none;
+}
+.notification-item {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 14px 16px;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.notification-item[data-read='true'] {
+  border-left-color: var(--border);
+  background: var(--surface);
+}
+.notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.notification-actions .button {
+  margin-left: auto;
+}
+.notification-actions .text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+#notifications {
+  scroll-margin-top: 24px;
 }
 .segment-nav {
   position: fixed;
@@ -1131,7 +1220,7 @@ p {
   .button-ghost:hover:not(:disabled),
   .button-icon:hover,
   .icon-text-button:hover:not(:disabled),
-  .action-list button:hover:not(:disabled) {
+  .action-list > :is(button, a):hover:not(:disabled) {
     background: #e9eddf;
   }
   .button-danger:hover:not(:disabled) {
@@ -1417,7 +1506,7 @@ textarea.input {
   }
   [data-theme='dark']
     :is(.button-secondary, .button-ghost, .button-icon, .icon-text-button):hover:not(:disabled),
-  [data-theme='dark'] .action-list button:hover:not(:disabled) {
+  [data-theme='dark'] .action-list > :is(button, a):hover:not(:disabled) {
     background: #344237;
   }
   [data-theme='dark'] .button-danger:hover:not(:disabled) {

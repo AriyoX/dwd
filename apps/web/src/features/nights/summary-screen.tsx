@@ -1,9 +1,15 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { calculateMemberTotals, calculatePlanTotal, type NightSnapshot } from '@dwd/core';
+import {
+  buildDrinkBreakdown,
+  calculateMemberTotals,
+  calculatePlanTotal,
+  formatNightDateTime,
+  type NightSnapshot,
+} from '@dwd/core';
 import { Card, Eyebrow } from '@/components/ui/card';
 import { Wordmark } from '@/components/layout/wordmark';
-const formatter = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
+
 export function SummaryScreen({
   snapshot,
   pendingEntries,
@@ -14,7 +20,7 @@ export function SummaryScreen({
   sample?: boolean;
 }) {
   const finalWasExtended = snapshot.night.endsAt !== snapshot.night.initialEndsAt;
-
+  const personal = snapshot.historyScope === 'personal';
   return (
     <main className="page-shell" id="main-content">
       <header className="topbar">
@@ -22,28 +28,50 @@ export function SummaryScreen({
       </header>
       <div className="stack-lg">
         <header>
-          <Eyebrow>{sample ? 'Tour practice' : 'Night ended'}</Eyebrow>
+          <Eyebrow>{sample ? 'Tour practice' : personal ? 'Your history' : 'Night ended'}</Eyebrow>
           <h1>{snapshot.night.title}</h1>
           <p className="muted">
             A factual record of what was logged. Counts are approximate and are not a safety
             assessment.
           </p>
+          {personal ? (
+            <p className="muted small">
+              This restricted view shows your own activity and plan history.
+            </p>
+          ) : null}
         </header>
         <Card className="timeline-card">
-          <Timeline label="Started" value={snapshot.night.startsAt} />
-          <Timeline label="Original planned end" value={snapshot.night.initialEndsAt} />
+          <Timeline
+            label="Started"
+            value={snapshot.night.startsAt}
+            timezone={snapshot.night.timezone}
+          />
+          <Timeline
+            label="Original planned end"
+            value={snapshot.night.initialEndsAt}
+            timezone={snapshot.night.timezone}
+          />
           {finalWasExtended ? (
-            <Timeline label="Final planned end" value={snapshot.night.endsAt} />
+            <Timeline
+              label="Final planned end"
+              value={snapshot.night.endsAt}
+              timezone={snapshot.night.timezone}
+            />
           ) : null}
-          <Timeline label="Actually ended" value={snapshot.night.endedAt} />
+          <Timeline
+            label="Actually ended"
+            value={snapshot.night.endedAt}
+            timezone={snapshot.night.timezone}
+          />
         </Card>
         {pendingEntries}
         <section className="stack">
-          <h2>Your group</h2>
+          <h2>{personal ? 'Your activity' : 'Your group'}</h2>
           {snapshot.members.map((member, index) => {
             const totals = calculateMemberTotals(member.drinkLogs, member.waterLogs);
-            const planGrams =
-              member.planItems.length === 0 ? 0 : calculatePlanTotal(member.planItems);
+            const planGrams = calculatePlanTotal(
+              member.planItems.filter((item) => item.archivedAt === null),
+            );
             return (
               <Card
                 data-tour={index === 0 ? 'history-summary' : undefined}
@@ -57,7 +85,9 @@ export function SummaryScreen({
                       {member.memberType === 'guest' ? 'Guest' : 'Tracks their own drinks'}
                     </p>
                   </div>
-                  <span className="pill">{totals.alcoholCount} drinks</span>
+                  <span className="pill">
+                    {totals.alcoholCount} {totals.alcoholCount === 1 ? 'drink' : 'drinks'}
+                  </span>
                 </div>
                 <div className="summary-grid">
                   <SummaryValue
@@ -72,8 +102,8 @@ export function SummaryScreen({
                   <SummaryValue label="Water" value={String(totals.waterCount)} />
                 </div>
                 <p className="muted small">
-                  {Object.entries(totals.categoryCounts)
-                    .map(([category, count]) => `${count} ${category}`)
+                  {buildDrinkBreakdown(member.drinkLogs)
+                    .map((entry) => `${entry.count} ${entry.label}`)
                     .join(' · ') || 'No alcohol entries'}
                 </p>
               </Card>
@@ -83,6 +113,7 @@ export function SummaryScreen({
         <Link className="button button-primary" href="/home">
           Back to home
         </Link>
+        <p className="muted small">Night times shown in {snapshot.night.timezone || 'UTC'}.</p>
         <p className="muted small">
           DWD is not a medical device, BAC calculator, sobriety detector, or driving-safety tool.
         </p>
@@ -91,11 +122,19 @@ export function SummaryScreen({
   );
 }
 
-function Timeline({ label, value }: { label: string; value: string | null }) {
+function Timeline({
+  label,
+  value,
+  timezone,
+}: {
+  label: string;
+  value: string | null;
+  timezone: string;
+}) {
   return (
     <div>
       <span className="muted small">{label}</span>
-      <strong>{value === null ? '—' : formatter.format(new Date(value))}</strong>
+      <strong>{formatNightDateTime(value, timezone)}</strong>
     </div>
   );
 }

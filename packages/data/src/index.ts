@@ -3,6 +3,7 @@ export * from './drink-logs/drink-logs';
 export * from './invites/invites';
 export * from './members/members';
 export * from './nights/nights';
+export * from './notifications/notifications';
 export * from './plans/plans';
 export * from './realtime/reconcile';
 export * from './shared/rpc';

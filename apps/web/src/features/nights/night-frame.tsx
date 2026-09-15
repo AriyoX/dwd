@@ -1,7 +1,7 @@
 'use client';
 import type { ReactNode } from 'react';
 import { HeartHandshake, Moon, Settings2, Users } from 'lucide-react';
-import type { NightSnapshot } from '@dwd/core';
+import { formatNightDateTime, type NightSnapshot } from '@dwd/core';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Button } from '@/components/ui/button';
 export type NightSegment = 'tonight' | 'group' | 'more';
@@ -46,6 +46,9 @@ export function NightFrame({
         <div>
           <p className="eyebrow">{overdue ? 'Planned time ended' : remainingText}</p>
           <h1>{snapshot.night.title}</h1>
+          <p className="muted small">
+            Planned end {formatNightDateTime(snapshot.night.endsAt, snapshot.night.timezone)}
+          </p>
         </div>
         <div className="avatar-row" aria-label={`${snapshot.members.length} participants`}>
           {snapshot.members.slice(0, 8).map((member) => (

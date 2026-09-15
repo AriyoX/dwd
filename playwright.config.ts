@@ -32,7 +32,8 @@ export default defineConfig({
       name: 'desktop',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } },
     },
-    { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
+    { name: 'mobile', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
+    { name: 'webkit-mobile', use: { ...devices['iPhone 13'], browserName: 'webkit' } },
   ],
   webServer: {
     command:
@@ -48,6 +49,10 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
         process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] ?? 'local-browser-test-key',
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3100',
+      // Test key only. Browser tests mock the push provider; no push is dispatched.
+      NEXT_PUBLIC_DWD_VAPID_PUBLIC_KEY:
+        process.env['E2E_PUSH_PUBLIC_KEY'] ??
+        'BOefCFwssKksM8yDRngubxMSqO9TcXT08q922sewBwiv0ZTVb6AgUAI2sXV1yE0pf-xloGGgMUqItn4UtYMBlvM',
     },
   },
 });

@@ -82,6 +82,50 @@ describe('offline outbox', () => {
     );
     expect(fixture.sender.softDelete).toHaveBeenCalledTimes(1);
   });
+
+  it('shares one in-flight send when two phone taps race', async () => {
+    const fixture = setup(created());
+    await fixture.store.save(pending());
+    let release!: () => void;
+    fixture.sender.send = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve(created());
+        }),
+    );
+    const first = fixture.outbox.syncOne('00000000-0000-4000-8000-000000000001');
+    const second = fixture.outbox.syncOne('00000000-0000-4000-8000-000000000001');
+    expect(first).toBe(second);
+    await vi.waitFor(() => expect(fixture.sender.send).toHaveBeenCalledTimes(1));
+    release();
+    await expect(first).resolves.toMatchObject({ status: 'synced' });
+    expect(fixture.sender.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a storage failure retryable instead of rejecting the sync promise', async () => {
+    const fixture = setup(created());
+    await fixture.store.save(pending());
+    vi.spyOn(fixture.store, 'update').mockRejectedValueOnce(new Error('Storage blocked'));
+    await expect(
+      fixture.outbox.syncOne('00000000-0000-4000-8000-000000000001'),
+    ).resolves.toMatchObject({ status: 'retryable_failure' });
+    expect(fixture.sender.send).not.toHaveBeenCalled();
+  });
+
+  it('confirms the stored original record instead of rebuilding it', async () => {
+    const fixture = setup({
+      status: 'confirmation_required',
+      warnings: ['after_end'],
+      message: 'late',
+    });
+    await fixture.store.save(pending());
+    await fixture.outbox.syncOne('00000000-0000-4000-8000-000000000001');
+    await fixture.outbox.confirmAndRetry('00000000-0000-4000-8000-000000000001', ['after_end']);
+    const sent = vi.mocked(fixture.sender.send).mock.calls.at(-1)?.[0];
+    expect(sent?.consumedAt).toBe('2026-07-31T20:00:00Z');
+    expect(sent?.drinkSnapshot?.label).toBe('Beer');
+    expect(sent?.acknowledgeAfterEnd).toBe(true);
+  });
 });
 
 class MemoryStore implements PendingLogStore {

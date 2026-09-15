@@ -31,7 +31,7 @@ export function TourNightScreen() {
   const [help, setHelp] = useState(false);
   const [custom, setCustom] = useState<CustomDrinkInput>({
     label: 'My drink',
-    category: 'beer',
+    category: 'other',
     volumeMl: 330,
     abvPercent: 5,
   });
@@ -120,7 +120,19 @@ export function TourHistoryScreen() {
       sample
       result={{
         nights: [
-          { id: 'tour', title: tour.sample.night.title, ended_at: tour.sample.night.startsAt },
+          {
+            id: 'tour',
+            title: tour.sample.night.title,
+            startsAt: tour.sample.night.startsAt,
+            endsAt: tour.sample.night.endsAt,
+            endedAt: tour.sample.night.startsAt,
+            timezone: tour.sample.night.timezone,
+            role: 'host',
+            memberId: tour.sample.currentMemberId,
+            alcoholCount: 0,
+            waterCount: 0,
+            categoryCounts: {},
+          },
         ],
         hasMore: false,
       }}

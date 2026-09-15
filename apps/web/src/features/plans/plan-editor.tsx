@@ -2,39 +2,50 @@
 
 import { Plus, Trash2 } from 'lucide-react';
 import { useId } from 'react';
-import { DRINK_PRESETS, type DrinkCategory, type PlanItemInput } from '@dwd/core';
+import { DRINK_PRESETS, drinkCategorySchema, type PlanSetupMode } from '@dwd/core';
 import { Button } from '@/components/ui/button';
+import { newPlanItem, type PlanDraftItem } from './plan-draft';
 
-export function newPlanItem(presetId = 'beer'): PlanItemInput {
-  const preset = DRINK_PRESETS.find((item) => item.id === presetId) ?? DRINK_PRESETS[0];
-  if (preset === undefined) throw new Error('Drink presets are unavailable.');
-  return {
-    clientId: crypto.randomUUID(),
-    label: preset.label,
-    category: preset.category,
-    volumeMl: preset.volumeMl,
-    abvPercent: preset.abvPercent,
-    plannedQuantity: 1,
-    isQuickLog: true,
-  };
-}
+export { draftItemsFromPlan, materializePlanDraft, newPlanItem } from './plan-draft';
+export type { PlanDraftItem } from './plan-draft';
 
 export function PlanEditor({
   items,
   onChange,
+  mode = items.length === 0 ? 'water_only' : 'drinks',
+  onModeChange,
 }: {
-  items: PlanItemInput[];
-  onChange: (items: PlanItemInput[]) => void;
+  items: PlanDraftItem[];
+  onChange: (items: PlanDraftItem[]) => void;
+  mode?: PlanSetupMode;
+  onModeChange?: (mode: PlanSetupMode) => void;
   compact?: boolean;
 }) {
   const radioGroup = useId();
+  const setMode = (next: PlanSetupMode) => {
+    onModeChange?.(next);
+    if (next === 'water_only') onChange([]);
+    if (next === 'drinks' && items.length === 0) onChange([newPlanItem()]);
+  };
+
   function addPreset(presetId: string) {
     const next = newPlanItem(presetId);
-    next.isQuickLog = items.length === 0;
-    onChange([...items, next]);
+    const isPlaceholder = hasBlankPlaceholder(items);
+    next.isQuickLog = items.length === 0 || isPlaceholder;
+    onModeChange?.('drinks');
+    onChange(isPlaceholder ? [next] : [...items, next]);
   }
 
-  function update(index: number, patch: Partial<PlanItemInput>) {
+  function addCustom() {
+    const next = newPlanItem();
+    next.category = 'other';
+    onModeChange?.('drinks');
+    const isPlaceholder = hasBlankPlaceholder(items);
+    onChange(isPlaceholder ? [next] : [...items, next]);
+  }
+
+  function update(index: number, patch: Partial<PlanDraftItem>) {
+    onModeChange?.('drinks');
     onChange(items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   }
 
@@ -47,6 +58,7 @@ export function PlanEditor({
     const next = items.filter((_, itemIndex) => itemIndex !== index);
     if (wasQuick && next[0] !== undefined) next[0] = { ...next[0], isQuickLog: true };
     onChange(next);
+    if (next.length === 0) onModeChange?.('unselected');
   }
 
   return (
@@ -55,24 +67,32 @@ export function PlanEditor({
         <legend className="field-label">Your plan</legend>
         <button
           type="button"
-          className={items.length === 0 ? 'choice active' : 'choice'}
-          aria-pressed={items.length === 0}
-          onClick={() => onChange([])}
+          className={mode === 'unselected' ? 'choice active' : 'choice'}
+          aria-pressed={mode === 'unselected'}
+          onClick={() => setMode('unselected')}
+        >
+          Choose a plan
+        </button>
+        <button
+          type="button"
+          className={mode === 'water_only' ? 'choice active' : 'choice'}
+          aria-pressed={mode === 'water_only'}
+          onClick={() => setMode('water_only')}
         >
           Water only
         </button>
         <button
           type="button"
-          className={items.length > 0 ? 'choice active' : 'choice'}
-          aria-pressed={items.length > 0}
-          onClick={() => {
-            if (items.length === 0) onChange([newPlanItem()]);
-          }}
+          className={mode === 'drinks' ? 'choice active' : 'choice'}
+          aria-pressed={mode === 'drinks'}
+          onClick={() => setMode('drinks')}
         >
           Plan drinks
         </button>
       </fieldset>
-      {items.length === 0 ? (
+      {mode === 'unselected' ? (
+        <p className="muted small">Choose water only, or add a drink plan.</p>
+      ) : mode === 'water_only' ? (
         <p className="muted small">
           Log water without an alcohol plan. You can add a plan later before logging alcohol.
         </p>
@@ -95,11 +115,12 @@ export function PlanEditor({
               type="button"
               variant="secondary"
               disabled={items.length >= 20}
-              onClick={() => addPreset('cocktail')}
+              onClick={addCustom}
             >
               <Plus aria-hidden="true" size={18} /> Custom
             </Button>
           </div>
+          {items.length === 0 ? <p className="muted small">Add a drink to continue.</p> : null}
           {items.map((item, index) => {
             const domId = item.id ?? item.clientId ?? `item-${String(index)}`;
             return (
@@ -118,7 +139,7 @@ export function PlanEditor({
                     className="icon-text-button"
                     type="button"
                     onClick={() => remove(index)}
-                    aria-label={`Remove ${item.label}`}
+                    aria-label={`Remove ${item.label || 'drink'}`}
                   >
                     <Trash2 aria-hidden="true" size={18} /> Remove
                   </button>
@@ -141,10 +162,12 @@ export function PlanEditor({
                       className="select"
                       id={`category-${domId}`}
                       value={item.category}
-                      onChange={(event) =>
-                        update(index, { category: event.target.value as DrinkCategory })
-                      }
+                      onChange={(event) => {
+                        const parsed = drinkCategorySchema.safeParse(event.target.value);
+                        update(index, { category: parsed.success ? parsed.data : '' });
+                      }}
                     >
+                      <option value="">Choose a drink</option>
                       <option value="beer">Beer</option>
                       <option value="wine">Wine</option>
                       <option value="spirit">Spirit</option>
@@ -163,9 +186,7 @@ export function PlanEditor({
                       required
                       inputMode="numeric"
                       value={item.plannedQuantity}
-                      onChange={(event) =>
-                        update(index, { plannedQuantity: Number(event.target.value) })
-                      }
+                      onChange={(event) => update(index, { plannedQuantity: event.target.value })}
                     />
                   </div>
                   <div className="field">
@@ -179,7 +200,7 @@ export function PlanEditor({
                       required
                       inputMode="decimal"
                       value={item.volumeMl}
-                      onChange={(event) => update(index, { volumeMl: Number(event.target.value) })}
+                      onChange={(event) => update(index, { volumeMl: event.target.value })}
                     />
                   </div>
                   <div className="field">
@@ -194,9 +215,7 @@ export function PlanEditor({
                       required
                       inputMode="decimal"
                       value={item.abvPercent}
-                      onChange={(event) =>
-                        update(index, { abvPercent: Number(event.target.value) })
-                      }
+                      onChange={(event) => update(index, { abvPercent: event.target.value })}
                     />
                   </div>
                 </div>
@@ -209,5 +228,16 @@ export function PlanEditor({
         </>
       )}
     </div>
+  );
+}
+
+function hasBlankPlaceholder(items: readonly PlanDraftItem[]): boolean {
+  const item = items.length === 1 ? items[0] : undefined;
+  return (
+    item !== undefined &&
+    item.label.trim() === '' &&
+    item.category === '' &&
+    item.volumeMl === '' &&
+    item.abvPercent === ''
   );
 }

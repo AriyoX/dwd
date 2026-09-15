@@ -24,6 +24,7 @@ interface TourSession {
   returnTo: string;
 }
 interface TourContextValue {
+  ready: boolean;
   active: boolean;
   sample: NightSnapshot | null;
   setSample: Dispatch<SetStateAction<NightSnapshot | null>>;
@@ -41,6 +42,7 @@ export function TourButton({ className = 'text-link' }: { className?: string }) 
     <button
       type="button"
       className={`${className} tour-trigger`}
+      disabled={!tour?.ready}
       onClick={(event) => {
         event.currentTarget.closest('details')?.removeAttribute('open');
         tour?.start();
@@ -266,26 +268,17 @@ export function TourProvider({
     }
   }, [destination, initialized, location, pathname, returnDestination, router, search, session]);
 
-  useEffect(() => {
-    if (!session) return;
-    const leave = () => finish(false);
-    window.addEventListener('popstate', leave);
-    return () => window.removeEventListener('popstate', leave);
-  }, [finish, session]);
-
   const follow =
     step?.follow && pathname === new URL(step.follow.route, 'https://tour.invalid').pathname
       ? step.follow
       : undefined;
   const waiting = destination !== null && destination !== location;
   return (
-    <TourContext.Provider value={{ active: session !== null, sample, setSample, start, goTo }}>
+    <TourContext.Provider
+      value={{ ready: initialized, active: session !== null, sample, setSample, start, goTo }}
+    >
       {children}
-      <InstallHint
-        enabled={
-          initialized && session === null && (pathname === '/home' || pathname === '/account')
-        }
-      />
+      <InstallHint enabled={initialized && session === null && pathname === '/home'} />
       {session && (
         <CoachMark
           key={follow?.route ?? step?.route ?? 'opening'}

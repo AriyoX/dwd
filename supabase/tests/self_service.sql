@@ -66,7 +66,7 @@ reset role;
 update public.night_members set left_at=clock_timestamp() where user_id='00000000-0000-4000-8000-000000000002';
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',true);
 set local role authenticated;
-select extensions.is((select count(*) from public.nights where status='ended'),0::bigint,'departed member loses history access');
+select extensions.is((select count(*) from public.nights where status='ended'),0::bigint,'departed member loses live-table access');
 select extensions.throws_ok(format('select public.get_night_snapshot(%L::uuid)',(select value->>'nightId' from state where key='night')),'42501',null,'departed member loses summary access');
 reset role;
 select extensions.ok(not has_table_privilege('anon','public.support_requests','SELECT'),'anonymous users cannot read requests');

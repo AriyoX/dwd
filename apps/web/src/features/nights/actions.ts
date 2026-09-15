@@ -93,9 +93,25 @@ export async function replacePlanAction(input: unknown): Promise<NightActionResu
     const client = await authenticatedClient();
     return {
       ok: true,
-      data: await replaceMemberPlan(client, parsed.data.memberId, parsed.data.items),
+      data: await replaceMemberPlan(
+        client,
+        parsed.data.memberId,
+        parsed.data.items,
+        parsed.data.expectedRevision,
+      ),
     };
-  } catch {
+  } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      (('code' in error && error.code === '40001') ||
+        ('message' in error && String(error.message).includes('plan changed')))
+    ) {
+      return {
+        ok: false,
+        error: 'This plan changed in another tab. Reload and review it before saving.',
+      };
+    }
     return { ok: false, error: 'You are not allowed to change this plan.' };
   }
 }
