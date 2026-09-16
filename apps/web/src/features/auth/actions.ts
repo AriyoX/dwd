@@ -8,6 +8,7 @@ import { getSiteUrl } from '@/lib/supabase/env';
 import { safeReturnPath } from '@/lib/navigation';
 import { createHash } from 'node:crypto';
 import { CONFIRMATION_COOLDOWN_MS, reserveConfirmationAttempt } from './resend-cooldown';
+import { clearPendingConfirmation, rememberConfirmation } from './pending-confirmation';
 
 export interface AuthActionState {
   error?: string;
@@ -38,14 +39,29 @@ export async function loginAction(
     .catch(() => null);
   if (result === null) return { error: 'Couldn’t connect. Please try again.' };
   const { error } = result;
+  if (error?.code === 'email_not_confirmed') {
+    await rememberConfirmation(parsed.data.email);
+    redirect(`/confirmation-help?next=${encodeURIComponent(safeReturnPath(parsed.data.next))}`);
+  }
   if (error !== null)
     return {
-      error:
-        error.code === 'email_not_confirmed'
-          ? 'Confirm your email before signing in. Use the confirmation help below.'
-          : 'Email or password not accepted. Please try again.',
+      error: 'Email or password not accepted. Please try again.',
     };
-  redirect(safeReturnPath(parsed.data.next));
+  const next = safeReturnPath(parsed.data.next);
+  let destination = next;
+  try {
+    const client = await createServerSupabaseClient();
+    const profile = await client
+      .from('profiles')
+      .select('id')
+      .eq('id', result.data.user.id)
+      .maybeSingle();
+    if (profile.error) return { error: 'Couldn’t load your account. Please try again.' };
+    if (!profile.data) destination = `/complete-signup?next=${encodeURIComponent(next)}`;
+  } catch {
+    return { error: 'Couldn’t connect. Please try again.' };
+  }
+  redirect(destination);
 }
 
 export async function signupAction(
@@ -87,11 +103,8 @@ export async function signupAction(
     };
   }
   if (data.session !== null) redirect(returnPath);
-  return {
-    success: 'Check your email to confirm your account.',
-    email: parsed.data.email,
-    retryAt: Date.now() + CONFIRMATION_COOLDOWN_MS,
-  };
+  await rememberConfirmation(parsed.data.email, Date.now() + CONFIRMATION_COOLDOWN_MS);
+  redirect(`/confirmation-help?next=${encodeURIComponent(returnPath)}`);
 }
 
 export async function resendConfirmationAction(
@@ -123,13 +136,105 @@ export async function resendConfirmationAction(
         error: 'Couldn’t send confirmation. Wait a minute, check the address, and retry.',
         retryAt,
       };
+    await rememberConfirmation(email, retryAt);
     return {
-      success: 'If this email has a pending signup, a new confirmation link has been requested.',
+      success: 'If this email has a pending signup, a new email is on its way.',
       retryAt,
     };
   } catch {
     return { error: 'Couldn’t connect. Your invitation is preserved. Please retry.', retryAt };
   }
+}
+
+export async function verifyConfirmationAction(
+  _previousState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = z
+    .object({
+      email: z
+        .email()
+        .max(254)
+        .transform((value) => value.toLowerCase()),
+      token: z
+        .string()
+        .trim()
+        .regex(/^\d{6,10}$/),
+    })
+    .safeParse({ email: formData.get('email'), token: formData.get('token') });
+  if (!parsed.success) return { error: 'Enter your email and the code from the latest email.' };
+  try {
+    const client = await createServerSupabaseClient();
+    const { error } = await client.auth.verifyOtp({ ...parsed.data, type: 'signup' });
+    if (error)
+      return { error: 'That code has expired or is incorrect. Try again or resend the email.' };
+  } catch {
+    return { error: 'Couldn’t connect. Please try again.' };
+  }
+  await clearPendingConfirmation();
+  const next = formData.get('next');
+  redirect(safeReturnPath(typeof next === 'string' ? next : undefined));
+}
+
+export async function isConfirmationComplete(email: string): Promise<boolean> {
+  try {
+    const client = await createServerSupabaseClient();
+    const { data, error } = await client.auth.getUser();
+    return (
+      !error &&
+      data.user.email?.toLowerCase() === email.toLowerCase() &&
+      Boolean(data.user.email_confirmed_at)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function continueAfterConfirmationAction(
+  _previousState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const email = formData.get('email');
+  if (typeof email !== 'string' || !(await isConfirmationComplete(email))) {
+    return {
+      error:
+        'Open the email link in this browser first. If you confirmed on another device, sign in here.',
+    };
+  }
+  await clearPendingConfirmation();
+  const next = formData.get('next');
+  redirect(safeReturnPath(typeof next === 'string' ? next : undefined));
+}
+
+export async function completeSignupAction(
+  _previousState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = z
+    .object({
+      displayName: z.string().trim().min(1).max(60),
+      ageConfirmed: z.literal(true),
+    })
+    .safeParse({
+      displayName: formData.get('displayName'),
+      ageConfirmed: formData.get('ageConfirmed') === 'on',
+    });
+  if (!parsed.success) return { error: 'Enter your name and confirm you are 18 or older.' };
+  try {
+    const client = await createServerSupabaseClient();
+    const { data, error } = await client.auth.getClaims();
+    if (error || !data?.claims.sub) return { error: 'Your session has expired. Sign in again.' };
+    const result = await client.rpc('complete_signup', {
+      p_display_name: parsed.data.displayName,
+      p_age_confirmed: parsed.data.ageConfirmed,
+    });
+    if (result.error)
+      return { error: 'Couldn’t finish setting up your account. Please try again.' };
+  } catch {
+    return { error: 'Couldn’t connect. Please try again.' };
+  }
+  const next = formData.get('next');
+  redirect(safeReturnPath(typeof next === 'string' ? next : undefined));
 }
 
 export async function signOutAction(): Promise<void> {

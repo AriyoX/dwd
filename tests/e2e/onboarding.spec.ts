@@ -18,10 +18,10 @@ test('expired links and email correction keep the invitation destination', async
   await page.goto(`/auth/confirm?next=${encodeURIComponent(next)}`);
   await expect(page).toHaveURL(/confirmation-help/);
   await expect(page.getByText('This link could not be verified.', { exact: false })).toBeVisible();
-  await page.getByRole('link', { name: 'Correct a mistyped email' }).click();
+  await page.getByRole('link', { name: 'Use a different email' }).click();
   expect(new URL(page.url()).searchParams.get('next')).toBe(next);
   await expect(
-    page.getByText('Start signup again with the correct email', { exact: false }),
+    page.getByText('Create your account with the correct email', { exact: false }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Sign in', exact: true }).click();
   expect(new URL(page.url()).searchParams.get('next')).toBe(next);

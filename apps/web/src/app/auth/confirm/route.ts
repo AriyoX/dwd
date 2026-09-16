@@ -2,6 +2,7 @@ import { type EmailOtpType } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { safeReturnPath } from '@/lib/navigation';
+import { clearPendingConfirmation } from '@/features/auth/pending-confirmation';
 
 export async function GET(request: NextRequest) {
   const tokenHash = request.nextUrl.searchParams.get('token_hash');
@@ -22,7 +23,20 @@ export async function GET(request: NextRequest) {
   } catch {
     /* Offer recovery without losing the invitation. */
   }
-  if (verified) return NextResponse.redirect(new URL(next, request.url));
+  if (verified) {
+    await clearPendingConfirmation();
+    const response = NextResponse.redirect(new URL(next, request.url));
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
+  }
+  if (next.startsWith('/reset-password')) {
+    const destination = new URL('/forgot-password?error=expired', request.url);
+    destination.searchParams.set(
+      'next',
+      safeReturnPath(new URL(next, request.url).searchParams.get('next')),
+    );
+    return NextResponse.redirect(destination);
+  }
   const destination = new URL('/confirmation-help?error=confirmation', request.url);
   destination.searchParams.set('next', next);
   return NextResponse.redirect(destination);

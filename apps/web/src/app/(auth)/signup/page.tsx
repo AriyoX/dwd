@@ -19,8 +19,7 @@ export default async function SignupPage({
       </header>
       {params.correct === '1' && (
         <p className="notice-box">
-          Start signup again with the correct email and a password. The mistyped signup is not moved
-          or confirmed. Your invitation will still be waiting.
+          Create your account with the correct email. Your invitation will still be waiting.
         </p>
       )}
       <SignupForm next={next} />

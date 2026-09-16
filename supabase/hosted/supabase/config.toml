@@ -15,6 +15,11 @@ enabled = true
 enabled = true
 site_url = "https://dwdug.vercel.app"
 additional_redirect_urls = [
+  "https://dwdug.vercel.app/auth/callback?**",
+  "https://drink-with-desire.vercel.app/auth/callback?**",
+  "https://dwd-*-ariyoxs-projects.vercel.app/auth/callback?**",
+  "http://localhost:3000/auth/callback?**",
+  "http://127.0.0.1:3000/auth/callback?**",
   "https://dwdug.vercel.app/auth/confirm?**",
   "https://drink-with-desire.vercel.app/auth/confirm?**",
   "https://dwd-*-ariyoxs-projects.vercel.app/auth/confirm?**",

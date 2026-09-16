@@ -443,6 +443,23 @@ p {
   background: var(--border);
   margin: 4px 0;
 }
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.confirmation-email {
+  overflow-wrap: anywhere;
+}
 .legal-copy {
   display: grid;
   gap: 18px;

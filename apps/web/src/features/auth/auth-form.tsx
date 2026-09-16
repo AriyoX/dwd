@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { MailCheck } from 'lucide-react';
 import { useActionState } from 'react';
 import { loginAction, signupAction, type AuthActionState } from './actions';
 import { SubmitButton } from '@/components/feedback/submit-button';
 import { PasswordField } from '@/components/ui/password-field';
 
-import { ConfirmationForm } from './confirmation-form';
+import { GoogleSignIn } from './google-sign-in';
 
 const initialState: AuthActionState = {};
 
@@ -48,6 +47,7 @@ export function LoginForm({ next }: { next: string }) {
   return (
     <form action={action} className="stack-lg">
       <input type="hidden" name="next" value={next} />
+      <GoogleSignIn next={next} />
       <div className="stack">
         <EmailField errors={state.fieldErrors?.['email']} />
         <PasswordField error={state.fieldErrors?.['password']?.[0]} />
@@ -64,12 +64,6 @@ export function LoginForm({ next }: { next: string }) {
           {state.error}
         </div>
       )}
-      <Link
-        className="text-link small"
-        href={`/confirmation-help?next=${encodeURIComponent(next)}`}
-      >
-        Need to confirm your email?
-      </Link>
       <SubmitButton idle="Sign in" pending="Signing in…" />
       <p className="muted small form-switch">
         New to DWD?{' '}
@@ -83,19 +77,10 @@ export function LoginForm({ next }: { next: string }) {
 
 export function SignupForm({ next }: { next: string }) {
   const [state, action] = useActionState(signupAction, initialState);
-  if (state.success !== undefined)
-    return (
-      <div className="stack-lg">
-        <MailCheck size={40} aria-hidden="true" />
-        <div className="success-box" role="status">
-          {state.success}
-        </div>
-        <ConfirmationForm next={next} email={state.email ?? ''} retryAt={state.retryAt ?? 0} />
-      </div>
-    );
   return (
     <form action={action} className="stack-lg">
       <input type="hidden" name="next" value={next} />
+      <GoogleSignIn next={next} />
       <div className="stack">
         <div className="field">
           <label htmlFor="displayName">Display name</label>

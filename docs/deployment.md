@@ -2,6 +2,8 @@
 
 DWD is available at **https://dwdug.vercel.app**. The existing **https://drink-with-desire.vercel.app** address remains available. Vercel runs Next.js; Supabase provides PostgreSQL, Auth, and Realtime.
 
+See the [September 16 authentication update](authentication.md) for Google sign-in, the improved confirmation flow, and the remaining custom SMTP setup.
+
 ## Deployment record
 
 Verified September 7, 2026:

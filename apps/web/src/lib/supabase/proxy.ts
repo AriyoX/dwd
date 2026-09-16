@@ -41,6 +41,22 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return NextResponse.redirect(loginUrl);
   }
 
+  if ((isProtected || request.nextUrl.pathname.startsWith('/join/')) && data?.claims.sub) {
+    const profile = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', data.claims.sub)
+      .maybeSingle();
+    if (!profile.error && !profile.data) {
+      const destination = new URL('/complete-signup', request.url);
+      destination.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
+      const onboarding = NextResponse.redirect(destination);
+      for (const cookie of response.cookies.getAll()) onboarding.cookies.set(cookie);
+      onboarding.headers.set('Cache-Control', 'private, no-store');
+      return onboarding;
+    }
+  }
+
   if (isProtected || data?.claims.sub !== undefined) {
     response.headers.set('Cache-Control', 'private, no-store');
   }

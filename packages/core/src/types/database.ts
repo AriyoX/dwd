@@ -29,6 +29,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      complete_signup: {
+        Args: { p_age_confirmed: boolean; p_display_name: string };
+        Returns: undefined;
+      };
       alert_json: {
         Args: { p_alert: Database['public']['Tables']['night_alerts']['Row'] };
         Returns: Json;
@@ -986,6 +990,10 @@ export type Database = {
         Returns: boolean;
       };
       claim_notification_jobs: { Args: { p_limit?: number }; Returns: Json };
+      complete_signup: {
+        Args: { p_age_confirmed: boolean; p_display_name: string };
+        Returns: undefined;
+      };
       complete_notification_job: {
         Args: {
           p_attempt?: number;

@@ -16,6 +16,11 @@ export default async function LoginPage({
       <header>
         <h1>Welcome back.</h1>
       </header>
+      {params.error === 'google' && (
+        <p className="error-box" role="alert">
+          Google sign-in wasn’t completed. Try again or use email.
+        </p>
+      )}
       {params.error === 'confirmation' ? (
         <div className="error-box" role="alert">
           This email link has expired or was already used. Sign in or request a new password reset.

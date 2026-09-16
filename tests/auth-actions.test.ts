@@ -2,15 +2,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getClaims: vi.fn(),
+  getUser: vi.fn(),
+  maybeSingle: vi.fn(),
   signUp: vi.fn(),
   resend: vi.fn(),
   resetPasswordForEmail: vi.fn(),
   updateUser: vi.fn(),
   signOut: vi.fn(),
+  signInWithPassword: vi.fn(),
+  verifyOtp: vi.fn(),
+  rpc: vi.fn(),
+  rememberConfirmation: vi.fn(),
+  clearPendingConfirmation: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createServerSupabaseClient: () => Promise.resolve({ auth: mocks }),
+  createServerSupabaseClient: () =>
+    Promise.resolve({
+      auth: mocks,
+      rpc: mocks.rpc,
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: mocks.maybeSingle }) }) }),
+    }),
+}));
+vi.mock('@/features/auth/pending-confirmation', () => ({
+  rememberConfirmation: mocks.rememberConfirmation,
+  clearPendingConfirmation: mocks.clearPendingConfirmation,
 }));
 vi.mock('@/lib/supabase/env', () => ({ getSiteUrl: () => 'https://dwd.example' }));
 vi.mock('next/navigation', () => ({
@@ -24,6 +40,11 @@ import {
   resendConfirmationAction,
   requestPasswordResetAction,
   updatePasswordAction,
+  loginAction,
+  verifyConfirmationAction,
+  completeSignupAction,
+  isConfirmationComplete,
+  continueAfterConfirmationAction,
 } from '../apps/web/src/features/auth/actions';
 
 function form(values: Record<string, string>) {
@@ -88,16 +109,18 @@ describe('signup confirmation recovery', () => {
   it('keeps the invitation after signup with no session and provides an email and cooldown', async () => {
     mocks.signUp.mockResolvedValue({ data: { session: null }, error: null });
     const next = `/join/${'b'.repeat(43)}`;
-    const result = await signupAction(
-      {},
-      form({
-        email: 'CORRECT@example.com',
-        password: 'sample-password',
-        displayName: 'Alex',
-        ageConfirmed: 'on',
-        next,
-      }),
-    );
+    await expect(
+      signupAction(
+        {},
+        form({
+          email: 'CORRECT@example.com',
+          password: 'sample-password',
+          displayName: 'Alex',
+          ageConfirmed: 'on',
+          next,
+        }),
+      ),
+    ).rejects.toThrow(`redirect:/confirmation-help?next=${encodeURIComponent(next)}`);
     expect(mocks.signUp).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'correct@example.com',
@@ -107,8 +130,10 @@ describe('signup confirmation recovery', () => {
         },
       }),
     );
-    expect(result.email).toBe('correct@example.com');
-    expect(result.retryAt).toBeGreaterThan(Date.now());
+    expect(mocks.rememberConfirmation).toHaveBeenCalledWith(
+      'correct@example.com',
+      expect.any(Number),
+    );
     expect(mocks.updateUser).not.toHaveBeenCalled();
   });
   it('resends signup confirmation with the same invitation and a neutral success message', async () => {
@@ -136,5 +161,111 @@ describe('signup confirmation recovery', () => {
     );
     expect(result.error).toContain('invitation is preserved');
     expect(result.retryAt).toBeGreaterThan(Date.now());
+  });
+});
+
+describe('confirmation and Google onboarding', () => {
+  it('continues only when this browser has the confirmed account', async () => {
+    mocks.getUser.mockResolvedValue({
+      data: { user: { email: 'person@example.com', email_confirmed_at: '2026-09-16' } },
+      error: null,
+    });
+    expect(await isConfirmationComplete('other@example.com')).toBe(false);
+    await expect(
+      continueAfterConfirmationAction(
+        {},
+        form({ email: 'person@example.com', next: '/join/saved' }),
+      ),
+    ).rejects.toThrow('redirect:/join/saved');
+  });
+  it('explains how to recover when the email link has not established a session here', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { code: 'session_missing' } });
+    expect(
+      (await continueAfterConfirmationAction({}, form({ email: 'person@example.com' }))).error,
+    ).toContain('another device');
+  });
+  it('resumes unfinished onboarding after a successful sign-in', async () => {
+    mocks.signInWithPassword.mockResolvedValue({ data: { user: { id: 'id' } }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
+    await expect(
+      loginAction(
+        {},
+        form({ email: 'person@example.com', password: 'example-password', next: '/join/saved' }),
+      ),
+    ).rejects.toThrow('redirect:/complete-signup?next=%2Fjoin%2Fsaved');
+  });
+  it('takes an unconfirmed sign-in straight to its email step', async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: { code: 'email_not_confirmed' } });
+    await expect(
+      loginAction(
+        {},
+        form({ email: 'person@example.com', password: 'example-password', next: '/join/saved' }),
+      ),
+    ).rejects.toThrow('redirect:/confirmation-help?next=%2Fjoin%2Fsaved');
+    expect(mocks.rememberConfirmation).toHaveBeenCalledWith('person@example.com');
+  });
+  it('verifies a signup code and continues to the invitation', async () => {
+    mocks.verifyOtp.mockResolvedValue({ error: null });
+    await expect(
+      verifyConfirmationAction(
+        {},
+        form({ email: 'PERSON@example.com', token: '123456', next: '/join/saved' }),
+      ),
+    ).rejects.toThrow('redirect:/join/saved');
+    expect(mocks.verifyOtp).toHaveBeenCalledWith({
+      email: 'person@example.com',
+      token: '123456',
+      type: 'signup',
+    });
+    expect(mocks.clearPendingConfirmation).toHaveBeenCalledOnce();
+  });
+  it('keeps an expired code recoverable and does not clear the pending signup', async () => {
+    mocks.verifyOtp.mockResolvedValue({ error: { code: 'otp_expired' } });
+    expect(
+      (await verifyConfirmationAction({}, form({ email: 'person@example.com', token: '123456' })))
+        .error,
+    ).toContain('expired');
+    expect(mocks.clearPendingConfirmation).not.toHaveBeenCalled();
+  });
+  it('rejects malformed codes without contacting Supabase', async () => {
+    expect(
+      (await verifyConfirmationAction({}, form({ email: 'person@example.com', token: '123' })))
+        .error,
+    ).toBeDefined();
+    expect(mocks.verifyOtp).not.toHaveBeenCalled();
+  });
+  it('rejects external return URLs after code verification', async () => {
+    mocks.verifyOtp.mockResolvedValue({ error: null });
+    await expect(
+      verifyConfirmationAction(
+        {},
+        form({ email: 'person@example.com', token: '12345678', next: '//untrusted.example' }),
+      ),
+    ).rejects.toThrow('redirect:/home');
+  });
+  it('requires explicit adult confirmation before creating a Google profile', async () => {
+    expect((await completeSignupAction({}, form({ displayName: 'Person' }))).error).toContain('18');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it('requires a verified session to finish onboarding', async () => {
+    mocks.getClaims.mockResolvedValue({ data: null, error: null });
+    expect(
+      (await completeSignupAction({}, form({ displayName: 'Person', ageConfirmed: 'on' }))).error,
+    ).toContain('expired');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it('finishes Google onboarding and retains the invitation', async () => {
+    mocks.getClaims.mockResolvedValue({ data: { claims: { sub: 'id' } }, error: null });
+    mocks.rpc.mockResolvedValue({ error: null });
+    await expect(
+      completeSignupAction(
+        {},
+        form({ displayName: ' Person ', ageConfirmed: 'on', next: '/join/saved' }),
+      ),
+    ).rejects.toThrow('redirect:/join/saved');
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_signup', {
+      p_display_name: 'Person',
+      p_age_confirmed: true,
+    });
   });
 });
