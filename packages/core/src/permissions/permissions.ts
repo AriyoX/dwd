@@ -48,7 +48,10 @@ export function canUserLogForMember(context: PermissionContext): boolean {
   return canUserManageMember(context);
 }
 
-export function canUserDeleteLog(context: PermissionContext, logActorUserId: string): boolean {
+export function canUserDeleteLog(
+  context: PermissionContext,
+  logActorUserId: string | null,
+): boolean {
   if (context.targetMember.memberType === 'account') {
     return (
       context.targetMember.userId === context.actorUserId && logActorUserId === context.actorUserId

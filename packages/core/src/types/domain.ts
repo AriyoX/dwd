@@ -56,7 +56,7 @@ export interface PlanItemInput {
 export interface PlanItem extends PlanItemInput {
   id: string;
   nightMemberId: string;
-  createdBy: string;
+  createdBy: string | null;
   createdAt: string;
   archivedAt: string | null;
   updatedAt: string;
@@ -66,7 +66,7 @@ export interface AlcoholLog {
   id: string;
   nightId: string;
   nightMemberId: string;
-  actorUserId: string;
+  actorUserId: string | null;
   planItemId: string | null;
   labelSnapshot: string;
   categorySnapshot: DrinkCategory;
@@ -84,7 +84,7 @@ export interface WaterLog {
   id: string;
   nightId: string;
   nightMemberId: string;
-  actorUserId: string;
+  actorUserId: string | null;
   consumedAt: string;
   createdAt: string;
   idempotencyKey: string;

@@ -17,9 +17,9 @@ After selecting a particular request, update its `status` to `in_review`, and pu
 
 ## Deletion review
 
-Submitting a deletion request changes no account, shared-night, or pending-log data. This is intentional: nights and immutable audit/log records reference account identifiers and contain contributions from multiple people. A generic Auth user deletion could fail on references or damage shared records.
+Submitting a deletion request changes no account, shared-night, or pending-log data. When an operator later deletes a non-host Auth user, DWD preserves their shared-night plans and entries but clears account identifiers, replaces their stored participant name with `Deleted user`, marks the membership as left, removes private support and notification data, and scrubs profile audit payloads. Deletion of a user who hosts shared nights remains blocked pending an explicit ownership decision.
 
-For each request, verify the requesting account, identify its profile, memberships, hosted nights, managed guests, authored entries, audit references, and support requests. Review what may be removed or anonymised and how to preserve other participants' records. Communicate the proposed handling and any information required through the request. Implement any necessary anonymisation/schema change as a separately reviewed operation; this release does not claim automatic deletion.
+For each request, verify the requesting account and whether it hosts any nights. Non-host accounts use the automatic anonymisation path described above. For a host, review its hosted nights, managed guests, authored entries, and other participants before choosing transfer, deletion, or another documented treatment. Communicate the proposed handling and any information required through the request.
 
 Before any approved Auth deletion, revoke sessions and account access and account for already issued access tokens. Do not assume deleting an Auth row alone invalidates its JWTs. Record exactly what was removed, anonymised, or retained in the response; mark `completed` only after the agreed operation is actually complete. No legal approval, retention schedule, contact address, or deletion deadline is implied by this flow.
 

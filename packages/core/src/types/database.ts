@@ -241,7 +241,7 @@ export type Database = {
       drink_logs: {
         Row: {
           abv_percent: number;
-          actor_user_id: string;
+          actor_user_id: string | null;
           after_end: boolean;
           category_snapshot: string;
           consumed_at: string;
@@ -258,7 +258,7 @@ export type Database = {
         };
         Insert: {
           abv_percent: number;
-          actor_user_id: string;
+          actor_user_id?: string | null;
           after_end?: boolean;
           category_snapshot: string;
           consumed_at: string;
@@ -275,7 +275,7 @@ export type Database = {
         };
         Update: {
           abv_percent?: number;
-          actor_user_id?: string;
+          actor_user_id?: string | null;
           after_end?: boolean;
           category_snapshot?: string;
           consumed_at?: string;
@@ -320,7 +320,7 @@ export type Database = {
           archived_at: string | null;
           category: string;
           created_at: string;
-          created_by: string;
+          created_by: string | null;
           id: string;
           is_quick_log: boolean;
           label: string;
@@ -334,7 +334,7 @@ export type Database = {
           archived_at?: string | null;
           category: string;
           created_at?: string;
-          created_by: string;
+          created_by?: string | null;
           id?: string;
           is_quick_log?: boolean;
           label: string;
@@ -348,7 +348,7 @@ export type Database = {
           archived_at?: string | null;
           category?: string;
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           id?: string;
           is_quick_log?: boolean;
           label?: string;
@@ -925,7 +925,7 @@ export type Database = {
       };
       water_logs: {
         Row: {
-          actor_user_id: string;
+          actor_user_id: string | null;
           consumed_at: string;
           created_at: string;
           deleted_at: string | null;
@@ -935,7 +935,7 @@ export type Database = {
           night_member_id: string;
         };
         Insert: {
-          actor_user_id: string;
+          actor_user_id?: string | null;
           consumed_at: string;
           created_at?: string;
           deleted_at?: string | null;
@@ -945,7 +945,7 @@ export type Database = {
           night_member_id: string;
         };
         Update: {
-          actor_user_id?: string;
+          actor_user_id?: string | null;
           consumed_at?: string;
           created_at?: string;
           deleted_at?: string | null;

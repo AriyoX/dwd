@@ -161,7 +161,11 @@ export function ParticipantCard({
           <div>
             <strong>{member.displayName}</strong>
             <p className="muted small">
-              {member.memberType === 'guest' ? 'Guest' : 'Tracks their own drinks'}
+              {member.memberType === 'guest'
+                ? 'Guest'
+                : member.userId === null
+                  ? 'Former member'
+                  : 'Tracks their own drinks'}
               {member.leftAt === null ? '' : ' · left'}
             </p>
           </div>
