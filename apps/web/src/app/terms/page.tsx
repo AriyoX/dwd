@@ -32,7 +32,7 @@ export default function TermsPage() {
         <p className="warning-box">
           This placeholder must be reviewed and replaced by counsel before production launch.
         </p>
-        <Link href="/" style={{ color: 'var(--amber)' }}>
+        <Link href="/" style={{ color: 'var(--primary)' }}>
           Back to DWD
         </Link>
       </article>

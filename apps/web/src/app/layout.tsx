@@ -13,13 +13,21 @@ export const metadata: Metadata = {
       'N-WnXdt4YgDtDyI4mWTH3fuLIINC2L1WEBP_IjaP_38',
   },
   appleWebApp: { capable: true, title: 'DWD', statusBarStyle: 'default' },
-  icons: { apple: '/icons/apple-touch-icon.png' },
+  icons: {
+    icon: [
+      { url: '/icons/favicon-16.png?v=plum', sizes: '16x16', type: 'image/png' },
+      { url: '/icons/favicon-32.png?v=plum', sizes: '32x32', type: 'image/png' },
+      { url: '/icon.svg?v=plum', sizes: 'any', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.ico?v=plum',
+    apple: '/icons/apple-touch-icon.png?v=plum',
+  },
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
   colorScheme: 'light dark',
-  themeColor: '#f7f7f0',
+  themeColor: '#f8f4ef',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',

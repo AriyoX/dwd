@@ -6,7 +6,13 @@ import { useEffect, useState } from 'react';
 export function ThemeToggle() {
   const [dark, setDark] = useState(false);
   useEffect(() => {
-    const sync = () => setDark(document.documentElement.dataset['theme'] === 'dark');
+    const sync = () => {
+      const isDark = document.documentElement.dataset['theme'] === 'dark';
+      setDark(isDark);
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute('content', isDark ? '#160b12' : '#f8f4ef');
+    };
     queueMicrotask(sync);
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const followSystem = () => {
@@ -34,6 +40,9 @@ export function ThemeToggle() {
         } catch {
           /* Preference lasts for this page. */
         }
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute('content', theme === 'dark' ? '#160b12' : '#f8f4ef');
         setDark(!dark);
       }}
     >

@@ -47,20 +47,20 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
             </Link>
           </Card>
         ) : (
-          <Card className="stack-lg card-amber">
+          <Card className="stack-lg card-brand">
             <header>
               <Eyebrow>Private invitation</Eyebrow>
               <h1>{preview.nightTitle}</h1>
             </header>
             <div className="stack">
               <div className="row">
-                <UserRound aria-hidden="true" size={21} color="var(--amber)" />
+                <UserRound aria-hidden="true" size={21} color="var(--primary)" />
                 <span>
                   Hosted by <strong>{preview.hostDisplayName}</strong>
                 </span>
               </div>
               <div className="row">
-                <CalendarClock aria-hidden="true" size={21} color="var(--amber)" />
+                <CalendarClock aria-hidden="true" size={21} color="var(--primary)" />
                 <span>
                   {formatNightDateTime(preview.startsAt, preview.timezone)} –{' '}
                   {formatNightDateTime(preview.endsAt, preview.timezone)}

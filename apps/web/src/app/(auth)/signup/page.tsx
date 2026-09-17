@@ -25,11 +25,11 @@ export default async function SignupPage({
       <SignupForm next={next} />
       <p className="muted small">
         By continuing, you agree to the{' '}
-        <Link href="/terms" style={{ color: 'var(--amber)' }}>
+        <Link href="/terms" style={{ color: 'var(--primary)' }}>
           terms
         </Link>{' '}
         and acknowledge the{' '}
-        <Link href="/privacy" style={{ color: 'var(--amber)' }}>
+        <Link href="/privacy" style={{ color: 'var(--primary)' }}>
           privacy notice
         </Link>
         .

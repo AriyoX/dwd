@@ -128,7 +128,13 @@ export function TonightView({
           >
             Choose another drink
           </Button>
-          <Button type="button" variant="secondary" disabled={busy} onClick={onWater}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="button-water"
+            disabled={busy}
+            onClick={onWater}
+          >
             <Droplets aria-hidden="true" size={19} /> Water
           </Button>
           <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
@@ -321,7 +327,13 @@ export function ParticipantCard({
             >
               Another for {member.displayName}
             </Button>
-            <Button type="button" variant="secondary" disabled={busy} onClick={onWater}>
+            <Button
+              type="button"
+              variant="secondary"
+              className="button-water"
+              disabled={busy}
+              onClick={onWater}
+            >
               <Droplets aria-hidden="true" size={18} /> Water
             </Button>
             <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
