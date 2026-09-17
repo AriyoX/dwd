@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   calculateEthanolGrams,
+  calculatePlanTotal,
+  isNightAlertRelevant,
   determineNightTimeStatus,
   projectedPlanStatus,
   requiredLogConfirmations,
@@ -15,6 +17,9 @@ import {
   type PlanSetupMode,
 } from '@dwd/core';
 import type { PendingDrinkLog } from '@dwd/contracts';
+import { TimedNotice } from '@/components/feedback/timed-notice';
+import { withPendingDrinks } from './logged-drinks';
+import { memberNotices } from './member-notices';
 import { Button } from '@/components/ui/button';
 import { Card, Eyebrow } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
@@ -158,8 +163,15 @@ function ActiveNightView({
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [overdueDismissedFor, setOverdueDismissedFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; id: number } | null>(null);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(() => new Set());
+  const dismissAlert = (id: string) => setDismissedAlerts((previous) => new Set(previous).add(id));
+  const noticeSequence = useRef(0);
   const [undoTarget, setUndoTarget] = useState<UndoTarget | null>(null);
+  const setMessage = useCallback((text: string | null) => {
+    setNotice(text === null ? null : { text, id: ++noticeSequence.current });
+    setUndoTarget(null);
+  }, []);
   const [pendingLogs, setPendingLogs] = useState<PendingDrinkLog[]>([]);
   const [checkInStates, setCheckInStates] = useState<
     Record<string, 'idle' | 'sending' | 'sent' | 'error'>
@@ -169,17 +181,15 @@ function ActiveNightView({
   const activityInFlight = useRef(false);
   const planSaveInFlight = useRef(false);
   const guestAddInFlight = useRef(false);
-  const [customDrink, setCustomDrink] = useState<CustomDrinkInput>({
-    label: 'Custom drink',
-    category: 'other',
-    volumeMl: 330,
-    abvPercent: 5,
-  });
-
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 15_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    // New logs must affect pace and alert windows immediately, between clock ticks.
+    queueMicrotask(() => setNow(new Date()));
+  }, [snapshot, pendingLogs]);
 
   useEffect(() => {
     if (!openInviteInitially || !isHost) return;
@@ -203,7 +213,7 @@ function ActiveNightView({
     const url = new URL(window.location.href);
     url.searchParams.delete('invite');
     router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
-  }, [isHost, openInviteInitially, router, snapshot.night.id]);
+  }, [isHost, openInviteInitially, router, snapshot.night.id, setMessage]);
 
   useEffect(() => {
     if (!setupPlanInitially) return;
@@ -212,12 +222,6 @@ function ActiveNightView({
     url.searchParams.delete('setup');
     router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
   }, [router, setupPlanInitially]);
-
-  useEffect(() => {
-    if (message === null) return;
-    const timer = window.setTimeout(() => setMessage(null), 4_000);
-    return () => window.clearTimeout(timer);
-  }, [message]);
 
   const loadPending = useCallback(async () => {
     const records = await store.getAll();
@@ -256,6 +260,7 @@ function ActiveNightView({
     refresh,
     snapshot.currentUserId,
     snapshot.night.id,
+    setMessage,
   ]);
 
   const timeStatus = determineNightTimeStatus(snapshot.night, now);
@@ -281,6 +286,24 @@ function ActiveNightView({
   const optimisticLogs = pendingLogs.filter(
     (record) => !canonicalIdempotencyKeys.has(record.idempotencyKey),
   );
+
+  function visibleAlerts(member: MemberSnapshot) {
+    const logs = withPendingDrinks(member, optimisticLogs);
+    const personal =
+      member.id === snapshot.currentMemberId || member.managedByUserId === snapshot.currentUserId;
+    const alerts = personal
+      ? [
+          ...snapshot.alerts.filter((alert) => alert.type === 'group_check_in'),
+          ...memberNotices(member, logs, now),
+        ]
+      : snapshot.alerts;
+    return alerts.filter(
+      (alert) =>
+        alert.nightMemberId === member.id &&
+        !dismissedAlerts.has(alert.id) &&
+        isNightAlertRelevant(alert, logs, calculatePlanTotal(member.planItems), now),
+    );
+  }
 
   async function submitDrink(draft: DrinkDraft, acknowledge = false) {
     if (activityInFlight.current) return;
@@ -321,8 +344,12 @@ function ActiveNightView({
     try {
       previewWarnings = requiredLogConfirmations(
         projectedPlanStatus(
-          draft.member.drinkLogs,
-          draft.member.planItems,
+          withPendingDrinks(
+            snapshot.members.find((member) => member.id === draft.member.id) ?? draft.member,
+            optimisticLogs,
+          ),
+          (snapshot.members.find((member) => member.id === draft.member.id) ?? draft.member)
+            .planItems,
           calculateEthanolGrams(drinkValues.volumeMl, drinkValues.abvPercent),
         ),
         Date.parse(draft.consumedAt) > Date.parse(snapshot.night.endsAt),
@@ -459,15 +486,6 @@ function ActiveNightView({
       return;
     }
     logPlanned(member, quick.id);
-  }
-
-  function logCustom(member: MemberSnapshot) {
-    void submitDrink({
-      member,
-      customDrink,
-      consumedAt: new Date().toISOString(),
-      idempotencyKey: crypto.randomUUID(),
-    });
   }
 
   async function logWater(member: MemberSnapshot) {
@@ -757,7 +775,11 @@ function ActiveNightView({
       {segment === 'tonight' ? (
         <TonightView
           member={currentMember}
-          alerts={snapshot.alerts.filter((alert) => alert.nightMemberId === currentMember.id)}
+          alerts={visibleAlerts(currentMember)}
+          onDismissAlert={dismissAlert}
+          night={snapshot.night}
+          now={now}
+          onEditPlan={() => editPlan(currentMember)}
           busy={busy}
           onQuick={() => quickLog(currentMember)}
           onChoose={() => setDrinkChooser(currentMember)}
@@ -779,7 +801,8 @@ function ActiveNightView({
               <ParticipantCard
                 key={member.id}
                 member={member}
-                alerts={snapshot.alerts.filter((alert) => alert.nightMemberId === member.id)}
+                alerts={visibleAlerts(member)}
+                onDismissAlert={dismissAlert}
                 managed={managed}
                 busy={busy}
                 onQuick={() => quickLog(member)}
@@ -826,7 +849,7 @@ function ActiveNightView({
               <Pencil aria-hidden="true" /> Edit my plan
             </button>
             <button type="button" onClick={() => editPlan(currentMember)}>
-              <ChevronDown aria-hidden="true" /> Change my usual drink
+              <ChevronDown aria-hidden="true" /> Change my main drink
             </button>
             {isHost ? (
               <button type="button" onClick={() => setInviteOpen(true)}>
@@ -878,9 +901,16 @@ function ActiveNightView({
         </section>
       ) : null}
 
-      {message === null ? null : (
-        <div className="toast" role="status">
-          <span>{message}</span>
+      {notice === null ? null : (
+        <TimedNotice
+          key={notice.id}
+          className="toast"
+          onDismiss={() => {
+            setNotice(null);
+            setUndoTarget(null);
+          }}
+        >
+          <span>{notice.text}</span>
           {undoTarget === null ? null : (
             <button
               type="button"
@@ -892,17 +922,18 @@ function ActiveNightView({
               Undo
             </button>
           )}
-        </div>
+        </TimedNotice>
       )}
 
       <DrinkChooser
-        member={drinkChooser}
-        customDrink={customDrink}
-        setCustomDrink={setCustomDrink}
+        member={snapshot.members.find((member) => member.id === drinkChooser?.id) ?? null}
         busy={busy}
         onClose={() => setDrinkChooser(null)}
         onPlanned={(member, id) => logPlanned(member, id)}
-        onCustom={logCustom}
+        onEditPlan={(member) => {
+          setDrinkChooser(null);
+          editPlan(member);
+        }}
       />
       <ConfirmationDialog
         draft={confirmation}

@@ -5,12 +5,44 @@ import {
   determineGroupCheckInAlert,
   determinePersonalPaceAlert,
   isAlertInCooldown,
+  isNightAlertRelevant,
   requiredLogConfirmations,
   shouldEmitRealtimePaceAlert,
   type RollingLogValue,
 } from './warnings';
 
 const asOf = '2026-07-31T22:00:00.000Z';
+
+describe('current alert relevance', () => {
+  const alert = {
+    id: 'alert',
+    nightId: 'night',
+    nightMemberId: 'member',
+    type: 'personal_pace' as const,
+    severity: 'caution' as const,
+    visibility: 'private' as const,
+    message: 'Pause',
+    dedupeKey: 'key',
+    createdAt: '2026-07-31T21:55:00Z',
+    expiresAt: null,
+  };
+  it('clears after an undo or the rolling window passes', () => {
+    expect(isNightAlertRelevant(alert, [log(25, '21:55')], 30, asOf)).toBe(true);
+    expect(isNightAlertRelevant(alert, [log(25, '21:55', asOf)], 30, asOf)).toBe(false);
+    expect(isNightAlertRelevant(alert, [log(25, '21:55')], 30, '2026-07-31T23:00:00Z')).toBe(false);
+  });
+  it('respects explicit expiration and the current plan', () => {
+    expect(isNightAlertRelevant({ ...alert, expiresAt: asOf }, [log(25, '21:55')], 30, asOf)).toBe(
+      false,
+    );
+    expect(
+      isNightAlertRelevant({ ...alert, type: 'plan_reached' }, [log(25, '21:55')], 30, asOf),
+    ).toBe(false);
+    expect(
+      isNightAlertRelevant({ ...alert, type: 'plan_reached' }, [log(25, '21:55')], 25, asOf),
+    ).toBe(true);
+  });
+});
 
 describe('warning rules', () => {
   it('does not alert below the personal threshold', () => {

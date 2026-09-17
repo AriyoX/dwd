@@ -1151,6 +1151,38 @@ p {
   font-weight: 700;
   cursor: pointer;
 }
+.notice-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.notice-content > span:first-child {
+  flex: 1;
+}
+.main-drink strong {
+  display: block;
+}
+.personal-card.stack-lg {
+  gap: 20px;
+}
+.drink-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.drink-choice {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+.drink-choice[aria-pressed='true'] {
+  border-color: var(--amber-dark);
+  background: var(--surface-soft);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--amber-dark);
+}
 .timeline-card,
 .timeline-card > div,
 .summary-grid,

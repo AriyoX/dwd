@@ -120,6 +120,7 @@ export function PlanEditor({
               <Plus aria-hidden="true" size={18} /> Custom
             </Button>
           </div>
+          <p className="muted small">Your main drink is the one you can log with one tap.</p>
           {items.length === 0 ? <p className="muted small">Add a drink to continue.</p> : null}
           {items.map((item, index) => {
             const domId = item.id ?? item.clientId ?? `item-${String(index)}`;
@@ -133,7 +134,7 @@ export function PlanEditor({
                       checked={item.isQuickLog}
                       onChange={() => chooseQuick(index)}
                     />
-                    Usual drink
+                    Main drink
                   </label>
                   <button
                     className="icon-text-button"

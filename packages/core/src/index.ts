@@ -4,6 +4,7 @@ export * from './config/presets';
 export * from './invites/invitations';
 export * from './permissions/permissions';
 export * from './plans/plans';
+export * from './plans/pacing';
 export * from './schemas/schemas';
 export * from './time/time';
 export * from './types/api';

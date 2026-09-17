@@ -103,6 +103,7 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   await expect(chooser).toBeVisible();
   await expect(page.locator('[data-tour-coach]')).toBeHidden();
   await chooser.getByRole('button', { name: /Beer.*330/ }).click();
+  await chooser.getByRole('button', { name: 'Log Beer', exact: true }).click();
   card = await coach(page, 'choices');
   await expect(page.locator('[data-testid="drink-count"]')).toHaveText('3');
   await page.reload();

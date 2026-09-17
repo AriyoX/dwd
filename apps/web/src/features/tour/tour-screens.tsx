@@ -29,12 +29,6 @@ export function TourNightScreen() {
   const segment: NightSegment = query.get('view') === 'group' ? 'group' : 'tonight';
   const [choosing, setChoosing] = useState(false);
   const [help, setHelp] = useState(false);
-  const [custom, setCustom] = useState<CustomDrinkInput>({
-    label: 'My drink',
-    category: 'other',
-    volumeMl: 330,
-    abvPercent: 5,
-  });
   const snapshot = tour?.active ? tour.sample : null;
   const member = snapshot?.members.find((item) => item.id === snapshot.currentMemberId);
   if (!snapshot || !member) return <OpeningTour />;
@@ -95,8 +89,6 @@ export function TourNightScreen() {
       </NightFrame>
       <DrinkChooser
         member={choosing ? member : null}
-        customDrink={custom}
-        setCustomDrink={setCustom}
         busy={false}
         onClose={() => setChoosing(false)}
         onPlanned={(_person, id) =>
@@ -105,7 +97,6 @@ export function TourNightScreen() {
             member.planItems.find((item) => item.id === id),
           )
         }
-        onCustom={() => add('alcohol', custom)}
       />
       <EmergencyPanel open={help} onClose={() => setHelp(false)} practice />
     </>

@@ -6,6 +6,7 @@ import {
   STALE_OFFLINE_ALERT_MINUTES,
 } from '../config/constants';
 import type { AlcoholLog, NightAlert, PlanStatus } from '../types/domain';
+import { determinePlanStatus } from '../plans/plans';
 
 export interface RollingLogValue {
   nightMemberId: string;
@@ -113,6 +114,32 @@ export function toRollingValues(logs: readonly AlcoholLog[]): RollingLogValue[] 
     deletedAt: log.deletedAt,
     kind: 'alcohol',
   }));
+}
+
+/** Reconcile historical alerts with current entries (including corrections). */
+export function isNightAlertRelevant(
+  alert: NightAlert,
+  logs: readonly RollingLogValue[],
+  plannedGrams: number,
+  asOf: string | Date,
+): boolean {
+  const now = dateMs(asOf);
+  if (alert.nightMemberId === null) return false;
+  if (alert.expiresAt !== null && dateMs(alert.expiresAt) <= now) return false;
+  if (alert.type === 'personal_pace')
+    return determinePersonalPaceAlert(logs, alert.nightMemberId, asOf);
+  if (alert.type === 'group_check_in')
+    return determineGroupCheckInAlert(logs, alert.nightMemberId, asOf);
+  const total = logs
+    .filter(
+      (log) =>
+        log.nightMemberId === alert.nightMemberId &&
+        log.deletedAt === null &&
+        log.kind !== 'water' &&
+        dateMs(log.consumedAt) <= now,
+    )
+    .reduce((sum, log) => sum + log.ethanolGrams, 0);
+  return total > 0 && determinePlanStatus(total, plannedGrams) !== 'within_plan';
 }
 
 function dateMs(value: string | Date): number {
