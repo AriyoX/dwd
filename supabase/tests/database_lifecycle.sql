@@ -230,8 +230,8 @@ select extensions.throws_ok(
     '[{"label":"Shot","category":"spirit","volumeMl":40,"abvPercent":40,"plannedQuantity":1,"isQuickLog":true}]'
   ),
   '42501',
-  'You cannot edit this plan.',
-  'host cannot edit another account plan'
+  'You cannot adjust this plan.',
+  'host cannot adjust another account plan'
 );
 
 with forbidden as (

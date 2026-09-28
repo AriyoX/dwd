@@ -79,7 +79,7 @@ export function PlanEditor({
           aria-pressed={mode === 'water_only'}
           onClick={() => setMode('water_only')}
         >
-          Water only
+          Chaser only
         </button>
         <button
           type="button"
@@ -91,10 +91,10 @@ export function PlanEditor({
         </button>
       </fieldset>
       {mode === 'unselected' ? (
-        <p className="muted small">Choose water only, or add a drink plan.</p>
+        <p className="muted small">Choose chaser only, or add a drink plan.</p>
       ) : mode === 'water_only' ? (
         <p className="muted small">
-          Log water without an alcohol plan. You can add a plan later before logging alcohol.
+          Log chasers without an alcohol plan. You can add a plan later before logging alcohol.
         </p>
       ) : (
         <>

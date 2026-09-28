@@ -2,6 +2,8 @@
 
 Code name: **dwd**. Shared packages use the `@dwd` scope.
 
+See the [September 28 product update](docs/product-update-2026-09-28.md) for night memories, Chaser logging, mid-night participants, plan adjustments, reminders, and release verification.
+
 Live app: **https://dwdug.vercel.app** (the original address remains available). Public email delivery is deferred until SMTP setup.
 
 Drink with Desire is a mobile-first web application for adults who want a shared, factual record of drinks during a night out. Account participants keep ownership of their own plans and logs; a host can separately manage guests who do not have accounts.

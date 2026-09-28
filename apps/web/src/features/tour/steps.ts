@@ -51,9 +51,9 @@ export const tourSteps: readonly TourStep[] = [
     id: 'choices',
     route: '/night/tour?tour=choices',
     target: 'drink-options',
-    title: 'Water, another drink, or undo',
+    title: 'Chaser, another drink, or undo',
     description:
-      'Add water, choose a different drink, or undo your last entry. Try any of these buttons.',
+      'Add a chaser, choose a different drink, or undo your last entry. Try any of these buttons.',
     placement: 'top',
     sample: 'night',
     interactive: true,
@@ -92,8 +92,18 @@ export const tourSteps: readonly TourStep[] = [
       route: '/night/tour/summary?tour=history',
       target: 'history-summary',
       description:
-        'Your summary shows the drinks and water you logged. Your real nights will appear here after they end.',
+        'Your summary shows the drinks and chasers you logged. Your real nights will appear here after they end.',
     },
+  },
+  {
+    id: 'reminders',
+    route: '/account?tour=reminders#notifications',
+    target: 'reminders',
+    title: 'Get reminders during your night',
+    description:
+      'It is easy to forget to log while you are enjoying the night. Install dwd if needed, then enable reminders from this status panel.',
+    placement: 'top',
+    interactive: true,
   },
 ];
 

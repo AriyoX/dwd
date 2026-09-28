@@ -378,7 +378,7 @@ export function NewNightWizard({ userId }: { userId: string }) {
               Set your own pace.
             </h1>
             <p className="muted small">
-              Choose water only, or set an alcohol plan with a quick-log drink.
+              Choose chaser only, or set an alcohol plan with a quick-log drink.
             </p>
             <PlanEditor
               items={hostPlan}
@@ -415,7 +415,7 @@ export function NewNightWizard({ userId }: { userId: string }) {
                     {hostPlanMode === 'unselected'
                       ? 'Choose a plan'
                       : hostPlanMode === 'water_only'
-                        ? 'Water only'
+                        ? 'Chaser only'
                         : hostPlan
                             .map((item) => `${item.plannedQuantity} × ${item.label}`)
                             .join(', ')}

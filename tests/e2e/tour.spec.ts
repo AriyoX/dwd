@@ -49,9 +49,7 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   await signup(page, email);
   let card = await coach(page, 'start');
   await expect(page).toHaveURL(/\/home\?tour=start$/);
-  await expect(
-    page.getByRole('complementary', { name: 'Add DWD to your home screen' }),
-  ).toHaveCount(0);
+  await expect(page.getByRole('complementary', { name: 'Install dwd' })).toHaveCount(0);
   await expect(card.getByRole('button', { name: 'Close tour' })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(page.locator('[data-tour="start"]')).toBeFocused();
@@ -94,10 +92,10 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   await page.screenshot({ path: `.tmp/tour-${info.project.name}-logging.png` });
   await card.getByRole('button', { name: 'Next', exact: true }).click();
   card = await coach(page, 'choices');
-  await page.getByRole('button', { name: 'Water', exact: true }).click();
-  await expect(page.locator('[data-tour="plan"]')).toContainText('2 water entries');
+  await page.getByRole('button', { name: 'Chaser', exact: true }).click();
+  await expect(page.locator('[data-tour="plan"]')).toContainText('2 chasers');
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.locator('[data-tour="plan"]')).toContainText('1 water entry');
+  await expect(page.locator('[data-tour="plan"]')).toContainText('1 chaser');
   await page.getByRole('button', { name: 'Choose another drink' }).click();
   const chooser = page.getByRole('dialog', { name: 'Log for You' });
   await expect(chooser).toBeVisible();
@@ -127,9 +125,12 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   card = await coach(page, 'history');
   await expect(page).toHaveURL(/\/night\/tour\/summary\?tour=history$/);
   await expect(page.locator('[data-tour="history-summary"]')).toContainText('1 drink');
-  await card.getByRole('button', { name: 'Finish tour' }).click();
-  await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByText('No active nights yet.')).toBeVisible();
+  await card.getByRole('button', { name: 'Next', exact: true }).click();
+  card = await coach(page, 'reminders');
+  await expect(page).toHaveURL(/\/account\?tour=reminders#notifications$/);
+  await expect(card.getByRole('button', { name: 'Enable reminders' })).toBeVisible();
+  await card.getByRole('button', { name: 'Enable reminders' }).click();
+  await expect(page).toHaveURL(/\/account#notifications$/);
   expect(writes).toEqual([]);
   expect(localStepRequests, 'Same-screen steps must not wait for another server render').toEqual(
     [],
@@ -187,10 +188,8 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   let card = await coach(page, 'start');
   await card.getByRole('button', { name: 'Skip tour' }).click();
   await expect(page).toHaveURL(/\/home$/);
-  await expect(
-    page.getByRole('complementary', { name: 'Add DWD to your home screen' }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Dismiss install tip' }).click();
+  await expect(page.getByRole('complementary', { name: 'Install dwd' })).toBeVisible();
+  await page.getByRole('button', { name: 'Not now' }).click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Your evening, Tour.' })).toBeVisible();
   await expect(page.locator('[data-tour-coach], .install-hint')).toHaveCount(0);

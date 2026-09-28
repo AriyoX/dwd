@@ -91,6 +91,19 @@ export interface WaterLog {
   deletedAt: string | null;
 }
 
+export interface NightPhoto {
+  id: string;
+  nightId: string;
+  uploadedByUserId: string | null;
+  uploaderName: string;
+  objectPath: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  byteSize: number;
+  width: number | null;
+  height: number | null;
+  createdAt: string;
+}
+
 export interface NightAlert {
   id: string;
   nightId: string;
@@ -144,7 +157,8 @@ export interface NotificationPreferences {
   personalPaceEnabled: boolean;
   plannedEndEnabled: boolean;
   periodicWaterEnabled: boolean;
-  periodicIntervalMinutes: 30 | 60 | 90;
+  periodicIntervalMinutes: 15 | 30 | 45 | 60;
+  remindersMutedUntil: string | null;
 }
 
 export interface NotificationEvent {

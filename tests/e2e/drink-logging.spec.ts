@@ -33,6 +33,7 @@ test('main drink, simple alternate logging, notices and offline plan checks', as
   await page.getByRole('button', { name: 'Start night', exact: true }).click();
   await expect(page.locator('.main-drink')).toContainText('Beer');
   await expect(page.getByTestId('plan-pacing')).toContainText('Plan spacing');
+  await page.clock.install();
   await page.screenshot({
     path: `.tmp/ui-review/drink-ux-${info.project.name}.png`,
     fullPage: true,
@@ -58,7 +59,6 @@ test('main drink, simple alternate logging, notices and offline plan checks', as
   await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
   await expect(page.getByTestId('drink-count')).toHaveText('2');
   await expect(page.locator('.warning-box[role="status"]')).not.toHaveCount(0);
-  await page.clock.install();
   await page.clock.fastForward(11_000);
   await expect(page.locator('.toast')).toHaveCount(0);
   await expect(page.locator('.warning-box[role="status"]')).toHaveCount(0);
@@ -85,6 +85,8 @@ test('main drink, simple alternate logging, notices and offline plan checks', as
   await chooser.getByRole('button', { name: 'Edit plan', exact: true }).click();
   const plan = page.getByRole('dialog', { name: "Drink UX's plan" });
   await plan.getByRole('button', { name: 'Remove Wine', exact: true }).click();
+  // The adjusted plan must still cover the three immutable recorded drinks.
+  await plan.getByLabel('Quantity', { exact: true }).fill('4');
   await plan.getByRole('button', { name: 'Save plan', exact: true }).click();
   await expect(plan).toBeHidden();
   await page.getByRole('button', { name: 'Choose another drink' }).click();

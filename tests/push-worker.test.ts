@@ -42,7 +42,18 @@ function worker(status = 204) {
     });
     await done;
   }
-  return { push, show, fetch, openWindow };
+  async function click(url: string, action = '') {
+    let done: Promise<unknown> = Promise.resolve();
+    listeners.get('notificationclick')?.({
+      action,
+      notification: { data: { url }, close: vi.fn() },
+      waitUntil: (work: Promise<unknown>) => {
+        done = work;
+      },
+    });
+    await done;
+  }
+  return { push, click, show, fetch, openWindow };
 }
 
 describe('service worker notification privacy', () => {
@@ -57,6 +68,22 @@ describe('service worker notification privacy', () => {
       'DWD notification',
       expect.objectContaining({ data: { url: '/night/test' } }),
     );
+  });
+  it('offers safe fast-log actions only on authorized night links', async () => {
+    const app = worker();
+    await app.push('/night/test?fast=1');
+    expect(app.show).toHaveBeenCalledWith(
+      'DWD notification',
+      expect.objectContaining({
+        actions: [
+          { action: 'log-drink', title: 'Log drink' },
+          { action: 'log-chaser', title: 'Log chaser' },
+          { action: 'open-dwd', title: 'Open dwd' },
+        ],
+      }),
+    );
+    await app.click('/night/test?fast=1', 'log-chaser');
+    expect(app.openWindow).toHaveBeenCalledWith('/night/test?fast=chaser');
   });
   it.each([401, 404, 500])(
     'uses a generic visible fallback for an unauthorized or unverifiable payload (%i)',

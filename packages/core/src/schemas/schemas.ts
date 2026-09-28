@@ -178,6 +178,7 @@ export const extendNightSchema = z.object({
 export const endNightSchema = z.object({ nightId: z.uuid() });
 export const addManagedGuestSchema = z.object({
   nightId: z.uuid(),
+  requestKey: z.uuid(),
   guest: guestInputSchema,
 });
 export const removeManagedGuestSchema = z.object({ memberId: z.uuid() });

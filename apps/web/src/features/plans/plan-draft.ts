@@ -41,9 +41,9 @@ export function materializePlanDraft(
 ): { success: true; data: PlanItemInput[] } | { success: false; message: string } {
   if (mode === 'water_only') return { success: true, data: [] };
   if (mode === 'unselected')
-    return { success: false, message: 'Choose water only or plan drinks.' };
+    return { success: false, message: 'Choose chaser only or plan drinks.' };
   if (items.length === 0)
-    return { success: false, message: 'Choose a drink or select water only.' };
+    return { success: false, message: 'Choose a drink or select chaser only.' };
   const parsed = planItemsSchema.safeParse(
     items.map((item) => ({
       ...(item.id === undefined ? {} : { id: item.id }),

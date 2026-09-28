@@ -29,6 +29,7 @@ test('expired links and email correction keep the invitation destination', async
 
 test('real local signup, draft recovery, water-only night, support and history', async ({
   page,
+  context,
 }, info) => {
   test.skip(
     !process.env['E2E_SUPABASE_PUBLISHABLE_KEY'],
@@ -45,25 +46,28 @@ test('real local signup, draft recovery, water-only night, support and history',
   await page.getByRole('dialog').getByRole('button', { name: 'Skip tour', exact: true }).click();
   await expect(page).toHaveURL(/\/home$/);
   await page.getByRole('link', { name: /Start a night/ }).click();
-  await page.getByLabel('Night name').fill('Water-only test night');
+  await page.getByLabel('Night name').fill('Chaser-only test night');
   await page.getByRole('button', { name: 'Just me', exact: true }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: 'Water only', exact: true }).click();
+  await page.getByRole('button', { name: 'Chaser only', exact: true }).click();
   await page.reload();
   await expect(
     page.getByText('Your unfinished setup was restored', { exact: false }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Water only', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: 'Chaser only', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByText('Water-only test night', { exact: true })).toBeVisible();
+  await expect(page.getByText('Chaser-only test night', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Start night', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Water-only test night' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Chaser-only test night' })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Water', exact: true }).click();
-  await expect(page.getByText('Your plan · 1 water entry', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Chaser', exact: true }).click();
+  await expect(page.getByText('Your plan · 1 chaser', { exact: true })).toBeVisible();
+  // The count is optimistic. Wait for the idempotent save to settle before
+  // navigating so WebKit does not abort the outstanding Server Action.
+  await expect(page.getByRole('button', { name: 'Chaser', exact: true })).toBeEnabled();
   const realNightUrl = page.url();
   await page.goto('/account');
   await page.getByRole('button', { name: 'Take a tour' }).click();
@@ -74,7 +78,7 @@ test('real local signup, draft recovery, water-only night, support and history',
   await page.locator('[data-tour-coach]').getByRole('button', { name: 'Skip tour' }).click();
   await expect(page).toHaveURL(/\/account$/);
   await page.goto(realNightUrl);
-  await expect(page.locator('[data-tour="plan"]')).toContainText('1 water entry');
+  await expect(page.locator('[data-tour="plan"]')).toContainText('1 chaser');
   await expect(page.locator('[data-testid="drink-count"]')).toHaveText('0');
   await page.getByRole('button', { name: 'Manage', exact: true }).click();
   await page.getByRole('button', { name: 'Invite someone', exact: true }).click();
@@ -82,13 +86,15 @@ test('real local signup, draft recovery, water-only night, support and history',
   await dialog.getByRole('button', { name: 'Create invite link' }).click();
   await expect(dialog.locator('.invite-url')).toContainText('/join/');
   const originalLink = await dialog.locator('.invite-url').innerText();
-  // Abort a server action response; controls must recover and retain the same operation.
-  await page.route('**/night/*', (route) =>
-    route.request().method() === 'POST' ? route.abort('failed') : route.continue(),
-  );
-  await dialog.getByRole('button', { name: 'Replace invite link' }).click();
-  await expect(dialog.getByRole('button', { name: 'Try again' })).toBeEnabled();
-  await page.unroute('**/night/*');
+  // A real offline transition is reliable across engines and verifies that
+  // the idempotent operation survives an ambiguous network failure.
+  await context.setOffline(true);
+  try {
+    await dialog.getByRole('button', { name: 'Replace invite link' }).click();
+    await expect(dialog.getByRole('button', { name: 'Try again' })).toBeEnabled();
+  } finally {
+    await context.setOffline(false);
+  }
   await dialog.getByRole('button', { name: 'Try again' }).click();
   await expect(dialog.locator('.invite-url')).not.toHaveText(originalLink);
   await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
@@ -97,7 +103,7 @@ test('real local signup, draft recovery, water-only night, support and history',
   await expect(page).toHaveURL(/\/summary$/);
   const summary = page.url();
   await page.goto('/history');
-  await expect(page.getByRole('link', { name: /Water-only test night/ })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: /Chaser-only test night/ })).toHaveAttribute(
     'href',
     new URL(summary).pathname,
   );

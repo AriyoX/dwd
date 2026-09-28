@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { NotificationEvent, NotificationPreferences } from '@dwd/core';
 import { Button } from '@/components/ui/button';
 import { updateDisplayNameAction } from './actions';
-import { updateNotificationPreferencesAction } from '@/features/notifications/actions';
+import {
+  setReminderPauseAction,
+  updateNotificationPreferencesAction,
+} from '@/features/notifications/actions';
 import { BrowserNotificationSettings } from '@/features/notifications/browser-notification-settings';
+import { useReminderPause } from '@/features/notifications/use-reminder-pause';
 import { NotificationInbox } from '@/features/notifications/notification-inbox';
 
 export function DisplayNameForm({ initialName }: { initialName: string }) {
@@ -95,6 +99,26 @@ export function NotificationSettings({
   const [message, setMessage] = useState<string | null>(null);
   const inFlight = useRef(false);
   const [saveError, setSaveError] = useState(false);
+  const muted = useReminderPause(preferences.remindersMutedUntil);
+  async function pause(minutes: 60 | null) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setSaving(true);
+    setSaveError(false);
+    setMessage(null);
+    try {
+      const result = await setReminderPauseAction(minutes);
+      if (!result.ok) throw new Error(result.error);
+      setPreferences(result.data);
+      setMessage(minutes === null ? 'Reminders resumed.' : 'Reminders paused for 1 hour.');
+    } catch {
+      setSaveError(true);
+      setMessage('Reminders could not be saved. Retry when connected.');
+    } finally {
+      inFlight.current = false;
+      setSaving(false);
+    }
+  }
   async function save(next: NotificationPreferences) {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -140,10 +164,7 @@ export function NotificationSettings({
   return (
     <>
       <section className="stack" id="notifications">
-        <h2>Notifications</h2>
-        <p className="muted small">
-          Choose which updates appear in DWD and on your enabled devices.
-        </p>
+        <h2>Reminders</h2>
         <BrowserNotificationSettings />
         <fieldset className="notification-options">
           <legend>Your group</legend>
@@ -193,7 +214,7 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('periodicWaterEnabled')}
             />{' '}
-            Periodic check-in reminder
+            Keep me on track
           </label>
           {preferences.periodicWaterEnabled ? (
             <div className="field">
@@ -206,14 +227,38 @@ export function NotificationSettings({
                 onChange={(event) =>
                   void save({
                     ...preferences,
-                    periodicIntervalMinutes: Number(event.target.value) as 30 | 60 | 90,
+                    periodicIntervalMinutes: Number(event.target.value) as 15 | 30 | 45 | 60,
                   })
                 }
               >
+                <option value="15">Every 15 minutes</option>
                 <option value="30">Every 30 minutes</option>
-                <option value="60">Every 60 minutes</option>
-                <option value="90">Every 90 minutes</option>
+                <option value="45">Every 45 minutes</option>
+                <option value="60">Every hour</option>
               </select>
+            </div>
+          ) : null}
+          {preferences.periodicWaterEnabled ? (
+            <div className="row">
+              {muted ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={() => void pause(null)}
+                >
+                  Resume reminders
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={() => void pause(60)}
+                >
+                  Pause for 1 hour
+                </Button>
+              )}
             </div>
           ) : null}
         </fieldset>

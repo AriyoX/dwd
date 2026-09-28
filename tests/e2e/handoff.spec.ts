@@ -42,6 +42,7 @@ test('device notification setup retries, persists, turns off and new alcohol pla
   const endpoint = `https://fcm.googleapis.com/fcm/send/local-review-${randomUUID()}`;
   await context.addInitScript(
     ({ endpoint }) => {
+      Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
       Object.defineProperty(window, 'Notification', {
         configurable: true,
         value: Object.assign(
@@ -92,16 +93,14 @@ test('device notification setup retries, persists, turns off and new alcohol pla
   );
   await login(page, user);
   await page.goto('/account');
-  const enable = page.getByRole('button', { name: 'Enable browser notifications', exact: true });
+  const enable = page.getByRole('button', { name: 'Enable reminders', exact: true });
   await expect(enable).toBeEnabled();
   await enable.click();
   await expect(
-    page.getByRole('region', { name: 'Browser notifications' }).getByRole('alert'),
+    page.getByRole('region', { name: 'Reminder setup' }).getByRole('alert'),
   ).toContainText('Browser setup could not finish');
-  await page.getByRole('button', { name: 'Retry browser setup', exact: true }).click();
-  await expect(
-    page.getByText('Enabled for your account on this device.', { exact: true }),
-  ).toBeVisible();
+  await enable.click();
+  await expect(page.getByText('Background delivery').locator('..')).toContainText('On');
   await page.reload();
   const disable = page.getByRole('button', { name: 'Turn off on this device', exact: true });
   await expect(disable).toBeEnabled();
@@ -125,7 +124,7 @@ test('device notification setup retries, persists, turns off and new alcohol pla
   await expect(enable).toBeEnabled();
   await page.getByLabel('Personal pace reminders', { exact: true }).check();
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
-  await page.getByLabel('Periodic check-in reminder', { exact: true }).check();
+  await page.getByLabel('Keep me on track', { exact: true }).check();
   await page.getByLabel('Reminder interval', { exact: true }).selectOption('30');
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
   await expect(page.locator('body')).toHaveJSProperty(
@@ -133,15 +132,13 @@ test('device notification setup retries, persists, turns off and new alcohol pla
     info.project.use.viewport?.width ?? 390,
   );
   await page
-    .locator('.card')
-    .filter({ has: page.locator('#notifications') })
+    .locator('#notifications:visible')
     .screenshot({ path: `.tmp/ui-review/${info.project.name}-settings-light.png` });
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.reload();
   await expect(enable).toBeEnabled();
   await page
-    .locator('.card')
-    .filter({ has: page.locator('#notifications') })
+    .locator('#notifications:visible')
     .screenshot({ path: `.tmp/ui-review/${info.project.name}-settings-dark.png` });
   await page.reload();
   await expect(page.getByLabel('Personal pace reminders', { exact: true })).toBeChecked();
@@ -161,6 +158,284 @@ test('device notification setup retries, persists, turns off and new alcohol pla
   await expect(page.getByRole('button', { name: 'Plan drinks', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start night', exact: true })).toHaveCount(0);
   await user.client.auth.signOut();
+});
+
+test('exactly one logged drink can adjust upward after refresh and reconnect', async ({
+  page,
+  context,
+}, info) => {
+  test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local backend required.');
+  const user = await account('One Drink Regression');
+  const created = await user.client.rpc('start_night_out', {
+    p_creation_key: randomUUID(),
+    p_title: `One drink ${info.project.name}`,
+    p_timezone: 'Africa/Nairobi',
+    p_ends_at: new Date(Date.now() + 7_200_000).toISOString(),
+    p_host_plan: [
+      {
+        label: 'Beer',
+        category: 'beer',
+        volumeMl: 330,
+        abvPercent: 5,
+        plannedQuantity: 4,
+        isQuickLog: true,
+      },
+    ],
+    p_guests: [],
+  });
+  expect(created.error).toBeNull();
+  const nightId = (created.data as { nightId: string }).nightId;
+  try {
+    await login(page, user);
+    await page.goto(`/night/${nightId}`);
+    await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+    await expect(page.getByTestId('drink-count')).toHaveText('1');
+    const before = await snapshot(user.client, nightId);
+    const historicalLog = before.members.find((member) => member.role === 'host')?.drinkLogs[0];
+    expect(historicalLog).toBeDefined();
+
+    await page.reload();
+    await context.setOffline(true);
+    await context.setOffline(false);
+    await page.reload();
+    await page.getByRole('button', { name: 'Adjust', exact: true }).click();
+    const plan = page.getByRole('dialog', { name: /One Drink Regression's plan/ });
+    await plan.getByLabel('Quantity').fill('6');
+    await plan.getByRole('button', { name: 'Save plan', exact: true }).click();
+    await expect(plan).toHaveCount(0);
+    await expect(page.getByTestId('drink-count')).toHaveText('1');
+
+    await expect
+      .poll(async () => {
+        const current = await snapshot(user.client, nightId);
+        const member = current.members.find((item) => item.role === 'host');
+        return {
+          logs: member?.drinkLogs.map((log) => log.id),
+          quantity: member?.planItems.find((item) => item.archivedAt === null)?.plannedQuantity,
+        };
+      })
+      .toEqual({ logs: [historicalLog?.id], quantity: 6 });
+  } finally {
+    await context.setOffline(false).catch(() => {});
+    await user.client.rpc('end_night', { p_night_id: nightId });
+    await user.client.auth.signOut();
+  }
+});
+
+test('catch-up keeps every missed entry through warnings, refresh and offline recovery', async ({
+  page,
+  context,
+}, info) => {
+  test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local backend required.');
+  const user = await account('Catch-up Tracker');
+  const created = await user.client.rpc('start_night_out', {
+    p_creation_key: randomUUID(),
+    p_title: `Catch-up ${info.project.name}`,
+    p_timezone: 'Africa/Nairobi',
+    p_ends_at: new Date(Date.now() + 7_200_000).toISOString(),
+    p_host_plan: [
+      {
+        label: 'Beer',
+        category: 'beer',
+        volumeMl: 330,
+        abvPercent: 5,
+        plannedQuantity: 1,
+        isQuickLog: true,
+      },
+    ],
+    p_guests: [],
+  });
+  expect(created.error).toBeNull();
+  const nightId = (created.data as { nightId: string }).nightId;
+  try {
+    await login(page, user);
+    await page.goto(`/night/${nightId}`);
+    await page.getByRole('button', { name: 'Manage', exact: true }).click();
+    await page.getByRole('button', { name: 'Catch up', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText('Catch-up Tracker');
+    await expect(dialog).toContainText('Drinks will be logged as Beer.');
+    for (let i = 0; i < 3; i++)
+      await dialog.getByRole('button', { name: 'Add one Drinks', exact: true }).click();
+    for (let i = 0; i < 2; i++)
+      await dialog.getByRole('button', { name: 'Add one Chasers', exact: true }).click();
+    await context.setOffline(true);
+    await expect(page.getByText('Offline', { exact: true }).first()).toBeVisible();
+    await dialog.getByRole('button', { name: 'Add missed entries', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator('.pending-entry')).toHaveCount(5);
+    await context.setOffline(false);
+    await expect(page.getByRole('button', { name: 'Review', exact: true })).toHaveCount(2);
+    await page.reload();
+    await page.getByRole('button', { name: 'Manage', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Review', exact: true })).toHaveCount(2);
+    for (let remaining = 2; remaining > 0; remaining--) {
+      await page.getByRole('button', { name: 'Review', exact: true }).first().click();
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Log anyway', exact: true })
+        .click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Review', exact: true })).toHaveCount(
+        remaining - 1,
+      );
+    }
+    await expect
+      .poll(async () => {
+        const current = await snapshot(user.client, nightId);
+        const member = current.members.find((item) => item.role === 'host');
+        return [member?.drinkLogs.length, member?.waterLogs.length];
+      })
+      .toEqual([3, 2]);
+  } finally {
+    await context.setOffline(false);
+    await user.client.rpc('end_night', { p_night_id: nightId });
+    await user.client.auth.signOut();
+  }
+});
+
+test('completed-night memories upload privately and remain uploader-deletable', async ({
+  page,
+  context,
+}, info) => {
+  test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local backend required.');
+  const host = await account('Photo Host');
+  const outsider = await account('Photo Outsider');
+  const created = await host.client.rpc('start_night_out', {
+    p_creation_key: randomUUID(),
+    p_title: `Memory night ${info.project.name}`,
+    p_timezone: 'Africa/Nairobi',
+    p_ends_at: new Date(Date.now() + 7_200_000).toISOString(),
+    p_host_plan: [],
+    p_guests: [],
+  });
+  expect(created.error).toBeNull();
+  const nightId = (created.data as { nightId: string }).nightId;
+  const observer = await context.newPage();
+  try {
+    await login(page, host);
+    await page.goto(`/night/${nightId}`);
+    await page.getByRole('button', { name: 'Manage', exact: true }).click();
+    await page.getByRole('button', { name: 'End night and view summary' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'End night', exact: true }).click();
+    await expect(page).toHaveURL(`/night/${nightId}/summary`);
+    await expect(page.getByRole('heading', { name: 'Photos & memories' })).toBeVisible();
+    await observer.goto(`/night/${nightId}/summary`);
+    await expect(observer.getByText('No photos yet', { exact: true })).toBeVisible();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'memory.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    });
+    await expect(page.getByRole('img', { name: 'Uploaded by Photo Host' })).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Uploaded by Photo Host' })).toHaveJSProperty(
+      'naturalWidth',
+      1,
+    );
+    await expect(observer.getByRole('img', { name: 'Uploaded by Photo Host' })).toBeVisible();
+    const { data: rows, error: rowsError } = await host.client
+      .from('night_photos')
+      .select('object_path')
+      .eq('night_id', nightId)
+      .is('deleted_at', null)
+      .single();
+    expect(rowsError).toBeNull();
+    const unauthorized = await outsider.client.storage
+      .from('night-memories')
+      .createSignedUrl(rows?.object_path ?? '', 60);
+    expect(unauthorized.error).not.toBeNull();
+
+    const signed = await host.client.storage
+      .from('night-memories')
+      .createSignedUrl(rows?.object_path ?? '', 60);
+    expect(signed.error).toBeNull();
+    if (!signed.data) throw new Error('Photo signing failed.');
+    expect((await fetch(signed.data.signedUrl)).ok).toBe(true);
+    await page.getByRole('button', { name: 'View photo by Photo Host' }).click();
+    await expect(page.getByRole('dialog').getByRole('img')).toBeVisible();
+    await page.getByRole('button', { name: 'Close dialog' }).click();
+
+    await page.getByRole('button', { name: 'Delete your photo' }).click();
+    await expect(page.getByRole('img', { name: 'Uploaded by Photo Host' })).toHaveCount(0);
+    // A previously issued URL must no longer retrieve a deleted object. Merely
+    // hiding metadata or denying a new signature leaves the file behind.
+    expect((await fetch(signed.data.signedUrl)).ok).toBe(false);
+    await observer.bringToFront();
+    await expect(observer.getByText('No photos yet', { exact: true })).toBeVisible({
+      timeout: 35_000,
+    });
+    await expect
+      .poll(async () => {
+        const result = await host.client
+          .from('night_photos')
+          .select('id', { count: 'exact', head: true })
+          .eq('night_id', nightId)
+          .is('deleted_at', null);
+        return result.count;
+      })
+      .toBe(0);
+  } finally {
+    await observer.close();
+    await host.client.auth.signOut();
+    await outsider.client.auth.signOut();
+  }
+});
+
+test('a host adds and selects a managed guest mid-night with realtime visibility', async ({
+  page,
+  context,
+}, info) => {
+  test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local backend required.');
+  const host = await account('Tracker Host');
+  const created = await host.client.rpc('start_night_out', {
+    p_creation_key: randomUUID(),
+    p_title: `Late guest ${info.project.name}`,
+    p_timezone: 'Africa/Nairobi',
+    p_ends_at: new Date(Date.now() + 7_200_000).toISOString(),
+    p_host_plan: [],
+    p_guests: [],
+  });
+  expect(created.error).toBeNull();
+  const nightId = (created.data as { nightId: string }).nightId;
+  const observer = await context.newPage();
+  try {
+    await login(page, host);
+    await page.goto(`/night/${nightId}`);
+    await observer.goto(`/night/${nightId}`);
+    await expect(
+      observer.getByRole('heading', { name: 'Tracker Host', exact: true }),
+    ).toBeVisible();
+    await expect(observer.getByText('Connected', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Add person', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add person' });
+    await dialog.getByLabel('Display name').fill('Late Guest');
+    await dialog.getByRole('button', { name: 'Chaser only', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Add person', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Late Guest', exact: true })).toBeVisible();
+    await expect(page.getByText('Managed guest', { exact: true }).first()).toBeVisible();
+    await expect(observer.getByRole('button', { name: /Late Guest.*Managed guest/ })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Chaser', exact: true }).click();
+    await expect(page.locator('[data-tour="plan"]')).toContainText('1 chaser');
+    await page.getByRole('button', { name: /Tracker Host.*Account/ }).click();
+    await expect(page.getByRole('heading', { name: 'Tracker Host', exact: true })).toBeVisible();
+
+    const current = await snapshot(host.client, nightId);
+    const late = current.members.find((member) => member.displayName === 'Late Guest');
+    expect(late?.memberType).toBe('guest');
+    expect(Date.parse(late?.joinedAt ?? '')).toBeGreaterThan(Date.parse(current.night.startsAt));
+    expect(late?.drinkLogs).toHaveLength(0);
+    expect(late?.waterLogs).toHaveLength(1);
+  } finally {
+    await observer.close();
+    await host.client.rpc('end_night', { p_night_id: nightId });
+    await host.client.auth.signOut();
+  }
 });
 
 test('two accounts: setup refresh, drink confirmations, live check-ins, guest routing, names and departed history', async ({
@@ -249,7 +524,7 @@ test('two accounts: setup refresh, drink confirmations, live check-ins, guest ro
     await recipient.goto(`/night/${nightId}?setup=1&keep=yes`);
     await recipient
       .getByRole('dialog')
-      .getByRole('button', { name: 'Water only', exact: true })
+      .getByRole('button', { name: 'Chaser only', exact: true })
       .click();
     await recipient.getByRole('button', { name: 'Save plan', exact: true }).click();
     await expect(recipient.getByRole('dialog')).toHaveCount(0);

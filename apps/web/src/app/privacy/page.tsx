@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <p>
           Supabase handles your email, password authentication, sessions, and email confirmation.
           DWD stores your display name and adult confirmation, night membership, plans, alcohol and
-          water entries, corrections, alerts, invitation metadata, and audit events. Vercel hosts
+          chaser entries, corrections, alerts, invitation metadata, and audit events. Vercel hosts
           the website; Supabase provides the database and live updates. Hosting and authentication
           providers also process technical request information needed to operate their services.
         </p>
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
         </p>
         <h2>On this device</h2>
         <p>
-          Authentication uses cookies. Pending drink and water entries are stored in this browser
+          Authentication uses cookies. Pending drink and chaser entries are stored in this browser
           for retry and separated by account and night. Signing out does not erase those entries.
           Remove unwanted pending entries from the night or summary screen.
         </p>

@@ -64,7 +64,7 @@ export function HistoryScreen({
                       {formatNightDateTime(night.endedAt, night.timezone)}
                       <br />
                       {night.alcoholCount} {night.alcoholCount === 1 ? 'drink' : 'drinks'} ·{' '}
-                      {night.waterCount} water
+                      {night.waterCount} {night.waterCount === 1 ? 'chaser' : 'chasers'}
                     </span>
                   </div>
                   <span className="row">

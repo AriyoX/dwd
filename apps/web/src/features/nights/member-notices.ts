@@ -39,7 +39,7 @@ export function memberNotices(
     });
   };
   if (determinePersonalPaceAlert(active, member.id, now))
-    add('personal_pace', 'Drinks are adding up quickly. Consider a pause and some water.');
+    add('personal_pace', 'Drinks are adding up quickly. Consider a pause and a chaser.');
   const status = determinePlanStatus(
     calculateLoggedEthanol(active),
     calculatePlanTotal(member.planItems),
@@ -48,8 +48,8 @@ export function memberNotices(
     add(
       'plan_reached',
       status === 'exceeded'
-        ? 'You are over your plan. Consider switching to water.'
-        : 'You have reached your plan. Consider switching to water.',
+        ? 'You are over your plan. Consider switching to a chaser.'
+        : 'You have reached your plan. Consider switching to a chaser.',
     );
   return notices;
 }

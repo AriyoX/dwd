@@ -45,6 +45,15 @@ self.addEventListener('push', (event) => {
         body,
         tag: typeof payload.tag === 'string' ? payload.tag : undefined,
         data: { url },
+        ...(url.startsWith('/night/')
+          ? {
+              actions: [
+                { action: 'log-drink', title: 'Log drink' },
+                { action: 'log-chaser', title: 'Log chaser' },
+                { action: 'open-dwd', title: 'Open dwd' },
+              ],
+            }
+          : {}),
       });
     })(),
   );
@@ -52,7 +61,8 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = safePath(event.notification.data?.url);
+  const baseUrl = safePath(event.notification.data?.url);
+  const url = fastActionPath(baseUrl, event.action);
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       const existing = clients.find((client) => 'focus' in client);
@@ -75,4 +85,12 @@ function safePath(value) {
   } catch {
     return '/account';
   }
+}
+
+function fastActionPath(value, action) {
+  if (!value.startsWith('/night/')) return value;
+  if (action !== 'log-drink' && action !== 'log-chaser') return value;
+  const url = new URL(value, self.location.origin);
+  url.searchParams.set('fast', action === 'log-drink' ? 'drink' : 'chaser');
+  return `${url.pathname}${url.search}${url.hash}`;
 }

@@ -29,6 +29,16 @@ export async function updateNotificationPreferences(
   return unwrapRpc<NotificationPreferences>(data, error);
 }
 
+export async function setReminderPause(
+  client: SupabaseClient<Database>,
+  minutes: 30 | 60 | 120 | 240 | null,
+): Promise<NotificationPreferences> {
+  const { data, error } = await client.rpc('set_reminder_pause', {
+    ...(minutes === null ? {} : { p_minutes: minutes }),
+  });
+  return unwrapRpc<NotificationPreferences>(data, error);
+}
+
 export async function getMyNotificationEvents(
   client: SupabaseClient<Database>,
   limit = 50,

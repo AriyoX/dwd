@@ -9,6 +9,7 @@ import {
 } from '@dwd/core';
 import { Card, Eyebrow } from '@/components/ui/card';
 import { Wordmark } from '@/components/layout/wordmark';
+import { MemoriesGallery } from '@/features/photos/memories-gallery';
 
 export function SummaryScreen({
   snapshot,
@@ -72,6 +73,22 @@ export function SummaryScreen({
             const planGrams = calculatePlanTotal(
               member.planItems.filter((item) => item.archivedAt === null),
             );
+            const addedLater = [
+              ...member.drinkLogs
+                .filter(
+                  (log) =>
+                    log.deletedAt === null &&
+                    Date.parse(log.createdAt) - Date.parse(log.consumedAt) > 2 * 60_000,
+                )
+                .map((log) => ({ id: log.id, label: log.labelSnapshot, at: log.consumedAt })),
+              ...member.waterLogs
+                .filter(
+                  (log) =>
+                    log.deletedAt === null &&
+                    Date.parse(log.createdAt) - Date.parse(log.consumedAt) > 2 * 60_000,
+                )
+                .map((log) => ({ id: log.id, label: 'Chaser', at: log.consumedAt })),
+            ];
             return (
               <Card
                 data-tour={index === 0 ? 'history-summary' : undefined}
@@ -100,20 +117,36 @@ export function SummaryScreen({
                   />
                   <SummaryValue
                     label="Plan"
-                    value={planGrams === 0 ? 'Water only' : `${planGrams.toFixed(1)} g`}
+                    value={planGrams === 0 ? 'Chaser only' : `${planGrams.toFixed(1)} g`}
                   />
                   <SummaryValue label="After planned end" value={String(totals.afterEndCount)} />
-                  <SummaryValue label="Water" value={String(totals.waterCount)} />
+                  <SummaryValue label="Chasers" value={String(totals.waterCount)} />
                 </div>
                 <p className="muted small">
                   {buildDrinkBreakdown(member.drinkLogs)
                     .map((entry) => `${entry.count} ${entry.label}`)
                     .join(' · ') || 'No alcohol entries'}
                 </p>
+                {addedLater.length > 0 ? (
+                  <details className="small">
+                    <summary>{addedLater.length} added later</summary>
+                    <ul className="compact-list">
+                      {addedLater.map((entry) => (
+                        <li key={entry.id}>
+                          {entry.label} · about{' '}
+                          {formatNightDateTime(entry.at, snapshot.night.timezone)}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
               </Card>
             );
           })}
         </section>
+        {sample ? null : (
+          <MemoriesGallery nightId={snapshot.night.id} currentUserId={snapshot.currentUserId} />
+        )}
         <Link className="button button-primary" href="/home">
           Back to home
         </Link>

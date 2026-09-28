@@ -169,7 +169,7 @@ export function NotificationInbox({
         </button>
       )}
       {nightId !== undefined && !open && visible[0] ? (
-        <p className="notification-preview muted small">{visible[0].title}</p>
+        <p className="notification-preview muted small">{chaserCopy(visible[0].title)}</p>
       ) : null}
       {error ? (
         <p className="error-box" role="status">
@@ -190,9 +190,9 @@ export function NotificationInbox({
                 data-read={event.acknowledgedAt !== null}
                 key={event.id}
               >
-                <strong>{event.title}</strong>
+                <strong>{chaserCopy(event.title)}</strong>
                 {event.body.replace(/[.!?]+$/, '') !== event.title.replace(/[.!?]+$/, '') ? (
-                  <p>{event.body}</p>
+                  <p>{chaserCopy(event.body)}</p>
                 ) : null}
                 <time className="muted small" dateTime={event.createdAt} title={timeZone}>
                   {new Intl.DateTimeFormat('en-GB', {
@@ -238,4 +238,8 @@ export function NotificationInbox({
       </div>
     </section>
   );
+}
+
+function chaserCopy(value: string): string {
+  return value.replace(/\bwaters\b/gi, 'chasers').replace(/\bwater\b/gi, 'chaser');
 }

@@ -40,6 +40,7 @@ export function NightRealtimeProvider({
     if (!online) return;
     queueMicrotask(() => setStatus('reconnecting'));
     const supabase = createBrowserSupabaseClient();
+    const lifecycle = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const invalidate = () => {
       if (timer !== undefined) clearTimeout(timer);
@@ -86,17 +87,29 @@ export function NightRealtimeProvider({
       );
     }
 
-    channel.subscribe((subscriptionStatus) => {
-      if (subscriptionStatus === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) setStatus('connected');
-      else if (
-        subscriptionStatus === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
-        subscriptionStatus === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
-      ) {
-        setStatus('reconnecting');
-      } else {
-        setStatus(navigator.onLine ? 'reconnecting' : 'offline');
+    // The SSR browser client restores its session asynchronously. Explicitly attach
+    // that access token before subscribing so RLS-protected changes are not silently
+    // filtered when a night opens immediately after navigation or reconnection.
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) {
+        await supabase.realtime.setAuth(data.session.access_token);
       }
-    });
+      if (lifecycle.signal.aborted) return;
+
+      channel.subscribe((subscriptionStatus) => {
+        if (lifecycle.signal.aborted) return;
+        if (subscriptionStatus === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) setStatus('connected');
+        else if (
+          subscriptionStatus === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
+          subscriptionStatus === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
+        ) {
+          setStatus('reconnecting');
+        } else {
+          setStatus(navigator.onLine ? 'reconnecting' : 'offline');
+        }
+      });
+    })();
 
     // A subscribed socket is not proof every invalidation was delivered.
     // Recover snapshots periodically while the user is viewing this night.
@@ -105,6 +118,7 @@ export function NightRealtimeProvider({
     }, 15_000);
 
     return () => {
+      lifecycle.abort();
       if (timer !== undefined) clearTimeout(timer);
       window.clearInterval(reconcileTimer);
       void supabase.removeChannel(channel);

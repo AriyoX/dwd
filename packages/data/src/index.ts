@@ -4,6 +4,7 @@ export * from './invites/invites';
 export * from './members/members';
 export * from './nights/nights';
 export * from './notifications/notifications';
+export * from './photos/photos';
 export * from './plans/plans';
 export * from './realtime/reconcile';
 export * from './shared/rpc';

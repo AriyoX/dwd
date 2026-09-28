@@ -84,7 +84,9 @@ export function TourProvider({
     (id: string) => {
       const next = tourSteps.find((item) => item.id === id);
       if (!next) return;
-      setDestination(next.route);
+      // The route state exposed by Next excludes the hash. Keep it in the
+      // navigation target for scrolling, but do not wait for it as page state.
+      setDestination(next.route.split('#')[0] ?? next.route);
       if (canChangeTourInPlace(window.location.pathname, next.route)) {
         // Next synchronizes search params without refetching the current page.
         window.history.replaceState(null, '', next.route);
@@ -294,7 +296,19 @@ export function TourProvider({
           onNext={() => {
             const next = tourSteps[stepIndex + 1];
             if (next) goTo(next.id);
-            else finish();
+            else {
+              const setup = document.querySelector<HTMLElement>('[data-tour="reminders"]');
+              const buttons = setup ? [...setup.querySelectorAll<HTMLButtonElement>('button')] : [];
+              const action = buttons.find((button) =>
+                /^(Enable reminders|Install dwd)$/.test(button.textContent.trim()),
+              );
+              action?.click();
+              // Keep the cleanup effect from treating the just-finished tour
+              // query as a stale deep link before Next observes replaceState.
+              setReturnDestination('/account');
+              finish(false);
+              window.history.replaceState(null, '', '/account#notifications');
+            }
           }}
           onTargetAction={goTo}
         />

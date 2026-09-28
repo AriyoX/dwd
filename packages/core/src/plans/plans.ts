@@ -28,6 +28,17 @@ export function calculateLoggedEthanol(logs: readonly AlcoholLog[]): number {
   );
 }
 
+export function validateProspectivePlan(
+  items: readonly PlanItemInput[],
+  logs: readonly AlcoholLog[],
+): { valid: true } | { valid: false; plannedGrams: number; loggedGrams: number } {
+  const plannedGrams = calculatePlanTotal(items);
+  const loggedGrams = calculateLoggedEthanol(logs);
+  return plannedGrams + NUMERIC_TOLERANCE_GRAMS >= loggedGrams
+    ? { valid: true }
+    : { valid: false, plannedGrams, loggedGrams };
+}
+
 export function projectedPlanStatus(
   logs: readonly AlcoholLog[],
   planItems: readonly PlanItemInput[],

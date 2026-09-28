@@ -513,6 +513,7 @@ export type Database = {
           managed_by_user_id: string | null;
           member_type: string;
           night_id: string;
+          participant_key: string | null;
           plan_revision: number;
           plan_setup_completed_at: string | null;
           role: string;
@@ -527,6 +528,7 @@ export type Database = {
           managed_by_user_id?: string | null;
           member_type: string;
           night_id: string;
+          participant_key?: string | null;
           plan_revision?: number;
           plan_setup_completed_at?: string | null;
           role?: string;
@@ -541,6 +543,7 @@ export type Database = {
           managed_by_user_id?: string | null;
           member_type?: string;
           night_id?: string;
+          participant_key?: string | null;
           plan_revision?: number;
           plan_setup_completed_at?: string | null;
           role?: string;
@@ -600,6 +603,56 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      night_photos: {
+        Row: {
+          byte_size: number;
+          created_at: string;
+          deleted_at: string | null;
+          height: number | null;
+          id: string;
+          mime_type: string;
+          night_id: string;
+          object_path: string;
+          uploaded_by_user_id: string | null;
+          uploader_name: string;
+          width: number | null;
+        };
+        Insert: {
+          byte_size: number;
+          created_at?: string;
+          deleted_at?: string | null;
+          height?: number | null;
+          id: string;
+          mime_type: string;
+          night_id: string;
+          object_path: string;
+          uploaded_by_user_id?: string | null;
+          uploader_name: string;
+          width?: number | null;
+        };
+        Update: {
+          byte_size?: number;
+          created_at?: string;
+          deleted_at?: string | null;
+          height?: number | null;
+          id?: string;
+          mime_type?: string;
+          night_id?: string;
+          object_path?: string;
+          uploaded_by_user_id?: string | null;
+          uploader_name?: string;
+          width?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'night_photos_night_id_fkey';
+            columns: ['night_id'];
+            isOneToOne: false;
+            referencedRelation: 'nights';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       notification_deliveries: {
         Row: {
@@ -733,6 +786,7 @@ export type Database = {
           periodic_water_enabled: boolean;
           personal_pace_enabled: boolean;
           planned_end_enabled: boolean;
+          reminders_muted_until: string | null;
           updated_at: string;
           user_id: string;
         };
@@ -743,6 +797,7 @@ export type Database = {
           periodic_water_enabled?: boolean;
           personal_pace_enabled?: boolean;
           planned_end_enabled?: boolean;
+          reminders_muted_until?: string | null;
           updated_at?: string;
           user_id: string;
         };
@@ -753,6 +808,7 @@ export type Database = {
           periodic_water_enabled?: boolean;
           personal_pace_enabled?: boolean;
           planned_end_enabled?: boolean;
+          reminders_muted_until?: string | null;
           updated_at?: string;
           user_id?: string;
         };
@@ -985,6 +1041,15 @@ export type Database = {
         Args: { p_display_name: string; p_night_id: string; p_plan: Json };
         Returns: Json;
       };
+      add_managed_guest_v2: {
+        Args: {
+          p_display_name: string;
+          p_night_id: string;
+          p_plan: Json;
+          p_request_key: string;
+        };
+        Returns: Json;
+      };
       can_display_notification: {
         Args: { p_event_id: string };
         Returns: boolean;
@@ -1031,6 +1096,7 @@ export type Database = {
       get_invite_preview: { Args: { p_token_hash: string }; Returns: Json };
       get_my_notification_events: { Args: { p_limit?: number }; Returns: Json };
       get_night_snapshot: { Args: { p_night_id: string }; Returns: Json };
+      get_night_photos: { Args: { p_night_id: string }; Returns: Json };
       get_notification_preferences: { Args: never; Returns: Json };
       leave_night: { Args: { p_night_id: string }; Returns: Json };
       log_drink: {
@@ -1065,6 +1131,19 @@ export type Database = {
       };
       remove_managed_guest: { Args: { p_member_id: string }; Returns: Json };
       remove_push_subscription: { Args: { p_endpoint: string }; Returns: Json };
+      register_night_photo: {
+        Args: {
+          p_byte_size: number;
+          p_height?: number;
+          p_mime_type: string;
+          p_night_id: string;
+          p_object_path: string;
+          p_photo_id: string;
+          p_width?: number;
+        };
+        Returns: Json;
+      };
+      delete_night_photo: { Args: { p_photo_id: string }; Returns: Json };
       replace_member_plan: {
         Args: { p_items: Json; p_member_id: string };
         Returns: Json;
@@ -1099,6 +1178,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      set_reminder_pause: { Args: { p_minutes?: number }; Returns: Json };
       soft_delete_activity: {
         Args: { p_kind: string; p_log_id: string };
         Returns: Json;

@@ -7,11 +7,13 @@ export async function addManagedGuest(
   nightId: string,
   displayName: string,
   plan: readonly PlanItemInput[],
+  requestKey: string,
 ): Promise<NightSnapshot> {
-  const { data, error } = await client.rpc('add_managed_guest', {
+  const { data, error } = await client.rpc('add_managed_guest_v2', {
     p_night_id: nightId,
     p_display_name: displayName,
     p_plan: toJson(plan),
+    p_request_key: requestKey,
   });
   return unwrapRpc<NightSnapshot>(data, error);
 }

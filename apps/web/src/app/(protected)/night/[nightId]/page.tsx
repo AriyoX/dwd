@@ -1,7 +1,7 @@
 import { TourNightScreen } from '@/features/tour/tour-screens';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { getNightSnapshot } from '@dwd/data';
+import { getNightSnapshot, getNotificationPreferences } from '@dwd/data';
 import { ActiveNightClient } from '@/features/nights/active-night-client';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -23,6 +23,7 @@ export default async function ActiveNightPage({
   if (snapshot.night.status === 'ended') redirect(`/night/${nightId}/summary`);
   const currentMember = snapshot.members.find((member) => member.id === snapshot.currentMemberId);
   if (currentMember === undefined) notFound();
+  const notificationPreferences = await getNotificationPreferences(client);
   if (query['setup'] === '1' && currentMember.planSetupCompletedAt !== null) {
     const next = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
@@ -37,6 +38,8 @@ export default async function ActiveNightPage({
       initialSnapshot={snapshot}
       openInviteInitially={query['invite'] === '1'}
       setupPlanInitially={query['setup'] === '1' || currentMember.planSetupCompletedAt === null}
+      fastInitially={query['fast'] === 'drink' || query['fast'] === 'chaser' ? query['fast'] : null}
+      initialNotificationPreferences={notificationPreferences}
     />
   );
 }

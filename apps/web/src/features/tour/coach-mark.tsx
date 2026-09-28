@@ -242,6 +242,7 @@ export function CoachMark({
   }, [screen, step, waiting]);
 
   const ready = !waiting && geometry !== null;
+  const finalStep = index === tourSteps.length - 1;
   return createPortal(
     <div data-tour-overlay hidden={suspended}>
       {ready ? (
@@ -323,7 +324,7 @@ export function CoachMark({
         </div>
         <div className="tour-actions">
           <button type="button" className="button button-ghost" onClick={onClose}>
-            Skip tour
+            {finalStep ? 'Maybe later' : 'Skip tour'}
           </button>
           <div className="row">
             {index > 0 && (
@@ -332,7 +333,7 @@ export function CoachMark({
               </button>
             )}
             <button type="button" className="button button-primary" onClick={onNext}>
-              {index === tourSteps.length - 1 ? 'Finish tour' : 'Next'}
+              {finalStep ? 'Enable reminders' : 'Next'}
             </button>
           </div>
         </div>

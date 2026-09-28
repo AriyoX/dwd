@@ -18,6 +18,55 @@ import { TimedNotice } from '@/components/feedback/timed-notice';
 import { withPendingDrinks } from './logged-drinks';
 export { DrinkChooser } from './drink-chooser';
 
+export function ParticipantSwitcher({
+  members,
+  selectedId,
+  onSelect,
+  onAdd,
+}: {
+  members: readonly MemberSnapshot[];
+  selectedId: string;
+  onSelect: (memberId: string) => void;
+  onAdd?: (() => void) | undefined;
+}) {
+  if (members.length < 2 && onAdd === undefined) return null;
+
+  return (
+    <section className="participant-switcher" aria-label="Choose who you are logging for">
+      <div className="row-between">
+        <strong className="small">Logging for</strong>
+        {onAdd ? (
+          <Button type="button" variant="ghost" onClick={onAdd}>
+            <Plus aria-hidden="true" size={18} /> Add person
+          </Button>
+        ) : null}
+      </div>
+      <div className="participant-switcher-track" role="group">
+        {members.map((member) => {
+          const selected = member.id === selectedId;
+          return (
+            <button
+              key={member.id}
+              type="button"
+              aria-pressed={selected}
+              className={`participant-chip${selected ? ' participant-chip-selected' : ''}`}
+              onClick={() => onSelect(member.id)}
+            >
+              <span className="avatar" aria-hidden="true">
+                {initials(member.displayName)}
+              </span>
+              <span>
+                <strong>{member.displayName}</strong>
+                <small>{member.memberType === 'guest' ? 'Managed guest' : 'Account'}</small>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function TonightView({
   member,
   alerts,
@@ -31,11 +80,13 @@ export function TonightView({
   now,
   onEditPlan,
   onDismissAlert,
+  managed = false,
 }: {
   night?: Night;
   now?: Date;
   onEditPlan?: () => void;
   onDismissAlert?: (id: string) => void;
+  managed?: boolean | undefined;
   member: MemberSnapshot;
   alerts: NightSnapshot['alerts'];
   busy: boolean;
@@ -61,13 +112,22 @@ export function TonightView({
       {alerts.map((alert) => (
         <TimedNotice key={alert.id} onDismiss={() => onDismissAlert?.(alert.id)}>
           <BellRing aria-hidden="true" size={20} />
-          <span>{alert.message}</span>
+          <span>{chaserCopy(alert.message)}</span>
         </TimedNotice>
       ))}
       <Card className="personal-card stack-lg">
-        <div className="row-between">
-          <div>
-            <h2>{member.displayName}</h2>
+        <div className="logging-context row-between">
+          <div className="row">
+            <span className="avatar avatar-large" aria-hidden="true">
+              {initials(member.displayName)}
+            </span>
+            <div>
+              <p className="muted small">Logging for</p>
+              <h2>{member.displayName}</h2>
+              <p className="muted small">
+                {managed ? 'Managed guest' : member.memberType === 'guest' ? 'Guest' : 'Account'}
+              </p>
+            </div>
           </div>
           <span
             className={`pill${totals.ethanolGrams > 0 && planStatus !== 'within_plan' ? ' pill-warning' : ''}`}
@@ -75,7 +135,7 @@ export function TonightView({
             {member.planSetupCompletedAt === null
               ? 'Plan not set'
               : planTotal === 0 && totals.ethanolGrams === 0
-                ? 'Water only'
+                ? 'Chaser only'
                 : planStatus === 'exceeded'
                   ? 'Over plan'
                   : planStatus === 'reached'
@@ -110,12 +170,19 @@ export function TonightView({
             </div>
             {onEditPlan && (
               <Button type="button" variant="ghost" disabled={busy} onClick={onEditPlan}>
-                Change
+                Adjust
               </Button>
             )}
           </div>
         )}
-        <Button data-tour="log-drink" type="button" full disabled={busy} onClick={onQuick}>
+        <Button
+          data-tour="log-drink"
+          data-fast-log="drink"
+          type="button"
+          full
+          disabled={busy}
+          onClick={onQuick}
+        >
           <Plus aria-hidden="true" size={26} />{' '}
           {quick === undefined ? 'Add an alcohol plan' : `Log ${quick.label}`}
         </Button>
@@ -132,10 +199,11 @@ export function TonightView({
             type="button"
             variant="secondary"
             className="button-water"
+            data-fast-log="chaser"
             disabled={busy}
             onClick={onWater}
           >
-            <Droplets aria-hidden="true" size={19} /> Water
+            <Droplets aria-hidden="true" size={19} /> Chaser
           </Button>
           <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
             <Undo2 aria-hidden="true" size={19} /> Undo
@@ -144,22 +212,22 @@ export function TonightView({
         <div className="plan-summary" data-tour="plan">
           <span>
             Your plan · {totals.waterCount + pendingWater}{' '}
-            {totals.waterCount + pendingWater === 1 ? 'water entry' : 'water entries'}
+            {totals.waterCount + pendingWater === 1 ? 'chaser' : 'chasers'}
           </span>
           <strong>
             {member.planItems
               .map((item) => `${item.plannedQuantity} ${item.label.toLowerCase()}`)
-              .join(' · ') || 'Water only'}
+              .join(' · ') || 'Chaser only'}
           </strong>
         </div>
         {pacing && (
           <p className="info-box small" data-testid="plan-pacing">
             {pacing.status === 'finished'
-              ? 'Your plan or planned time is complete. Consider switching to water.'
+              ? 'Your plan or planned time is complete. Consider switching to a chaser.'
               : pacing.status === 'packed'
                 ? 'This plan puts drinks close together. Consider planning fewer drinks.'
                 : pacing.status === 'pause'
-                  ? 'Pause for now. Consider water or skipping the remaining drinks.'
+                  ? 'Pause for now. Consider a chaser or skipping the remaining drinks.'
                   : pacing.waitMinutes > 0
                     ? `Take a break: about ${pacing.waitMinutes} min until your next planned drink.`
                     : `Plan spacing: about ${pacing.intervalMinutes} min per main drink.`}{' '}
@@ -271,7 +339,7 @@ export function ParticipantCard({
           {member.planSetupCompletedAt === null
             ? 'Plan not set'
             : member.planItems.length === 0
-              ? 'Water only'
+              ? 'Chaser only'
               : `Planned · ${planned} ${planned === 1 ? 'drink' : 'drinks'}`}
         </span>
         {lastActivity === undefined ? null : (
@@ -285,7 +353,7 @@ export function ParticipantCard({
           className="warning-box row small"
           onDismiss={() => onDismissAlert?.(alert.id)}
         >
-          {alert.message}
+          {chaserCopy(alert.message)}
         </TimedNotice>
       ))}
       {breakdown.length === 0 ? (
@@ -306,7 +374,7 @@ export function ParticipantCard({
         </details>
       )}
       <p className="muted small">
-        Water: {totals.waterCount}
+        Chasers: {totals.waterCount}
         {pendingWater === 0 ? '' : ` · ${pendingWater} pending on this device`}
       </p>
       {guestNote ? <p className="muted small">{guestNote}</p> : null}
@@ -334,14 +402,14 @@ export function ParticipantCard({
               disabled={busy}
               onClick={onWater}
             >
-              <Droplets aria-hidden="true" size={18} /> Water
+              <Droplets aria-hidden="true" size={18} /> Chaser
             </Button>
             <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
               <Undo2 aria-hidden="true" size={18} /> Undo
             </Button>
           </div>
           <Button type="button" variant="ghost" onClick={onEditPlan}>
-            <Pencil aria-hidden="true" size={18} /> Edit {member.displayName}&apos;s plan
+            <Pencil aria-hidden="true" size={18} /> Adjust {member.displayName}&apos;s plan
           </Button>
           <Button type="button" variant="danger" onClick={onRemove}>
             Remove {member.displayName}
@@ -376,4 +444,8 @@ function relativeTime(value: string): string {
   if (minutes < 1) return 'now';
   if (minutes < 60) return `${minutes}m ago`;
   return `${Math.floor(minutes / 60)}h ago`;
+}
+
+function chaserCopy(value: string): string {
+  return value.replace(/\bwaters\b/gi, 'chasers').replace(/\bwater\b/gi, 'chaser');
 }

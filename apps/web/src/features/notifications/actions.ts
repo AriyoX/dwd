@@ -7,6 +7,7 @@ import {
   registerPushSubscription,
   removePushSubscription,
   sendCheckIn,
+  setReminderPause,
   updateNotificationPreferences,
 } from '@dwd/data';
 import type { CheckInResult, NotificationPreferences } from '@dwd/core';
@@ -18,7 +19,8 @@ const preferencesSchema = z.object({
   personalPaceEnabled: z.boolean(),
   plannedEndEnabled: z.boolean(),
   periodicWaterEnabled: z.boolean(),
-  periodicIntervalMinutes: z.union([z.literal(30), z.literal(60), z.literal(90)]),
+  periodicIntervalMinutes: z.union([z.literal(15), z.literal(30), z.literal(45), z.literal(60)]),
+  remindersMutedUntil: z.iso.datetime({ offset: true }).nullable(),
 });
 const checkInSchema = z.object({
   nightId: z.uuid(),
@@ -66,6 +68,20 @@ export async function acknowledgeNotificationAction(
     return { ok: true };
   } catch {
     return { ok: false, error: 'That notification could not be marked read.' };
+  }
+}
+
+export async function setReminderPauseAction(
+  input: unknown,
+): Promise<{ ok: true; data: NotificationPreferences } | { ok: false; error: string }> {
+  const parsed = z
+    .union([z.literal(30), z.literal(60), z.literal(120), z.literal(240), z.null()])
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Choose a valid pause.' };
+  try {
+    return { ok: true, data: await setReminderPause(await authenticatedClient(), parsed.data) };
+  } catch {
+    return { ok: false, error: 'Reminder pause could not be saved. Retry.' };
   }
 }
 

@@ -88,7 +88,7 @@ export async function getNightSnapshotAction(
 export async function replacePlanAction(input: unknown): Promise<NightActionResult<NightSnapshot>> {
   const parsed = replacePlanSchema.safeParse(input);
   if (!parsed.success)
-    return { ok: false, error: 'Choose water only, or check your plan and quick-log drink.' };
+    return { ok: false, error: 'Choose chaser only, or check your plan and quick-log drink.' };
   try {
     const client = await authenticatedClient();
     return {
@@ -101,6 +101,10 @@ export async function replacePlanAction(input: unknown): Promise<NightActionResu
       ),
     };
   } catch (error) {
+    const message =
+      typeof error === 'object' && error !== null && 'message' in error
+        ? String(error.message)
+        : '';
     if (
       typeof error === 'object' &&
       error !== null &&
@@ -112,7 +116,13 @@ export async function replacePlanAction(input: unknown): Promise<NightActionResu
         error: 'This plan changed in another tab. Reload and review it before saving.',
       };
     }
-    return { ok: false, error: 'You are not allowed to change this plan.' };
+    if (message.includes('below activity already logged')) {
+      return { ok: false, error: 'Your adjusted plan must cover the drinks already logged.' };
+    }
+    if (message.includes('invalid') || message.includes('quick-log')) {
+      return { ok: false, error: message };
+    }
+    return { ok: false, error: 'You are not allowed to adjust this plan.' };
   }
 }
 
@@ -128,10 +138,17 @@ export async function addGuestAction(input: unknown): Promise<NightActionResult<
         parsed.data.nightId,
         parsed.data.guest.displayName,
         parsed.data.guest.planItems,
+        parsed.data.requestKey,
       ),
     };
-  } catch {
-    return { ok: false, error: 'Only the host can add a managed guest.' };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error && error.message
+          ? error.message
+          : 'Only the host can add a managed guest.',
+    };
   }
 }
 

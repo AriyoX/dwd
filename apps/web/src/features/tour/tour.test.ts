@@ -51,6 +51,16 @@ describe('tour routes', () => {
     expect(stepAtLocation('/home', '?tour=group')).toBe(-1);
     expect(stepAtLocation('/night/tour', '?view=group&tour=log')).toBe(-1);
   });
+  it('finishes with deliberate reminder setup on the real settings UI', () => {
+    const finalStep = tourSteps.at(-1);
+    expect(finalStep).toMatchObject({
+      id: 'reminders',
+      route: '/account?tour=reminders#notifications',
+      target: 'reminders',
+      interactive: true,
+    });
+    expect(finalStep?.description).toContain('easy to forget');
+  });
   it('returns only to normal app pages and preserves a real invitation setup', () => {
     expect(normalReturnPath('/night/real?setup=1')).toBe('/night/real?setup=1');
     expect(normalReturnPath('/account')).toBe('/account');

@@ -52,7 +52,7 @@ export function EndedNightOutbox({
     setBusyKey(null);
     if (outcome.status === 'synced') {
       setMessage(
-        `${record.memberDisplayName}: ${record.kind === 'water' ? 'water' : 'drink'} saved.`,
+        `${record.memberDisplayName}: ${record.kind === 'water' ? 'chaser' : 'drink'} saved.`,
       );
       router.refresh();
     } else if (outcome.status === 'needs_confirmation') {
@@ -95,7 +95,7 @@ export function EndedNightOutbox({
               <strong>
                 {record.memberDisplayName} ·{' '}
                 {record.kind === 'water'
-                  ? 'Water'
+                  ? 'Chaser'
                   : (record.planItemLabel ?? record.drinkSnapshot?.label ?? 'Drink')}
               </strong>
               <span className="pill">

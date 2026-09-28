@@ -24,6 +24,7 @@ describe('database security invariants', () => {
     'night_alerts',
     'audit_events',
     'support_requests',
+    'night_photos',
   ];
 
   it.each(exposedTables)('enables RLS on %s', (table) => {
@@ -78,6 +79,7 @@ describe('database security invariants', () => {
       'water_logs_member_consumed_idx',
       'night_alerts_night_id_idx',
       'night_alerts_member_id_idx',
+      'night_photos_night_created_idx',
     ])
       expect(migration).toContain(marker);
   });
@@ -95,6 +97,19 @@ describe('database security invariants', () => {
       expect(migration).toContain(`function public.${operation}`);
     expect(migration).toContain('unique (actor_user_id, idempotency_key)');
     expect(migration).toContain("v_now > v_night.ended_at + interval '24 hours'");
+  });
+
+  it('keeps completed-night memories private and participant-scoped', () => {
+    for (const marker of [
+      "'night-memories', 'night-memories', false, 10485760",
+      'night_memories_select_participants',
+      'night_memories_insert_after_end',
+      'night_memories_delete_own',
+      'function public.register_night_photo',
+      "n.status = 'ended'",
+    ])
+      expect(migration).toContain(marker);
+    expect(migration).toContain('storage.foldername(name))[2] = (select auth.uid())::text');
   });
 });
 

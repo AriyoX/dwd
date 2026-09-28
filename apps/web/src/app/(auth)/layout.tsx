@@ -18,7 +18,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           </li>
           <li>
             <Droplets size={20} aria-hidden="true" />
-            <span>Log drinks &amp; water</span>
+            <span>Log drinks &amp; chasers</span>
             <span className="muted">02</span>
           </li>
           <li>

@@ -54,12 +54,15 @@ export async function logWaterAction(input: unknown): Promise<WaterLogResult> {
     return {
       status: 'permanently_rejected',
       code: 'invalid_input',
-      message: 'This water entry is invalid.',
+      message: 'This chaser entry is invalid.',
     };
   }
   try {
     const client = await authenticatedClient();
-    return await createWaterLog(client, parsed.data);
+    const result = await createWaterLog(client, parsed.data);
+    return 'message' in result
+      ? { ...result, message: result.message.replace(/\bwater\b/gi, 'chaser') }
+      : result;
   } catch (error) {
     if (error instanceof Error && error.message === 'Authentication required.') {
       return {
@@ -69,7 +72,7 @@ export async function logWaterAction(input: unknown): Promise<WaterLogResult> {
     }
     return {
       status: 'temporarily_failed',
-      message: 'The water entry is queued and will retry when the connection returns.',
+      message: 'The chaser entry is queued and will retry when the connection returns.',
     };
   }
 }
