@@ -111,7 +111,9 @@ export function BrowserNotificationSettings() {
         return;
       }
       if (!service.supportsPush()) {
-        setError('Push is unavailable here. Install dwd or use a supported browser.');
+        setError(
+          'This browser cannot send reminders. Try installing dwd or using another browser.',
+        );
         return;
       }
       const subscription = await service.subscribe(publicKey);
@@ -127,39 +129,39 @@ export function BrowserNotificationSettings() {
     }
   }
 
-  const notificationLabel =
-    runtime.permission === 'granted'
-      ? 'Allowed'
-      : runtime.permission === 'denied'
-        ? 'Blocked'
-        : runtime.permission === 'unsupported'
-          ? 'Unavailable'
-          : 'Not requested';
+  const deviceStatus =
+    !runtime.ready || delivery === 'loading'
+      ? 'Checking…'
+      : requiresInstall
+        ? 'Install to enable'
+        : runtime.permission === 'denied'
+          ? 'Blocked'
+          : !runtime.pushSupported
+            ? 'Unavailable'
+            : delivery === 'enabled'
+              ? 'On'
+              : delivery === 'error'
+                ? 'Could not check'
+                : 'Off';
   return (
     <section
       className="notification-device stack"
       aria-label="Reminder setup"
       data-tour="reminders"
     >
-      <h3>Reminder status</h3>
-      <dl className="status-list">
-        <div>
-          <dt>App installed</dt>
-          <dd>{runtime.installed ? '✓' : 'Not yet'}</dd>
-        </div>
-        <div>
-          <dt>Notifications</dt>
-          <dd>{notificationLabel}</dd>
-        </div>
-        <div>
-          <dt>Push</dt>
-          <dd>{runtime.pushSupported ? 'Available' : 'Unavailable'}</dd>
-        </div>
-        <div>
-          <dt>Background delivery</dt>
-          <dd>{delivery === 'enabled' ? 'On' : delivery === 'loading' ? 'Checking…' : 'Off'}</dd>
-        </div>
-      </dl>
+      <div className="reminder-device-heading">
+        <h3>Reminders on this device</h3>
+        <span className={`pill${deviceStatus === 'On' ? ' pill-on' : ''}`} role="status">
+          {deviceStatus}
+        </span>
+      </div>
+      {deviceStatus === 'On' ? (
+        <p className="muted small">You can receive reminders when dwd is closed.</p>
+      ) : deviceStatus === 'Off' ? (
+        <p className="muted small">
+          Turn on notifications to receive reminders when dwd is closed.
+        </p>
+      ) : null}
       {requiresInstall ? (
         <>
           <p className="muted small">
@@ -193,7 +195,7 @@ export function BrowserNotificationSettings() {
       ) : delivery === 'allowed' ? (
         <div className="stack">
           <p className="muted small">
-            Notifications are allowed. Background push is not configured on this deployment.
+            Reminders are temporarily unavailable. You can still see updates in dwd.
           </p>
           <Button
             type="button"
@@ -210,11 +212,14 @@ export function BrowserNotificationSettings() {
         <p className="error-box">Allow notifications in this site&apos;s browser settings.</p>
       ) : runtime.ready && !runtime.pushSupported ? (
         <p className="muted small">
-          Background reminders are unavailable in this browser. Use a browser with push support;
-          your in-app notifications still work.
+          This browser cannot send reminders when dwd is closed. Try another browser.
         </p>
       ) : (
-        <Button type="button" disabled={busy} onClick={() => void changeDevice(true)}>
+        <Button
+          type="button"
+          disabled={busy || !runtime.ready || delivery === 'loading'}
+          onClick={() => void changeDevice(true)}
+        >
           {busy ? 'Enabling…' : 'Enable reminders'}
         </Button>
       )}

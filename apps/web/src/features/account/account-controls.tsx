@@ -110,7 +110,7 @@ export function NotificationSettings({
       const result = await setReminderPauseAction(minutes);
       if (!result.ok) throw new Error(result.error);
       setPreferences(result.data);
-      setMessage(minutes === null ? 'Reminders resumed.' : 'Reminders paused for 1 hour.');
+      setMessage(minutes === null ? 'Log reminders resumed.' : 'Log reminders paused for 1 hour.');
     } catch {
       setSaveError(true);
       setMessage('Reminders could not be saved. Retry when connected.');
@@ -175,7 +175,7 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('groupAttentionEnabled')}
             />{' '}
-            Group attention
+            When someone may need a check-in
           </label>
           <label className="checkbox-row">
             <input
@@ -184,7 +184,7 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('directCheckinsEnabled')}
             />{' '}
-            Direct check-ins
+            When someone checks in on me
           </label>
         </fieldset>
         <fieldset className="notification-options">
@@ -196,7 +196,7 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('personalPaceEnabled')}
             />{' '}
-            Personal pace reminders
+            Remind me to take a break
           </label>
           <label className="checkbox-row">
             <input
@@ -205,7 +205,7 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('plannedEndEnabled')}
             />{' '}
-            Planned-end reminder
+            When my night is due to end
           </label>
           <label className="checkbox-row">
             <input
@@ -214,11 +214,12 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('periodicWaterEnabled')}
             />{' '}
-            Keep me on track
+            Remind me to log
           </label>
           {preferences.periodicWaterEnabled ? (
             <div className="field">
-              <label htmlFor="reminder-interval">Reminder interval</label>
+              <p className="muted small">A nudge when you haven’t logged anything for a while.</p>
+              <label htmlFor="reminder-interval">How often?</label>
               <select
                 id="reminder-interval"
                 className="select"
@@ -238,7 +239,17 @@ export function NotificationSettings({
               </select>
             </div>
           ) : null}
-          {preferences.periodicWaterEnabled ? (
+          {muted && preferences.remindersMutedUntil ? (
+            <p className="info-box small" role="status">
+              Log reminders paused until{' '}
+              {new Date(preferences.remindersMutedUntil).toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+              .
+            </p>
+          ) : null}
+          {preferences.periodicWaterEnabled || muted ? (
             <div className="row">
               {muted ? (
                 <Button
@@ -247,7 +258,7 @@ export function NotificationSettings({
                   disabled={saving}
                   onClick={() => void pause(null)}
                 >
-                  Resume reminders
+                  Resume log reminders
                 </Button>
               ) : (
                 <Button

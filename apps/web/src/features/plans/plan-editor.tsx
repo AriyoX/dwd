@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, Trash2 } from 'lucide-react';
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { DRINK_PRESETS, drinkCategorySchema, type PlanSetupMode } from '@dwd/core';
 import { Button } from '@/components/ui/button';
 import { newPlanItem, type PlanDraftItem } from './plan-draft';
@@ -22,6 +22,24 @@ export function PlanEditor({
   compact?: boolean;
 }) {
   const radioGroup = useId();
+  const editor = useRef<HTMLDivElement>(null);
+  const addedItem = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (addedItem.current === null) return;
+    const card = Array.from(
+      editor.current?.querySelectorAll<HTMLElement>('[data-plan-item]') ?? [],
+    ).find((element) => element.dataset['planItem'] === addedItem.current);
+    if (!card) return;
+    addedItem.current = null;
+    card.focus({ preventScroll: true });
+    card.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+      block: 'start',
+    });
+  }, [items]);
   const setMode = (next: PlanSetupMode) => {
     onModeChange?.(next);
     if (next === 'water_only') onChange([]);
@@ -30,6 +48,7 @@ export function PlanEditor({
 
   function addPreset(presetId: string) {
     const next = newPlanItem(presetId);
+    addedItem.current = next.clientId ?? null;
     const isPlaceholder = hasBlankPlaceholder(items);
     next.isQuickLog = items.length === 0 || isPlaceholder;
     onModeChange?.('drinks');
@@ -38,9 +57,11 @@ export function PlanEditor({
 
   function addCustom() {
     const next = newPlanItem();
+    addedItem.current = next.clientId ?? null;
     next.category = 'other';
     onModeChange?.('drinks');
     const isPlaceholder = hasBlankPlaceholder(items);
+    next.isQuickLog = items.length === 0 || isPlaceholder;
     onChange(isPlaceholder ? [next] : [...items, next]);
   }
 
@@ -62,16 +83,16 @@ export function PlanEditor({
   }
 
   return (
-    <div className="stack">
+    <div className="stack" ref={editor}>
       <fieldset className="choice-grid">
-        <legend className="field-label">Your plan</legend>
+        <legend className="field-label">Choose a plan</legend>
         <button
           type="button"
-          className={mode === 'unselected' ? 'choice active' : 'choice'}
-          aria-pressed={mode === 'unselected'}
-          onClick={() => setMode('unselected')}
+          className={mode === 'drinks' ? 'choice active' : 'choice'}
+          aria-pressed={mode === 'drinks'}
+          onClick={() => setMode('drinks')}
         >
-          Choose a plan
+          Plan drinks
         </button>
         <button
           type="button"
@@ -81,22 +102,8 @@ export function PlanEditor({
         >
           Chaser only
         </button>
-        <button
-          type="button"
-          className={mode === 'drinks' ? 'choice active' : 'choice'}
-          aria-pressed={mode === 'drinks'}
-          onClick={() => setMode('drinks')}
-        >
-          Plan drinks
-        </button>
       </fieldset>
-      {mode === 'unselected' ? (
-        <p className="muted small">Choose chaser only, or add a drink plan.</p>
-      ) : mode === 'water_only' ? (
-        <p className="muted small">
-          Log chasers without an alcohol plan. You can add a plan later before logging alcohol.
-        </p>
-      ) : (
+      {mode === 'drinks' ? (
         <>
           <div className="preset-grid" aria-label="Drink presets">
             {DRINK_PRESETS.map((preset) => (
@@ -125,7 +132,13 @@ export function PlanEditor({
           {items.map((item, index) => {
             const domId = item.id ?? item.clientId ?? `item-${String(index)}`;
             return (
-              <div className="plan-item" key={domId}>
+              <div
+                className="plan-item"
+                key={domId}
+                data-plan-item={domId}
+                tabIndex={-1}
+                aria-label={`${item.label || 'Custom drink'} details`}
+              >
                 <div className="row-between">
                   <label className="radio-label">
                     <input
@@ -223,11 +236,9 @@ export function PlanEditor({
               </div>
             );
           })}
-          <p className="muted small">
-            Your plan is a personal intention, not a medically safe allowance.
-          </p>
+          <p className="muted small">A plan is not a safe drinking limit.</p>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

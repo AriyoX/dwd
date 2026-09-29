@@ -61,7 +61,6 @@ import {
 import { NightRealtimeProvider, useRealtimeStatus } from '@/providers/realtime-provider';
 import { useConnection } from '@/providers/connection-provider';
 import { ActiveReminderControls } from '@/features/notifications/active-reminder-controls';
-import { QuickCheck } from '@/features/quick-check/quick-check';
 
 type Segment = 'tonight' | 'group' | 'more';
 type ActivityKind = 'alcohol' | 'water';
@@ -999,6 +998,7 @@ function ActiveNightView({
               <ParticipantCard
                 key={member.id}
                 member={member}
+                isSelf={member.userId === snapshot.currentUserId}
                 alerts={visibleAlerts(member)}
                 onDismissAlert={dismissAlert}
                 managed={managed}
@@ -1018,13 +1018,6 @@ function ActiveNightView({
                 checkInLabel={member.memberType === 'guest' ? 'Ask host to check in' : 'Check in'}
                 checkInState={checkInStates[member.id] ?? 'idle'}
                 onCheckIn={() => void checkIn(member)}
-                guestNote={
-                  member.memberType === 'guest'
-                    ? member.managedByUserId === snapshot.currentUserId
-                      ? 'Managed guest: check in with them directly on this device.'
-                      : 'Ask the host to check in.'
-                    : undefined
-                }
               />
             );
           })}
@@ -1073,7 +1066,6 @@ function ActiveNightView({
             </Link>
           </Card>
           <ActiveReminderControls initial={initialNotificationPreferences} />
-          <QuickCheck nightId={snapshot.night.id} />
           <PendingQueuePanel
             records={optimisticLogs}
             busy={busy}
@@ -1448,7 +1440,7 @@ function GuestDialog({
     <Dialog
       open={open}
       title="Add person"
-      description="Add a managed guest and start logging for them now. Their record begins when you add them."
+      description="You’ll log their drinks on your phone."
       onClose={onClose}
     >
       <div className="field">

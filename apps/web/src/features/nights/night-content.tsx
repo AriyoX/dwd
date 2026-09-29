@@ -57,7 +57,7 @@ export function ParticipantSwitcher({
               </span>
               <span>
                 <strong>{member.displayName}</strong>
-                <small>{member.memberType === 'guest' ? 'Managed guest' : 'Account'}</small>
+                <small>{member.memberType === 'guest' ? 'You log for them' : 'You'}</small>
               </span>
             </button>
           );
@@ -125,7 +125,7 @@ export function TonightView({
               <p className="muted small">Logging for</p>
               <h2>{member.displayName}</h2>
               <p className="muted small">
-                {managed ? 'Managed guest' : member.memberType === 'guest' ? 'Guest' : 'Account'}
+                {managed ? 'You log for them' : member.memberType === 'guest' ? 'Guest' : 'You'}
               </p>
             </div>
           </div>
@@ -184,7 +184,7 @@ export function TonightView({
           onClick={onQuick}
         >
           <Plus aria-hidden="true" size={26} />{' '}
-          {quick === undefined ? 'Add an alcohol plan' : `Log ${quick.label}`}
+          {quick === undefined ? 'Plan drinks' : `Log ${quick.label}`}
         </Button>
         <div className="quick-actions" data-tour="drink-options">
           <Button
@@ -223,17 +223,14 @@ export function TonightView({
         {pacing && (
           <p className="info-box small" data-testid="plan-pacing">
             {pacing.status === 'finished'
-              ? 'Your plan or planned time is complete. Consider switching to a chaser.'
+              ? 'Done for tonight? Switch to a chaser.'
               : pacing.status === 'packed'
-                ? 'This plan puts drinks close together. Consider planning fewer drinks.'
+                ? 'Consider fewer drinks tonight.'
                 : pacing.status === 'pause'
-                  ? 'Pause for now. Consider a chaser or skipping the remaining drinks.'
+                  ? 'Take a break. Have a chaser or skip the next drink.'
                   : pacing.waitMinutes > 0
-                    ? `Take a break: about ${pacing.waitMinutes} min until your next planned drink.`
-                    : `Plan spacing: about ${pacing.intervalMinutes} min per main drink.`}{' '}
-            <span className="muted">
-              Plan spacing is not a safe drinking rate. No need to finish every drink.
-            </span>
+                    ? 'Take your time. Have a chaser between drinks.'
+                    : 'You don’t have to finish every drink in your plan.'}
           </p>
         )}
       </Card>
@@ -243,6 +240,7 @@ export function TonightView({
 
 export function ParticipantCard({
   member,
+  isSelf = false,
   alerts,
   managed,
   busy,
@@ -257,10 +255,10 @@ export function ParticipantCard({
   checkInLabel,
   checkInState,
   onCheckIn,
-  guestNote,
   onDismissAlert,
 }: {
   member: MemberSnapshot;
+  isSelf?: boolean;
   alerts: NightSnapshot['alerts'];
   managed: boolean;
   busy: boolean;
@@ -275,7 +273,6 @@ export function ParticipantCard({
   checkInLabel?: string | undefined;
   checkInState?: 'idle' | 'sending' | 'sent' | 'error' | undefined;
   onCheckIn?: (() => void) | undefined;
-  guestNote?: string | undefined;
   onDismissAlert?: (id: string) => void;
 }) {
   const totals = calculateMemberTotals(member.drinkLogs, member.waterLogs);
@@ -298,55 +295,60 @@ export function ParticipantCard({
     (a, b) => Date.parse(b.consumedAt) - Date.parse(a.consumedAt),
   )[0];
   return (
-    <Card className="stack">
-      <div className="row-between">
-        <div className="row">
-          <span className="avatar">{initials(member.displayName)}</span>
-          <div>
-            <strong>{member.displayName}</strong>
-            <p className="muted small">
-              {member.memberType === 'guest'
-                ? 'Guest'
-                : member.userId === null
-                  ? 'Former member'
-                  : 'Tracks their own drinks'}
-              {member.leftAt === null ? '' : ' · left'}
-            </p>
-          </div>
+    <Card className="participant-card stack">
+      <div className="participant-heading">
+        <span className="avatar avatar-large" aria-hidden="true">
+          {initials(member.displayName)}
+        </span>
+        <div className="participant-identity">
+          <h3>
+            {member.displayName}
+            {isSelf ? ' (you)' : ''}
+          </h3>
+          <p className="muted small">
+            {member.leftAt !== null
+              ? 'Left the night'
+              : managed
+                ? 'You log for them'
+                : isSelf
+                  ? 'Your night'
+                  : member.memberType === 'guest'
+                    ? 'Host logs for them'
+                    : member.userId === null
+                      ? 'Former member'
+                      : 'Logs their own drinks'}
+          </p>
         </div>
-        {canCheckIn && onCheckIn ? (
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={busy || checkInState === 'sending'}
-            onClick={onCheckIn}
-          >
-            {checkInState === 'sending'
-              ? 'Sending…'
-              : checkInState === 'sent'
-                ? 'Check in again'
-                : (checkInLabel ?? 'Check in')}
-          </Button>
-        ) : alerts.length > 0 ? (
-          <span className="pill pill-warning">Attention</span>
-        ) : null}
+        {alerts.length > 0 ? <span className="pill pill-warning">Check in</span> : null}
       </div>
-      <div className="row-between">
+      <dl className="participant-stats">
+        <div>
+          <dt>Drinks</dt>
+          <dd>{totals.alcoholCount + pendingAlcohol}</dd>
+        </div>
+        <div>
+          <dt>Chasers</dt>
+          <dd>{totals.waterCount + pendingWater}</dd>
+        </div>
+        <div>
+          <dt>Planned drinks</dt>
+          <dd>{member.planSetupCompletedAt === null ? '—' : planned}</dd>
+        </div>
+      </dl>
+      <div className="participant-activity muted small">
         <span>
-          {totals.alcoholCount} {totals.alcoholCount === 1 ? 'drink' : 'drinks'}
-          {pendingAlcohol === 0 ? '' : ` · ${pendingAlcohol} pending`}
-          {' · '}
           {member.planSetupCompletedAt === null
-            ? 'Plan not set'
+            ? 'No plan yet'
             : member.planItems.length === 0
               ? 'Chaser only'
-              : `Planned · ${planned} ${planned === 1 ? 'drink' : 'drinks'}`}
+              : lastActivity
+                ? `Last logged ${relativeTime(lastActivity.consumedAt)}`
+                : 'Nothing logged yet'}
         </span>
-        {lastActivity === undefined ? null : (
-          <span className="muted small">{relativeTime(lastActivity.consumedAt)}</span>
-        )}
+        {pendingAlcohol + pendingWater > 0 ? (
+          <span role="status">{pendingAlcohol + pendingWater} waiting to save</span>
+        ) : null}
       </div>
-      <p className="muted small">{formatCategories(totals.categoryCounts)}</p>
       {alerts.map((alert) => (
         <TimedNotice
           key={alert.id}
@@ -356,44 +358,53 @@ export function ParticipantCard({
           {chaserCopy(alert.message)}
         </TimedNotice>
       ))}
-      {breakdown.length === 0 ? (
-        <p className="muted small">No alcohol logged.</p>
-      ) : (
-        <details className="small">
-          <summary>{breakdown.map((entry) => `${entry.count} ${entry.label}`).join(' · ')}</summary>
+      {breakdown.length > 0 ? (
+        <details className="participant-details small">
+          <summary>View drinks</summary>
           <ul className="compact-list">
             {breakdown.map((entry) => (
               <li
                 key={`${entry.label}-${entry.category}-${entry.volumeMl}-${entry.abvPercent}-${entry.pending ? 'pending' : 'saved'}`}
               >
                 {entry.count} × {entry.label} · {entry.volumeMl} ml · {entry.abvPercent}%
-                {entry.pending ? ' · pending on this device' : ''}
+                {entry.pending ? ' · waiting to save' : ''}
               </li>
             ))}
           </ul>
         </details>
-      )}
-      <p className="muted small">
-        Chasers: {totals.waterCount}
-        {pendingWater === 0 ? '' : ` · ${pendingWater} pending on this device`}
-      </p>
-      {guestNote ? <p className="muted small">{guestNote}</p> : null}
+      ) : null}
+      {canCheckIn && onCheckIn ? (
+        <Button
+          type="button"
+          variant="secondary"
+          full
+          disabled={busy || checkInState === 'sending'}
+          onClick={onCheckIn}
+        >
+          <BellRing aria-hidden="true" size={18} />
+          {checkInState === 'sending'
+            ? 'Sending…'
+            : checkInState === 'sent'
+              ? 'Check in again'
+              : (checkInLabel ?? 'Check in')}
+        </Button>
+      ) : null}
       {managed && member.leftAt === null ? (
         <div className="guest-controls stack">
           <Button type="button" full disabled={busy} onClick={onQuick}>
-            <Plus aria-hidden="true" size={20} />{' '}
+            <Plus aria-hidden="true" size={20} />
             {quick === undefined
               ? `Set ${member.displayName}'s plan`
               : `Log ${quick.label} for ${member.displayName}`}
           </Button>
-          <div className="quick-actions" data-tour="log">
+          <div className="participant-log-actions" data-tour="log">
             <Button
               type="button"
               variant="secondary"
               disabled={busy || member.planItems.length === 0}
               onClick={onChoose}
             >
-              Another for {member.displayName}
+              Another drink
             </Button>
             <Button
               type="button"
@@ -404,16 +415,21 @@ export function ParticipantCard({
             >
               <Droplets aria-hidden="true" size={18} /> Chaser
             </Button>
-            <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
-              <Undo2 aria-hidden="true" size={18} /> Undo
-            </Button>
           </div>
-          <Button type="button" variant="ghost" onClick={onEditPlan}>
-            <Pencil aria-hidden="true" size={18} /> Adjust {member.displayName}&apos;s plan
-          </Button>
-          <Button type="button" variant="danger" onClick={onRemove}>
-            Remove {member.displayName}
-          </Button>
+          <details className="participant-details">
+            <summary>Manage {member.displayName}</summary>
+            <div className="stack participant-manage-actions">
+              <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
+                <Undo2 aria-hidden="true" size={18} /> Undo last entry
+              </Button>
+              <Button type="button" variant="ghost" disabled={busy} onClick={onEditPlan}>
+                <Pencil aria-hidden="true" size={18} /> Adjust {member.displayName}&apos;s plan
+              </Button>
+              <Button type="button" variant="danger" disabled={busy} onClick={onRemove}>
+                Remove {member.displayName}
+              </Button>
+            </div>
+          </details>
         </div>
       ) : null}
     </Card>

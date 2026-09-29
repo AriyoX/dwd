@@ -23,7 +23,7 @@ export function ActiveReminderControls({ initial }: { initial: NotificationPrefe
       const result = await updateNotificationPreferencesAction(next);
       if (result.ok) {
         setPreferences(result.data);
-        setMessage(next.periodicWaterEnabled ? 'Check-ins are on.' : 'Check-ins are off.');
+        setMessage(next.periodicWaterEnabled ? 'Log reminders are on.' : 'Log reminders are off.');
       } else setMessage(result.error);
     } catch {
       setMessage('Reminders could not be saved. Retry when connected.');
@@ -41,7 +41,9 @@ export function ActiveReminderControls({ initial }: { initial: NotificationPrefe
       const result = await setReminderPauseAction(minutes);
       if (result.ok) {
         setPreferences(result.data);
-        setMessage(minutes === null ? 'Reminders resumed.' : 'Reminders paused for 1 hour.');
+        setMessage(
+          minutes === null ? 'Log reminders resumed.' : 'Log reminders paused for 1 hour.',
+        );
       } else setMessage(result.error);
     } catch {
       setMessage('Reminders could not be saved. Retry when connected.');
@@ -55,11 +57,12 @@ export function ActiveReminderControls({ initial }: { initial: NotificationPrefe
     <section className="stack reminder-card" aria-labelledby="active-reminders">
       <div className="row-between">
         <div>
-          <h2 id="active-reminders">Keep me on track</h2>
-          <p className="muted small">Get a check-in if you have not updated the night.</p>
+          <h2 id="active-reminders">Reminders</h2>
         </div>
         <BellRing size={22} aria-hidden="true" />
       </div>
+      <BrowserNotificationSettings />
+      <p className="muted small">A nudge when you haven’t logged anything for a while.</p>
       <label className="checkbox-row">
         <input
           type="checkbox"
@@ -74,7 +77,7 @@ export function ActiveReminderControls({ initial }: { initial: NotificationPrefe
       {preferences.periodicWaterEnabled ? (
         <>
           <div className="field">
-            <label htmlFor="active-reminder-interval">Check-in interval</label>
+            <label htmlFor="active-reminder-interval">How often?</label>
             <select
               id="active-reminder-interval"
               className="select"
@@ -93,26 +96,34 @@ export function ActiveReminderControls({ initial }: { initial: NotificationPrefe
               <option value="60">Every hour</option>
             </select>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={busy}
-            onClick={() => void pause(muted ? null : 60)}
-          >
-            {muted ? <Play size={18} aria-hidden="true" /> : <Pause size={18} aria-hidden="true" />}
-            {muted ? 'Resume reminders' : 'Pause for 1 hour'}
-          </Button>
         </>
+      ) : null}
+      {muted && preferences.remindersMutedUntil ? (
+        <p className="info-box small" role="status">
+          Log reminders paused until{' '}
+          {new Date(preferences.remindersMutedUntil).toLocaleTimeString([], {
+            hour: 'numeric',
+            minute: '2-digit',
+          })}
+          .
+        </p>
+      ) : null}
+      {preferences.periodicWaterEnabled || muted ? (
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={busy}
+          onClick={() => void pause(muted ? null : 60)}
+        >
+          {muted ? <Play size={18} aria-hidden="true" /> : <Pause size={18} aria-hidden="true" />}
+          {muted ? 'Resume log reminders' : 'Pause for 1 hour'}
+        </Button>
       ) : null}
       {message ? (
         <p className="muted small" role="status">
           {message}
         </p>
       ) : null}
-      <details>
-        <summary>Notification setup</summary>
-        <BrowserNotificationSettings />
-      </details>
     </section>
   );
 }

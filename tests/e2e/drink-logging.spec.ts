@@ -32,7 +32,9 @@ test('main drink, simple alternate logging, notices and offline plan checks', as
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: 'Start night', exact: true }).click();
   await expect(page.locator('.main-drink')).toContainText('Beer');
-  await expect(page.getByTestId('plan-pacing')).toContainText('Plan spacing');
+  await expect(page.getByTestId('plan-pacing')).toContainText(
+    'You don’t have to finish every drink in your plan.',
+  );
   await page.clock.install();
   await page.screenshot({
     path: `.tmp/ui-review/drink-ux-${info.project.name}.png`,

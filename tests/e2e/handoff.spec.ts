@@ -100,7 +100,9 @@ test('device notification setup retries, persists, turns off and new alcohol pla
     page.getByRole('region', { name: 'Reminder setup' }).getByRole('alert'),
   ).toContainText('Browser setup could not finish');
   await enable.click();
-  await expect(page.getByText('Background delivery').locator('..')).toContainText('On');
+  await expect(
+    page.getByRole('region', { name: 'Reminder setup' }).getByRole('status'),
+  ).toContainText('On');
   await page.reload();
   const disable = page.getByRole('button', { name: 'Turn off on this device', exact: true });
   await expect(disable).toBeEnabled();
@@ -122,10 +124,10 @@ test('device notification setup retries, persists, turns off and new alcohol pla
     .toBe(0);
   await page.reload();
   await expect(enable).toBeEnabled();
-  await page.getByLabel('Personal pace reminders', { exact: true }).check();
+  await page.getByLabel('Remind me to take a break', { exact: true }).check();
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
-  await page.getByLabel('Keep me on track', { exact: true }).check();
-  await page.getByLabel('Reminder interval', { exact: true }).selectOption('30');
+  await page.getByLabel('Remind me to log', { exact: true }).check();
+  await page.getByLabel('How often?', { exact: true }).selectOption('30');
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
   await expect(page.locator('body')).toHaveJSProperty(
     'scrollWidth',
@@ -141,13 +143,14 @@ test('device notification setup retries, persists, turns off and new alcohol pla
     .locator('#notifications:visible')
     .screenshot({ path: `.tmp/ui-review/${info.project.name}-settings-dark.png` });
   await page.reload();
-  await expect(page.getByLabel('Personal pace reminders', { exact: true })).toBeChecked();
-  await expect(page.getByLabel('Reminder interval', { exact: true })).toHaveValue('30');
+  await expect(page.getByLabel('Remind me to take a break', { exact: true })).toBeChecked();
+  await expect(page.getByLabel('How often?', { exact: true })).toHaveValue('30');
   await page.goto('/night/new');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Choose a plan', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('group', { name: 'Choose a plan', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Plan drinks', exact: true })).toHaveAttribute(
     'aria-pressed',
-    'true',
+    'false',
   );
   await page.getByRole('button', { name: 'Plan drinks', exact: true }).click();
   await expect(page.getByRole('option', { name: 'Choose a drink', exact: true })).toHaveAttribute(
@@ -417,8 +420,10 @@ test('a host adds and selects a managed guest mid-night with realtime visibility
     await dialog.getByRole('button', { name: 'Add person', exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Late Guest', exact: true })).toBeVisible();
-    await expect(page.getByText('Managed guest', { exact: true }).first()).toBeVisible();
-    await expect(observer.getByRole('button', { name: /Late Guest.*Managed guest/ })).toBeVisible();
+    await expect(page.getByText('You log for them', { exact: true }).first()).toBeVisible();
+    await expect(
+      observer.getByRole('button', { name: /Late Guest.*You log for them/ }),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Chaser', exact: true }).click();
     await expect(page.locator('[data-tour="plan"]')).toContainText('1 chaser');

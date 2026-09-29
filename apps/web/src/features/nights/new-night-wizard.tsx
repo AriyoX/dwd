@@ -309,7 +309,7 @@ export function NewNightWizard({ userId }: { userId: string }) {
                 aria-describedby="night-timezone-hint"
               />
               <span id="night-timezone-hint" className="muted small">
-                Shared times use this IANA zone, even if someone is travelling.
+                Used for everyone in this night. For example, Africa/Nairobi.
               </span>
             </div>
             <div className="field">
@@ -324,32 +324,33 @@ export function NewNightWizard({ userId }: { userId: string }) {
                 required
               />
             </div>
-            <div className="field">
-              <label htmlFor="end-date">Planned end date</label>
-              <input
-                className="input"
-                id="end-date"
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                required
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="end-time">Planned end time</label>
-              <input
-                className="input"
-                id="end-time"
-                type="time"
-                value={endTime}
-                onChange={(event) => setEndTime(event.target.value)}
-                required
-                aria-describedby="end-time-hint"
-              />
-              <span id="end-time-hint" className="muted small">
-                Use tomorrow&apos;s date if you are staying out past midnight. You can extend this
-                later.
-              </span>
+            <div className="end-time-fields">
+              <div className="field">
+                <label htmlFor="end-date">Planned end date</label>
+                <input
+                  className="input"
+                  id="end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="end-time">Planned end time</label>
+                <input
+                  className="input"
+                  id="end-time"
+                  type="time"
+                  value={endTime}
+                  onChange={(event) => setEndTime(event.target.value)}
+                  required
+                  aria-describedby="end-time-hint"
+                />
+                <span id="end-time-hint" className="muted small">
+                  After midnight? Choose tomorrow&apos;s date.
+                </span>
+              </div>
             </div>
             <fieldset className="choice-grid">
               <legend className="field-label">Who’s joining?</legend>
@@ -375,11 +376,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
         {step === 2 ? (
           <Card className="stack-lg wizard-card">
             <h1 ref={heading} tabIndex={-1}>
-              Set your own pace.
+              Your plan for tonight.
             </h1>
-            <p className="muted small">
-              Choose chaser only, or set an alcohol plan with a quick-log drink.
-            </p>
             <PlanEditor
               items={hostPlan}
               mode={hostPlanMode}
