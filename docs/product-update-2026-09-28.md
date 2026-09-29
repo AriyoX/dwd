@@ -17,6 +17,7 @@ Completed nights now keep private shared photo memories while drink and chaser l
 - Photo galleries reconcile on focus, reconnection, and while visible, renewing signed URLs and removing photos that no longer pass Realtime authorization after deletion.
 - Added full-photo previews, larger delete targets, mobile gallery header wrapping, upload stage labels, and explicit reload recovery.
 - Allowed images from the configured Supabase origin in Content Security Policy, and verified that gallery photos decode rather than merely rendering an image element.
+- Scoped API and Realtime connections to that same configured backend instead of all Supabase projects. Browser tests now exercise the real CSP without bypassing it.
 - Reminder saves recover from transport failures. Pause controls update when the pause expires. Unsupported browsers get an actionable status instead of an ineffective enable button.
 - The tour highlights the complete reminder setup, including its action. Compact status rows keep the final step usable on mobile.
 - Quick Check uses existing theme colors and compares subsequent attempts within the same visit. It retains the non-sobriety and driving disclaimer.

@@ -22,8 +22,6 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:3100',
-    // Production CSP intentionally excludes local Supabase. Only the local test browser bypasses it.
-    bypassCSP: process.env['E2E_PRODUCTION'] === '1',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

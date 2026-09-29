@@ -1,18 +1,14 @@
 import type { NextConfig } from 'next';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
-const localBackend = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321');
-const localConnections =
-  isDevelopment && ['127.0.0.1', 'localhost'].includes(localBackend.hostname)
-    ? ` ${localBackend.origin} ${localBackend.origin.replace(/^http/, 'ws')}`
-    : '';
+const backend = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321');
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${localBackend.origin}`,
+  `img-src 'self' data: blob: ${backend.origin}`,
   "font-src 'self' data:",
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co${localConnections}`,
+  `connect-src 'self' ${backend.origin} ${backend.origin.replace(/^http/, 'ws')}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
