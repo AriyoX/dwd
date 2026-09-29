@@ -427,7 +427,10 @@ test('a host adds and selects a managed guest mid-night with realtime visibility
 
     await page.getByRole('button', { name: 'Chaser', exact: true }).click();
     await expect(page.locator('[data-tour="plan"]')).toContainText('1 chaser');
-    await page.getByRole('button', { name: /Tracker Host.*Account/ }).click();
+    await page
+      .getByRole('region', { name: 'Choose who you are logging for' })
+      .getByRole('button', { name: 'Tracker Host You', exact: true })
+      .click();
     await expect(page.getByRole('heading', { name: 'Tracker Host', exact: true })).toBeVisible();
 
     const current = await snapshot(host.client, nightId);
