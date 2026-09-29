@@ -11,6 +11,15 @@ if (process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] && !process.env['E2E_SUPABASE_UR
 const backend = process.env['E2E_SUPABASE_URL'] ?? 'http://127.0.0.1:55321';
 if (!['127.0.0.1', 'localhost'].includes(new URL(backend).hostname))
   throw new Error('Browser tests must use a local Supabase backend.');
+if (
+  process.env['CI'] &&
+  (!process.env['E2E_SUPABASE_URL'] ||
+    !process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] ||
+    !process.env['E2E_SUPABASE_SECRET_KEY'])
+)
+  throw new Error(
+    'CI requires local Supabase test credentials; browser tests must not silently skip.',
+  );
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -18,8 +27,12 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
+  forbidOnly: Boolean(process.env['CI']),
+  retries: process.env['CI'] ? 1 : 0,
   workers: 1,
-  reporter: 'list',
+  reporter: process.env['CI']
+    ? [['github'], ['html', { outputFolder: '.tmp/playwright-report', open: 'never' }]]
+    : 'list',
   use: {
     baseURL: 'http://localhost:3100',
     trace: 'retain-on-failure',

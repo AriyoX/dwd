@@ -76,6 +76,20 @@ npm run build
 
 All commands run from the repository root. `npm test` runs both Vitest and the isolated PostgreSQL integration suite, so it requires Docker; use `npm run test:unit` for the fast non-Docker suite. `npm run build` builds shared declarations before the production Next.js application.
 
+## Browser tests in GitHub Actions
+
+The `Checks` workflow runs Playwright after validation on pull requests, pushes to `main`, and manual runs from **Actions → Checks → Run workflow**. Desktop Chromium, mobile Chromium, and mobile WebKit run sequentially against a disposable local Supabase backend. No GitHub secrets or production credentials are required.
+
+`scripts/prepare-browser-ci.mjs` copies the committed migrations, seed, email templates, and configuration into `.tmp/browser-ci`, changes the local ports and app URL, and raises test-only authentication rate limits. Supabase CLI is pinned in the workflow. Playwright starts the development app on port 3100; production builds remain a separate check.
+
+Failed tests retry once. Download the `playwright-report` artifact from the workflow run for the HTML report, screenshots, and traces (retained for seven days). CI fails if test credentials are missing instead of silently skipping account flows. New commits cancel older runs on the same branch or pull request.
+
+To rerun just the participant-switching test locally with your existing E2E backend:
+
+```powershell
+npx playwright test tests/e2e/handoff.spec.ts --project=webkit-mobile --grep "a host adds"
+```
+
 ## Environment variables
 
 | Variable                               | Exposure                   | Purpose                                                                 |

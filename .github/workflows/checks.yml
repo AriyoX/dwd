@@ -3,8 +3,12 @@ on:
   push:
     branches: ['**']
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -21,3 +25,45 @@ jobs:
       - run: npm run format:check
       - run: npm test
         # test:db starts its own disposable Docker database. No hosted secrets.
+  browser:
+    name: Playwright
+    needs: validate
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.111.0
+      - name: Install browser dependencies
+        run: npx playwright install --with-deps chromium webkit
+      - name: Prepare isolated test backend
+        run: node scripts/prepare-browser-ci.mjs
+      - name: Start test backend and apply migrations
+        run: supabase start --workdir .tmp/browser-ci --exclude studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: Export local test credentials
+        run: node scripts/prepare-browser-ci.mjs --write-env
+      - name: Run desktop, mobile and WebKit tests
+        run: npm run test:browser
+      - name: Upload browser reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            .tmp/playwright-report/
+            .tmp/browser-results/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Stop test backend
+        if: always()
+        run: supabase stop --workdir .tmp/browser-ci --no-backup
