@@ -3,6 +3,37 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   private: {
     Tables: {
+      bottle_plan_requests: {
+        Row: { actor_user_id: string; request_key: string; member_id: string; bottle_id: string };
+        Insert: {
+          actor_user_id: string;
+          request_key: string;
+          member_id: string;
+          bottle_id: string;
+        };
+        Update: {
+          actor_user_id?: string;
+          request_key?: string;
+          member_id?: string;
+          bottle_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'bottle_plan_requests_member_id_fkey';
+            columns: ['member_id'];
+            isOneToOne: false;
+            referencedRelation: 'night_members';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bottle_plan_requests_bottle_id_fkey';
+            columns: ['bottle_id'];
+            isOneToOne: false;
+            referencedRelation: 'shared_bottles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       invite_revocations: {
         Row: {
           created_at: string;
@@ -32,6 +63,26 @@ export type Database = {
       complete_signup: {
         Args: { p_age_confirmed: boolean; p_display_name: string };
         Returns: undefined;
+      };
+      can_view_bottle: {
+        Args: { p_bottle_id: string; p_user_id: string };
+        Returns: boolean;
+      };
+      log_drink_without_bottle: {
+        Args: {
+          p_ack_after_end?: boolean;
+          p_ack_plan_exceeded?: boolean;
+          p_consumed_at?: string;
+          p_custom_drink?: Json;
+          p_idempotency_key?: string;
+          p_plan_item_id?: string;
+          p_target_member_id: string;
+        };
+        Returns: Json;
+      };
+      shared_bottles_json: {
+        Args: { p_night_id: string; p_user_id: string };
+        Returns: Json;
       };
       alert_json: {
         Args: { p_alert: Database['public']['Tables']['night_alerts']['Row'] };
@@ -254,6 +305,7 @@ export type Database = {
           night_id: string;
           night_member_id: string;
           plan_item_id: string | null;
+          shared_bottle_id: string | null;
           volume_ml: number;
         };
         Insert: {
@@ -271,6 +323,7 @@ export type Database = {
           night_id: string;
           night_member_id: string;
           plan_item_id?: string | null;
+          shared_bottle_id?: string | null;
           volume_ml: number;
         };
         Update: {
@@ -288,6 +341,7 @@ export type Database = {
           night_id?: string;
           night_member_id?: string;
           plan_item_id?: string | null;
+          shared_bottle_id?: string | null;
           volume_ml?: number;
         };
         Relationships: [
@@ -312,6 +366,13 @@ export type Database = {
             referencedRelation: 'drink_plan_items';
             referencedColumns: ['night_member_id', 'id'];
           },
+          {
+            foreignKeyName: 'drink_logs_shared_bottle_id_fkey';
+            columns: ['shared_bottle_id'];
+            isOneToOne: false;
+            referencedRelation: 'shared_bottles';
+            referencedColumns: ['id'];
+          },
         ];
       };
       drink_plan_items: {
@@ -326,6 +387,7 @@ export type Database = {
           label: string;
           night_member_id: string;
           planned_quantity: number;
+          shared_bottle_id: string | null;
           updated_at: string;
           volume_ml: number;
         };
@@ -340,6 +402,7 @@ export type Database = {
           label: string;
           night_member_id: string;
           planned_quantity: number;
+          shared_bottle_id?: string | null;
           updated_at?: string;
           volume_ml: number;
         };
@@ -354,6 +417,7 @@ export type Database = {
           label?: string;
           night_member_id?: string;
           planned_quantity?: number;
+          shared_bottle_id?: string | null;
           updated_at?: string;
           volume_ml?: number;
         };
@@ -363,6 +427,13 @@ export type Database = {
             columns: ['night_member_id'];
             isOneToOne: false;
             referencedRelation: 'night_members';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'drink_plan_items_shared_bottle_id_fkey';
+            columns: ['shared_bottle_id'];
+            isOneToOne: false;
+            referencedRelation: 'shared_bottles';
             referencedColumns: ['id'];
           },
         ];
@@ -979,6 +1050,72 @@ export type Database = {
           },
         ];
       };
+      shared_bottles: {
+        Row: {
+          abv_percent: number;
+          access: string;
+          allowed_member_ids: string[];
+          category: string;
+          closed_at: string | null;
+          created_at: string;
+          creator_member_id: string | null;
+          default_quantity: number;
+          id: string;
+          joined_member_ids: string[];
+          label: string;
+          night_id: string;
+          pour_ml: number;
+          volume_ml: number;
+        };
+        Insert: {
+          abv_percent: number;
+          access: string;
+          allowed_member_ids?: string[];
+          category: string;
+          closed_at?: string | null;
+          created_at?: string;
+          creator_member_id?: string | null;
+          default_quantity?: number;
+          id: string;
+          joined_member_ids?: string[];
+          label: string;
+          night_id: string;
+          pour_ml: number;
+          volume_ml: number;
+        };
+        Update: {
+          abv_percent?: number;
+          access?: string;
+          allowed_member_ids?: string[];
+          category?: string;
+          closed_at?: string | null;
+          created_at?: string;
+          creator_member_id?: string | null;
+          default_quantity?: number;
+          id?: string;
+          joined_member_ids?: string[];
+          label?: string;
+          night_id?: string;
+          pour_ml?: number;
+          volume_ml?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'shared_bottles_creator_member_id_fkey';
+            columns: ['creator_member_id'];
+            isOneToOne: false;
+            referencedRelation: 'night_members';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shared_bottles_night_id_fkey';
+            columns: ['night_id'];
+            isOneToOne: false;
+            referencedRelation: 'nights';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       water_logs: {
         Row: {
           actor_user_id: string | null;
@@ -1069,6 +1206,49 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_shared_bottle: {
+        Args: { p_bottle: Json; p_night_id: string };
+        Returns: Json;
+      };
+      share_bottle_and_plan: {
+        Args: {
+          p_night_id: string;
+          p_bottle: Json;
+          p_member_id: string;
+          p_expected_revision: number;
+          p_request_key: string;
+        };
+        Returns: Json;
+      };
+      plan_shared_bottle: {
+        Args: {
+          p_bottle_id: string;
+          p_member_id: string;
+          p_quantity: number;
+          p_serving_ml: number;
+          p_expected_revision: number;
+          p_request_key: string;
+          p_make_main?: boolean;
+        };
+        Returns: Json;
+      };
+      start_night_with_bottle: {
+        Args: {
+          p_creation_key: string;
+          p_title: string;
+          p_ends_at: string;
+          p_timezone: string;
+          p_host_plan: Json;
+          p_guests: Json;
+          p_bottle: Json;
+        };
+        Returns: Json;
+      };
+      set_shared_bottle_membership: {
+        Args: { p_bottle_id: string; p_join: boolean; p_member_id: string };
+        Returns: Json;
+      };
+      close_shared_bottle: { Args: { p_bottle_id: string }; Returns: Json };
       create_night_invite: {
         Args: {
           p_expires_at: string;

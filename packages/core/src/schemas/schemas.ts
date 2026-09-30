@@ -34,6 +34,7 @@ export const loginSchema = z.object({
 });
 
 export const planItemInputSchema = z.object({
+  sharedBottleId: z.uuid().nullish(),
   id: z.uuid().optional(),
   clientId: z.string().max(80).optional(),
   label: trimmedString(INPUT_LIMITS.label.min, INPUT_LIMITS.label.max, 'Drink label'),
@@ -75,6 +76,25 @@ export const guestInputSchema = z.object({
   planItems: planItemsSchema,
 });
 
+export const sharedBottleInputSchema = z
+  .object({
+    id: z.uuid(),
+    label: z.string().trim().min(1, 'Give the bottle a name.').max(60),
+    category: drinkCategorySchema,
+    volumeMl: z.number().min(1).max(10000),
+    abvPercent: z.number().min(0.1).max(95),
+    pourMl: z.number().min(1).max(2000),
+    defaultQuantity: z.number().int().min(1, 'Choose at least one drink.').max(50).default(1),
+    access: z.enum(['everyone', 'selected']),
+    allowedMemberIds: z.array(z.uuid()).max(100),
+  })
+  .refine((bottle) => bottle.pourMl <= bottle.volumeMl, {
+    message: 'A drink cannot be bigger than the bottle.',
+    path: ['pourMl'],
+  });
+
+export type SharedBottleInput = z.infer<typeof sharedBottleInputSchema>;
+
 export const startNightSchema = z
   .object({
     creationKey: z.uuid(),
@@ -89,6 +109,7 @@ export const startNightSchema = z
       .max(80)
       .refine(isValidIanaTimeZone, 'Choose a valid IANA time zone.'),
     withPeople: z.boolean(),
+    sharedBottle: sharedBottleInputSchema.optional(),
     hostPlanItems: planItemsSchema,
     guests: z.array(guestInputSchema).max(INPUT_LIMITS.guests.max),
   })
@@ -108,6 +129,7 @@ export const startNightSchema = z
   });
 
 export const customDrinkSchema = z.object({
+  sharedBottleId: z.uuid().nullish(),
   label: trimmedString(INPUT_LIMITS.label.min, INPUT_LIMITS.label.max, 'Drink label'),
   category: drinkCategorySchema,
   volumeMl: z

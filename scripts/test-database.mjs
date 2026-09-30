@@ -5,12 +5,16 @@ import { join } from 'node:path';
 const containerName = `dwd-db-test-${process.pid}`;
 const image = process.env.DWD_TEST_DB_IMAGE ?? 'public.ecr.aws/supabase/postgres:17.6.1.143';
 const root = process.cwd();
+const requestedSuites = process.argv.slice(2);
 const migrations = readdirSync(join(root, 'supabase', 'migrations'))
   .filter((file) => file.endsWith('.sql'))
   .sort();
 const suites = readdirSync(join(root, 'supabase', 'tests'))
   .filter((file) => file.endsWith('.sql'))
+  .filter((file) => requestedSuites.length === 0 || requestedSuites.includes(file))
   .sort();
+if (requestedSuites.some((file) => !suites.includes(file)))
+  throw new Error('Unknown database test suite. Use a filename from supabase/tests.');
 
 /**
  * @param {string} command

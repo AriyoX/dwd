@@ -16,6 +16,7 @@ export function mapCustomDrinkToRpc(customDrink: CustomDrinkInput): Json {
     category: customDrink.category,
     volume_ml: customDrink.volumeMl,
     abv_percent: customDrink.abvPercent,
+    ...(customDrink.sharedBottleId ? { shared_bottle_id: customDrink.sharedBottleId } : {}),
   });
 }
 

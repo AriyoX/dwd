@@ -14,14 +14,17 @@ export async function startNightOut(
   client: SupabaseClient<Database>,
   input: StartNightInput,
 ): Promise<StartNightResult> {
-  const { data, error } = await client.rpc('start_night_out', {
+  const args = {
     p_creation_key: input.creationKey,
     p_title: input.title,
     p_ends_at: input.endsAt,
     p_timezone: input.timezone,
     p_host_plan: toJson(input.hostPlanItems),
     p_guests: toJson(input.guests),
-  });
+  };
+  const { data, error } = input.sharedBottle
+    ? await client.rpc('start_night_with_bottle', { ...args, p_bottle: toJson(input.sharedBottle) })
+    : await client.rpc('start_night_out', args);
   return unwrapRpc<StartNightResult>(data, error);
 }
 

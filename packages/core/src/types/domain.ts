@@ -43,6 +43,7 @@ export interface NightMember {
 }
 
 export interface PlanItemInput {
+  sharedBottleId?: string | null | undefined;
   clientId?: string | undefined;
   id?: string | undefined;
   label: string;
@@ -63,6 +64,7 @@ export interface PlanItem extends PlanItemInput {
 }
 
 export interface AlcoholLog {
+  sharedBottleId?: string | null | undefined;
   id: string;
   nightId: string;
   nightMemberId: string;
@@ -124,6 +126,7 @@ export interface MemberSnapshot extends NightMember {
 }
 
 export interface NightSnapshot {
+  sharedBottles?: SharedBottle[];
   night: Night;
   currentUserId: string;
   currentMemberId: string;
@@ -194,10 +197,28 @@ export interface ActiveNightSummary {
 }
 
 export interface CustomDrinkInput {
+  sharedBottleId?: string | null | undefined;
   label: string;
   category: DrinkCategory;
   volumeMl: number;
   abvPercent: number;
+}
+
+export interface SharedBottle {
+  defaultQuantity?: number;
+  id: string;
+  nightId: string;
+  creatorMemberId: string | null;
+  label: string;
+  category: DrinkCategory;
+  volumeMl: number;
+  abvPercent: number;
+  pourMl: number;
+  access: 'everyone' | 'selected';
+  allowedMemberIds: string[];
+  joinedMemberIds: string[];
+  remainingMl: number;
+  closedAt: string | null;
 }
 
 export interface DrinkLogCommand {
