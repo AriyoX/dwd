@@ -1,4 +1,13 @@
 import Link from 'next/link';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Bell,
+  Compass,
+  MessageCircle,
+  Shield,
+  UserRound,
+} from 'lucide-react';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Card } from '@/components/ui/card';
 import { RequestForm } from '@/features/support/request-form';
@@ -30,104 +39,148 @@ export default async function AccountPage() {
     getMyNotificationEvents(client).catch((): NotificationEvent[] => []),
   ]);
   return (
-    <main id="main-content" className="page-shell">
+    <main id="main-content" className="page-shell settings-shell">
       <header className="topbar">
         <Wordmark />
-        <Link className="text-link" href="/home">
-          Home
+        <Link className="back-link" href="/home">
+          <ArrowLeft size={17} aria-hidden="true" /> Home
         </Link>
       </header>
       <section className="stack-lg">
-        <h1>Your account.</h1>
-        <Card className="stack">
-          <h2>Your profile</h2>
-          <DisplayNameForm initialName={profile?.display_name ?? ''} />
-          <p className="muted small">
-            Changes apply to active nights. Past nights keep the name you used then.
-          </p>
-        </Card>
-        <Card className="stack">
-          {preferences ? (
-            <NotificationSettings initialPreferences={preferences} initialEvents={events} />
-          ) : (
-            <>
-              <h2>Notifications</h2>
-              <p className="error-box" role="alert">
-                Notification settings could not load.{' '}
-                <Link className="text-link" href="/account">
-                  Retry
-                </Link>
-              </p>
-              <NotificationInbox initialEvents={events} />
-            </>
-          )}
-        </Card>
-        <Card className="stack">
-          <h2>Your requests</h2>
-          {result.error ? (
-            <p role="alert">
-              Requests could not be loaded.{' '}
-              <Link href="/account" className="text-link">
-                Retry
-              </Link>
-            </p>
-          ) : requests.length === 0 ? (
-            <p className="muted small">No requests yet.</p>
-          ) : (
-            requests.map((request) => (
-              <article className="stack request-record" key={request.id}>
-                <div className="row-between">
-                  <strong>
-                    {request.kind === 'deletion'
-                      ? 'Account deletion'
-                      : request.kind === 'problem'
-                        ? 'Problem report'
-                        : 'Feedback'}
-                  </strong>
-                  <span className="pill">{request.status.replace('_', ' ')}</span>
-                </div>
-                <p className="muted small">
-                  {new Date(request.created_at).toLocaleDateString('en')} · {request.id}
+        <header className="page-heading account-heading">
+          <span className="profile-avatar" aria-hidden="true">
+            {(profile?.display_name || 'You').slice(0, 1).toUpperCase()}
+          </span>
+          <h1>
+            Your account<span className="heading-dot">.</span>
+          </h1>
+        </header>
+        <div className="settings-layout">
+          <div className="stack-lg">
+            <Card className="stack settings-card">
+              <h2 className="section-title">
+                <UserRound size={20} aria-hidden="true" /> Your profile
+              </h2>
+              <DisplayNameForm initialName={profile?.display_name ?? ''} />
+              <p className="muted small">Past nights keep the name you used at the time.</p>
+            </Card>
+            <Card className="stack settings-card">
+              {preferences ? (
+                <NotificationSettings initialPreferences={preferences} initialEvents={events} />
+              ) : (
+                <>
+                  <h2 className="section-title">
+                    <Bell size={20} aria-hidden="true" /> Reminders
+                  </h2>
+                  <p className="error-box" role="alert">
+                    We couldn’t load your reminders.{' '}
+                    <Link className="text-link" href="/account">
+                      Retry
+                    </Link>
+                  </p>
+                  <NotificationInbox initialEvents={events} />
+                </>
+              )}
+            </Card>
+          </div>
+          <div className="stack-lg settings-sidebar">
+            <Card className="stack settings-card" id="messages">
+              <h2 className="section-title">
+                <MessageCircle size={20} aria-hidden="true" /> Your messages
+              </h2>
+              {result.error ? (
+                <p role="alert">
+                  We couldn’t load your messages.{' '}
+                  <Link href="/account" className="text-link">
+                    Retry
+                  </Link>
                 </p>
-                {request.response && <p className="support-response">{request.response}</p>}
-              </article>
-            ))
-          )}
-          <Link href="/feedback" className="text-link">
-            Send feedback or report a problem
-          </Link>
-        </Card>
-        <Card className="stack">
-          <h2>App tour</h2>
-          <TourButton className="button button-secondary" />
-        </Card>
-        <Card className="stack">
-          <h2>Request account deletion</h2>
-          <p>
-            Your request goes to the app operator for review. Your account stays usable until it is
-            processed.
-          </p>
-          <p className="muted small">
-            Shared nights contain other people’s records too. Submitting a request does not erase
-            those nights or your past entries from their summaries. The operator must review what
-            personal data can be removed or anonymised while handling shared records. Any response
-            appears above; no completion date is promised.
-          </p>
-          <p className="muted small">
-            Before sharing this device, save or remove any entries waiting to save and discard
-            unfinished night setup.
-          </p>
-          {deletion ? (
-            <p className="notice-box">
-              You already have an open deletion request. Reference: {deletion.id}
-            </p>
-          ) : (
-            <RequestForm deletion />
-          )}
-        </Card>
-        <Link href="/privacy" className="text-link">
-          Privacy notice
-        </Link>
+              ) : requests.length === 0 ? (
+                <div className="settings-empty">
+                  <MessageCircle size={28} strokeWidth={1.5} aria-hidden="true" />
+                  <p>No messages yet</p>
+                </div>
+              ) : (
+                requests.map((request) => (
+                  <article className="stack request-record" key={request.id}>
+                    <div className="row-between">
+                      <strong>
+                        {request.kind === 'deletion'
+                          ? 'Account deletion'
+                          : request.kind === 'problem'
+                            ? 'Something went wrong'
+                            : 'Feedback'}
+                      </strong>
+                      <span className="pill">
+                        {request.status === 'completed'
+                          ? 'Resolved'
+                          : request.status === 'in_review'
+                            ? 'In review'
+                            : 'Received'}
+                      </span>
+                    </div>
+                    <p className="muted small">
+                      {new Date(request.created_at).toLocaleDateString('en', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </p>
+                    {request.response && <p className="support-response">{request.response}</p>}
+                    <details className="request-reference small muted">
+                      <summary>Message reference</summary>
+                      <p>{request.id}</p>
+                    </details>
+                  </article>
+                ))
+              )}
+              <Link href="/feedback" className="text-link">
+                Send a message <ArrowUpRight size={16} aria-hidden="true" />
+              </Link>
+            </Card>
+            <Card className="stack settings-card tour-invitation">
+              <span className="settings-feature-icon">
+                <Compass size={28} aria-hidden="true" />
+              </span>
+              <h2>A little look around</h2>
+              <TourButton className="button button-secondary" />
+            </Card>
+            <Card className="stack settings-card">
+              <h2 className="section-title">
+                <Shield size={20} aria-hidden="true" /> Privacy & account
+              </h2>
+              <Link href="/privacy" className="text-link">
+                Your privacy <ArrowUpRight size={16} aria-hidden="true" />
+              </Link>
+              <details className="account-deletion">
+                <summary>Delete your account</summary>
+                <div className="stack">
+                  <p>
+                    Ask us to delete your account. You can keep using it while we review your
+                    request.
+                  </p>
+                  <p className="muted small">
+                    Shared nights and your past drinks aren’t deleted straight away. We’ll review
+                    which personal details we can remove or make anonymous while keeping your
+                    friends’ records. Check Your messages for a reply. There’s no set completion
+                    date.
+                  </p>
+                  <p className="muted small">
+                    Before sharing this device, save or remove any unsaved drinks and unfinished
+                    nights.
+                  </p>
+                  {deletion ? (
+                    <p className="notice-box">
+                      We’ve received your deletion request. You can follow it in Your messages.
+                    </p>
+                  ) : (
+                    <RequestForm deletion />
+                  )}
+                </div>
+              </details>
+            </Card>
+          </div>
+        </div>
       </section>
     </main>
   );

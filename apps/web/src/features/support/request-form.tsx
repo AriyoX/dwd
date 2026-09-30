@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useRef, useState } from 'react';
+import { Check, Lightbulb, MessageCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { submitSupportRequest } from './actions';
 
 export function RequestForm({ deletion = false }: { deletion?: boolean }) {
   const [kind, setKind] = useState<'feedback' | 'problem'>('problem');
   const [message, setMessage] = useState(
-    deletion ? 'Please review my account and personal data for deletion.' : '',
+    deletion ? 'Please delete my account and personal details.' : '',
   );
   const [confirmed, setConfirmed] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -25,20 +26,23 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
   } | null>(null);
   if (receipt)
     return (
-      <div className="success-box stack" role="status">
-        <strong>{deletion ? 'Deletion request received' : 'Report received'}</strong>
-        <p className="small">
-          Reference: {receipt}. You can check its status and any response in your account.
-        </p>
+      <div className="success-box stack support-success" role="status">
+        <Check size={28} aria-hidden="true" />
+        <strong>{deletion ? 'We’ve received your request' : 'Thanks for letting us know'}</strong>
+        <p className="small">Check Your messages for updates and replies.</p>
         {deletion && (
           <p className="small">
-            Your account and shared records remain available while the request is reviewed. Nothing
-            has been deleted yet.
+            You can still use your account while we review your request. Nothing has been deleted
+            yet.
           </p>
         )}
-        <Link className="text-link" href="/account">
-          View your requests
+        <Link className="text-link" href="/account#messages">
+          View your messages
         </Link>
+        <details className="small muted">
+          <summary>Message reference</summary>
+          <p>{receipt}</p>
+        </details>
       </div>
     );
   return (
@@ -49,7 +53,7 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
         if (inFlight.current) return;
         const currentMessage = messageInput.current?.value ?? message;
         if (!attempt.current && currentMessage.trim().length < 10) {
-          setError('Write at least 10 characters, excluding surrounding spaces.');
+          setError('Tell us a little more — at least 10 characters.');
           return;
         }
         inFlight.current = true;
@@ -78,20 +82,40 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
     >
       <fieldset className="wizard-fields stack" disabled={pending || locked}>
         {!deletion && (
-          <label className="field">
-            Type
-            <select
-              className="select"
-              value={kind}
-              onChange={(e) => setKind(e.target.value as 'feedback' | 'problem')}
-            >
-              <option value="problem">Report a problem</option>
-              <option value="feedback">Share feedback</option>
-            </select>
-          </label>
+          <fieldset className="support-topics">
+            <legend>How can we help?</legend>
+            <label className="support-topic">
+              <input
+                type="radio"
+                name="kind"
+                value="problem"
+                checked={kind === 'problem'}
+                onChange={() => setKind('problem')}
+              />
+              <MessageCircle size={22} aria-hidden="true" />
+              <span>Something isn’t working</span>
+            </label>
+            <label className="support-topic">
+              <input
+                type="radio"
+                name="kind"
+                value="feedback"
+                checked={kind === 'feedback'}
+                onChange={() => setKind('feedback')}
+              />
+              <Lightbulb size={22} aria-hidden="true" />
+              <span>I have an idea</span>
+            </label>
+          </fieldset>
         )}
         <label className="field">
-          <span>{deletion ? 'Request details' : 'What happened?'}</span>
+          <span>
+            {deletion
+              ? 'Your message'
+              : kind === 'feedback'
+                ? 'What would you love to see?'
+                : 'What happened?'}
+          </span>
           <textarea
             id="support-message"
             className="input"
@@ -105,8 +129,7 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
           />
         </label>
         <p className="muted small">
-          Include only what is needed. Do not include passwords, invitation links, or another
-          person’s private details. No screenshots or diagnostics are attached automatically.
+          Keep passwords, invite links and other people’s private details out of your message.
         </p>
         {deletion && (
           <label className="checkbox-row">
@@ -116,10 +139,7 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
               onChange={(e) => setConfirmed(e.target.checked)}
               required
             />
-            <span>
-              I understand this is a request for review. My account and shared-night records are not
-              deleted immediately.
-            </span>
+            <span>I understand my account and shared nights won’t be deleted straight away.</span>
           </label>
         )}
       </fieldset>
@@ -130,12 +150,13 @@ export function RequestForm({ deletion = false }: { deletion?: boolean }) {
       )}
       <Button type="submit" disabled={pending} variant={deletion ? 'danger' : 'primary'}>
         {pending
-          ? 'Submitting…'
+          ? 'Sending…'
           : error
-            ? 'Retry request'
+            ? 'Try again'
             : deletion
               ? 'Request account deletion'
-              : 'Send report'}
+              : 'Send message'}
+        {!deletion && <Send size={17} aria-hidden="true" />}
       </Button>
     </form>
   );

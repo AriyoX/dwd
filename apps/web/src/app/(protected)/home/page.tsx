@@ -1,11 +1,10 @@
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, Moon, Plus, Users } from 'lucide-react';
+import { ArrowRight, Moon, Plus, Users } from 'lucide-react';
 import { getActiveNights } from '@dwd/data';
 import { Card } from '@/components/ui/card';
 import { Wordmark } from '@/components/layout/wordmark';
 import { NightIllustration } from '@/components/layout/night-illustration';
-import { SignOutButton } from '@/features/auth/sign-out-button';
-import { TourButton } from '@/features/tour/tour-provider';
+import { AccountMenu } from '@/components/layout/account-menu';
 import { JoinCodeForm } from '@/features/nights/join-code-form';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -27,29 +26,7 @@ export default async function HomePage() {
     <main className="page-shell home-shell" id="main-content">
       <header className="topbar">
         <Wordmark linked={false} />
-        <details className="account-menu">
-          <summary aria-label="Account menu">
-            <span className="avatar" aria-hidden="true">
-              {name.slice(0, 1).toUpperCase()}
-            </span>
-            <span className="account-name small">{name}</span>
-            <ChevronDown aria-hidden="true" size={16} />
-          </summary>
-          <div className="account-popover">
-            <p className="small muted">{name}</p>
-            <Link className="text-link" href="/history">
-              Night history
-            </Link>
-            <Link className="text-link" href="/account">
-              Your account
-            </Link>
-            <Link className="text-link" href="/feedback">
-              Feedback & support
-            </Link>
-            <TourButton />
-            <SignOutButton />
-          </div>
-        </details>
+        <AccountMenu name={name} />
       </header>
       <header className="home-heading">
         <h1>{firstName ? `Your evening, ${firstName}.` : 'Your evening starts here.'}</h1>

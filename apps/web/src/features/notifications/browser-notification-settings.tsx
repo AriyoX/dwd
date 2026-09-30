@@ -18,7 +18,6 @@ export function BrowserNotificationSettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [instructions, setInstructions] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
   const inFlight = useRef(false);
   const mounted = useRef(false);
   const publicKey = process.env['NEXT_PUBLIC_DWD_VAPID_PUBLIC_KEY'];
@@ -87,7 +86,6 @@ export function BrowserNotificationSettings() {
     inFlight.current = true;
     setBusy(true);
     setError(null);
-    setTestResult(null);
     try {
       const service = new BrowserNotificationService();
       if (!enabled) {
@@ -181,32 +179,12 @@ export function BrowserNotificationSettings() {
           >
             Turn off on this device
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={busy}
-            onClick={async () =>
-              setTestResult((await runtime.sendTest()) ? 'Test sent.' : 'Test failed.')
-            }
-          >
-            Send test notification
-          </Button>
         </div>
       ) : delivery === 'allowed' ? (
         <div className="stack">
           <p className="muted small">
             Reminders are temporarily unavailable. You can still see updates in dwd.
           </p>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={busy}
-            onClick={async () =>
-              setTestResult((await runtime.sendTest()) ? 'Test sent.' : 'Test failed.')
-            }
-          >
-            Send test notification
-          </Button>
         </div>
       ) : runtime.permission === 'denied' ? (
         <p className="error-box">Allow notifications in this site&apos;s browser settings.</p>
@@ -229,11 +207,6 @@ export function BrowserNotificationSettings() {
             <li key={step}>{step}</li>
           ))}
         </ol>
-      ) : null}
-      {testResult ? (
-        <p className="muted small" role="status">
-          {testResult}
-        </p>
       ) : null}
       {error ? (
         <p className="error-box" role="alert">

@@ -16,7 +16,7 @@ export async function submitSupportRequest(
   const parsed = requestSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Write between 10 and 4,000 characters.' };
   if (parsed.data.kind === 'deletion' && !parsed.data.confirmed)
-    return { ok: false, error: 'Confirm that you understand how shared records are handled.' };
+    return { ok: false, error: 'Please tick the box to confirm your deletion request.' };
   try {
     const client = await createServerSupabaseClient();
     const claims = await client.auth.getClaims();
@@ -33,12 +33,12 @@ export async function submitSupportRequest(
         error:
           error?.code === '54000'
             ? 'You have reached today’s request limit. Try tomorrow.'
-            : 'Couldn’t save your request. Please retry; retries do not create duplicates.',
+            : 'We couldn’t send your message. Please try again.',
       };
     revalidatePath('/account');
     revalidatePath('/feedback');
     return { ok: true, id: data };
   } catch {
-    return { ok: false, error: 'Connection interrupted. Retry to recover the same request.' };
+    return { ok: false, error: 'We lost the connection. Please try again.' };
   }
 }

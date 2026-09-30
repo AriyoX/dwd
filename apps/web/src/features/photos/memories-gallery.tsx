@@ -1,15 +1,14 @@
 'use client';
 
-import { Camera, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Camera, Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { NightPhoto } from '@dwd/core';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { deleteNightPhotoAction, getNightPhotosAction, registerNightPhotoAction } from './actions';
 import { prepareImage } from './image-upload';
+import { PhotoCollection, type VisiblePhoto } from './photo-collection';
 
-type VisiblePhoto = NightPhoto & { url: string };
 interface UploadTask {
   id: string;
   file: File;
@@ -172,19 +171,25 @@ export function MemoriesGallery({
   }
 
   return (
-    <section className="stack-lg memories" aria-labelledby="memories-title">
+    <section
+      className={`stack-lg memories${photos.length > 0 ? ' memories-filled' : ''}`}
+      aria-labelledby="memories-title"
+    >
       <div className="row-between memories-header">
         <div>
-          <h2 id="memories-title">Photos &amp; memories</h2>
-          <p className="muted small">The night stays closed. Participants can still add photos.</p>
+          <h2 id="memories-title" className="section-title">
+            <Camera size={20} aria-hidden="true" /> Photos &amp; memories{' '}
+            {photos.length > 0 && <span className="pill">{photos.length}</span>}
+          </h2>
         </div>
-        <Button type="button" onClick={() => input.current?.click()}>
-          <Upload size={18} aria-hidden="true" /> Add photos
+        <Button type="button" variant="secondary" onClick={() => input.current?.click()}>
+          <Plus size={18} aria-hidden="true" /> Add photos
         </Button>
         <input
           ref={input}
           className="visually-hidden"
           type="file"
+          aria-label="Add photos from your night"
           accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
           multiple
           onChange={(event) => void choose(event.target.files)}
@@ -232,49 +237,27 @@ export function MemoriesGallery({
         </div>
       ) : null}
       {loading ? (
-        <p className="muted">Loading memories…</p>
+        <p className="muted memory-loading" role="status">
+          Loading photos…
+        </p>
       ) : photos.length === 0 ? (
-        <div className="empty-state">
+        <div className="memory-empty">
           <Camera size={28} aria-hidden="true" />
-          <strong>No photos yet</strong>
-          <span className="muted small">Add the first memory from this night.</span>
+          <div>
+            <strong>No photos yet</strong>
+            <p className="muted small">
+              Add a few favourites. Everyone from the night can see them.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="memory-grid">
-          {photos.map((photo) => (
-            <figure className="memory-photo" key={photo.id}>
-              <button
-                type="button"
-                className="memory-preview"
-                aria-label={`View photo by ${photo.uploaderName}`}
-                onClick={() => setViewingId(photo.id)}
-              >
-                {/* Signed, short-lived URLs authorize private Storage reads. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt={`Uploaded by ${photo.uploaderName}`} loading="lazy" />
-              </button>
-              <figcaption>
-                <span>{photo.uploaderName}</span>
-                <time dateTime={photo.createdAt}>
-                  {new Date(photo.createdAt).toLocaleString([], {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
-                </time>
-                {photo.uploadedByUserId === currentUserId ? (
-                  <button
-                    type="button"
-                    disabled={deleting !== null}
-                    onClick={() => void remove(photo)}
-                    aria-label="Delete your photo"
-                  >
-                    <Trash2 size={17} aria-hidden="true" />
-                  </button>
-                ) : null}
-              </figcaption>
-            </figure>
-          ))}
-        </div>
+        <PhotoCollection
+          photos={photos}
+          currentUserId={currentUserId}
+          deleting={deleting}
+          onView={setViewingId}
+          onDelete={(photo) => void remove(photo)}
+        />
       )}
       <Dialog
         open={viewing !== undefined}

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Droplets, Moon, Wine } from 'lucide-react';
 import { formatNightDateTime, type FinishedNight } from '@dwd/core';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Card } from '@/components/ui/card';
@@ -19,15 +19,29 @@ export function HistoryScreen({
   sample?: boolean;
 }) {
   return (
-    <main id="main-content" className="page-shell">
+    <main id="main-content" className="page-shell history-shell">
       <header className="topbar">
         <Wordmark />
-        <Link href="/home" className="text-link">
-          Home
+        <Link href="/home" className="back-link">
+          <ArrowLeft size={17} aria-hidden="true" /> Home
         </Link>
       </header>
       <section className="stack-lg">
-        <h1>Night history.</h1>
+        <header className="page-heading history-heading">
+          <div>
+            <span className="settings-feature-icon">
+              <Moon size={28} aria-hidden="true" />
+            </span>
+            <h1>
+              Night history<span className="heading-dot">.</span>
+            </h1>
+          </div>
+          <div className="history-orbit" aria-hidden="true">
+            <Moon size={48} strokeWidth={1} />
+            <span>✦</span>
+            <span>✧</span>
+          </div>
+        </header>
         {sample && <span className="pill">Tour practice</span>}
         {result === null ? (
           <Card className="stack">
@@ -39,39 +53,75 @@ export function HistoryScreen({
         ) : (
           <>
             {result.nights.length === 0 ? (
-              <Card className="stack">
+              <Card className="stack history-empty">
+                <Moon size={34} strokeWidth={1.3} aria-hidden="true" />
                 <h2>{page === 0 ? 'No finished nights yet' : 'No more nights'}</h2>
                 <p className="muted small">
-                  Finished nights you joined stay in your personal history, including nights you
-                  left. Former members see their own activity only.
+                  {page === 0
+                    ? 'Your nights and photos will be waiting here once the night ends.'
+                    : 'You’ve reached the start of your history.'}
                 </p>
                 <Link href={page === 0 ? '/home' : '/history'} className="text-link">
                   {page === 0 ? 'Go to your nights' : 'Back to latest nights'}
                 </Link>
               </Card>
             ) : (
-              result.nights.map((night, index) => (
-                <Link
-                  data-tour={index === 0 ? 'history-entry' : undefined}
-                  className="resume-card"
-                  key={night.id}
-                  href={sample ? '/night/tour/summary?tour=history' : `/night/${night.id}/summary`}
-                >
-                  <div>
-                    <strong>{night.title}</strong>
-                    <span className="muted small">
-                      {night.role === 'host' ? 'Hosted' : 'Joined'} · Ended{' '}
-                      {formatNightDateTime(night.endedAt, night.timezone)}
-                      <br />
-                      {night.alcoholCount} {night.alcoholCount === 1 ? 'drink' : 'drinks'} ·{' '}
-                      {night.waterCount} {night.waterCount === 1 ? 'chaser' : 'chasers'}
+              <div className="history-list">
+                {result.nights.map((night, index) => (
+                  <Link
+                    data-tour={index === 0 ? 'history-entry' : undefined}
+                    className="history-card"
+                    key={night.id}
+                    href={
+                      sample ? '/night/tour/summary?tour=history' : `/night/${night.id}/summary`
+                    }
+                  >
+                    <div className="history-date" aria-hidden="true">
+                      <span>
+                        {new Date(night.startsAt).toLocaleDateString('en', {
+                          month: 'short',
+                          timeZone: night.timezone || 'UTC',
+                        })}
+                      </span>
+                      <strong>
+                        {new Date(night.startsAt).toLocaleDateString('en', {
+                          day: '2-digit',
+                          timeZone: night.timezone || 'UTC',
+                        })}
+                      </strong>
+                    </div>
+                    <div className="history-card-content">
+                      <span className="history-card-meta">
+                        {night.role === 'host' ? 'You hosted' : 'With friends'}{' '}
+                        <span aria-hidden="true">·</span>{' '}
+                        {new Date(night.startsAt).toLocaleDateString('en', {
+                          month: 'long',
+                          year: 'numeric',
+                          timeZone: night.timezone || 'UTC',
+                        })}
+                      </span>
+                      <strong>{night.title}</strong>
+                      <span className="visually-hidden">
+                        Ended {formatNightDateTime(night.endedAt, night.timezone)}
+                      </span>
+                      <span className="history-counts">
+                        <span>
+                          <Wine size={15} aria-hidden="true" /> {night.alcoholCount}{' '}
+                          {night.alcoholCount === 1 ? 'drink' : 'drinks'}
+                        </span>
+                        <span>
+                          <Droplets size={15} aria-hidden="true" /> {night.waterCount}{' '}
+                          {night.waterCount === 1 ? 'chaser' : 'chasers'}
+                        </span>
+                      </span>
+                    </div>
+                    <span className="history-open">
+                      <ArrowUpRight size={23} aria-hidden="true" />
+                      <span className="visually-hidden">View recap</span>
                     </span>
-                  </div>
-                  <span className="row">
-                    Summary <ArrowRight size={18} aria-hidden="true" />
-                  </span>
-                </Link>
-              ))
+                  </Link>
+                ))}
+              </div>
             )}
             <nav className="row-between" aria-label="History pages">
               {page > 0 && (

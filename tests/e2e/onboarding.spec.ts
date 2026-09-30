@@ -114,19 +114,18 @@ test('real local signup, draft recovery, water-only night, support and history',
   await expect(page.getByLabel('What happened?')).toHaveValue(
     'Local browser test: checking that reports receive a reference.',
   );
-  await page.getByRole('button', { name: 'Send report' }).click();
-  await expect(page.getByText('Report received', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(page.getByText('Thanks for letting us know', { exact: true })).toBeVisible();
   await page.goto('/account');
   await expect(
-    page.getByRole('article').getByText('Problem report', { exact: true }),
+    page.getByRole('article').getByText('Something went wrong', { exact: true }),
   ).toBeVisible();
+  await page.locator('.account-deletion > summary').click();
   await page
-    .getByRole('heading', { name: 'Request account deletion' })
-    .locator('..')
-    .getByLabel('I understand this is a request for review.', { exact: false })
+    .getByLabel('I understand my account and shared nights won’t be deleted straight away.')
     .check();
   await page.getByRole('button', { name: 'Request account deletion' }).click();
   await expect(
-    page.getByText('You already have an open deletion request.', { exact: false }),
+    page.getByText('We’ve received your deletion request.', { exact: false }),
   ).toBeVisible();
 });

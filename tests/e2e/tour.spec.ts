@@ -63,7 +63,7 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
     if (
       headers['rsc'] === '1' &&
       !headers['next-router-prefetch'] &&
-      ['join', 'choices', 'group', 'help'].includes(url.searchParams.get('tour') ?? '')
+      ['join', 'choices', 'bottles', 'group', 'help'].includes(url.searchParams.get('tour') ?? '')
     )
       localStepRequests.push(request.url());
   });
@@ -108,6 +108,17 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   card = await coach(page, 'choices');
   await expect(page.locator('[data-testid="drink-count"]')).toHaveText('1');
   await card.getByRole('button', { name: 'Next', exact: true }).click();
+  card = await coach(page, 'bottles');
+  await page.locator('[data-tour="shared-bottles"]').click();
+  const bottle = page.getByRole('dialog', { name: 'Shared bottles', exact: true });
+  await bottle.getByRole('button', { name: 'Join bottle' }).click();
+  await bottle.getByRole('button', { name: 'Log glass', exact: true }).click();
+  await expect(bottle.getByText('625 ml left', { exact: true })).toBeVisible();
+  await bottle.getByRole('button', { name: 'Undo last glass' }).click();
+  await expect(bottle.getByText('750 ml left', { exact: true })).toBeVisible();
+  await bottle.getByRole('button', { name: 'Close dialog' }).click();
+  card = await coach(page, 'bottles');
+  await card.getByRole('button', { name: 'Next', exact: true }).click();
   card = await coach(page, 'group');
   await expect(page).toHaveURL(/view=group&tour=group/);
   await expect(page.locator('[data-tour="group-card"]')).toContainText('Alex');
@@ -124,7 +135,19 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   await page.locator('[data-tour="history-entry"]').click();
   card = await coach(page, 'history');
   await expect(page).toHaveURL(/\/night\/tour\/summary\?tour=history$/);
-  await expect(page.locator('[data-tour="history-summary"]')).toContainText('1 drink');
+  await expect(page.locator('[data-tour="history-summary"] .recap-counts')).toContainText('1drink');
+  await card.getByRole('button', { name: 'Next', exact: true }).click();
+  card = await coach(page, 'photos');
+  await page.getByLabel('Try adding a photo').setInputFiles({
+    name: 'practice.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
+  await expect(page.locator('.memory-collage img')).toBeVisible();
+  await expect(page.locator('.memory-collage img')).toHaveJSProperty('naturalWidth', 1);
   await card.getByRole('button', { name: 'Next', exact: true }).click();
   card = await coach(page, 'reminders');
   await expect(page).toHaveURL(/\/account\?tour=reminders#notifications$/);

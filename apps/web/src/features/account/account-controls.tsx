@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Bell } from 'lucide-react';
 import type { NotificationEvent, NotificationPreferences } from '@dwd/core';
 import { Button } from '@/components/ui/button';
 import { updateDisplayNameAction } from './actions';
@@ -39,7 +40,7 @@ export function DisplayNameForm({ initialName }: { initialName: string }) {
       }
     } catch {
       setState('error');
-      setError('Your name could not be saved. Retry without leaving this page.');
+      setError('We couldn’t save your name. Please try again.');
     } finally {
       inFlight.current = false;
     }
@@ -47,7 +48,7 @@ export function DisplayNameForm({ initialName }: { initialName: string }) {
   return (
     <div className="stack">
       <div className="field">
-        <label htmlFor="display-name">Display name</label>
+        <label htmlFor="display-name">Your name</label>
         <input
           id="display-name"
           className="input"
@@ -110,7 +111,9 @@ export function NotificationSettings({
       const result = await setReminderPauseAction(minutes);
       if (!result.ok) throw new Error(result.error);
       setPreferences(result.data);
-      setMessage(minutes === null ? 'Log reminders resumed.' : 'Log reminders paused for 1 hour.');
+      setMessage(
+        minutes === null ? 'Drink reminders resumed.' : 'Drink reminders paused for 1 hour.',
+      );
     } catch {
       setSaveError(true);
       setMessage('Reminders could not be saved. Retry when connected.');
@@ -164,7 +167,9 @@ export function NotificationSettings({
   return (
     <>
       <section className="stack" id="notifications">
-        <h2>Reminders</h2>
+        <h2 className="section-title">
+          <Bell size={20} aria-hidden="true" /> Reminders
+        </h2>
         <BrowserNotificationSettings />
         <fieldset className="notification-options">
           <legend>Your group</legend>
@@ -175,7 +180,7 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('groupAttentionEnabled')}
             />{' '}
-            When someone may need a check-in
+            A friend may need a check-in
           </label>
           <label className="checkbox-row">
             <input
@@ -184,7 +189,7 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('directCheckinsEnabled')}
             />{' '}
-            When someone checks in on me
+            A friend checks in on me
           </label>
         </fieldset>
         <fieldset className="notification-options">
@@ -214,11 +219,11 @@ export function NotificationSettings({
               disabled={saving}
               onChange={() => toggle('periodicWaterEnabled')}
             />{' '}
-            Remind me to log
+            Remind me to add my drinks
           </label>
           {preferences.periodicWaterEnabled ? (
             <div className="field">
-              <p className="muted small">A nudge when you haven’t logged anything for a while.</p>
+              <p className="muted small">Only when you haven’t added a drink for a while.</p>
               <label htmlFor="reminder-interval">How often?</label>
               <select
                 id="reminder-interval"
@@ -241,7 +246,7 @@ export function NotificationSettings({
           ) : null}
           {muted && preferences.remindersMutedUntil ? (
             <p className="info-box small" role="status">
-              Log reminders paused until{' '}
+              Drink reminders paused until{' '}
               {new Date(preferences.remindersMutedUntil).toLocaleTimeString([], {
                 hour: 'numeric',
                 minute: '2-digit',
@@ -258,7 +263,7 @@ export function NotificationSettings({
                   disabled={saving}
                   onClick={() => void pause(null)}
                 >
-                  Resume log reminders
+                  Resume drink reminders
                 </Button>
               ) : (
                 <Button

@@ -126,7 +126,7 @@ test('device notification setup retries, persists, turns off and new alcohol pla
   await expect(enable).toBeEnabled();
   await page.getByLabel('Remind me to take a break', { exact: true }).check();
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
-  await page.getByLabel('Remind me to log', { exact: true }).check();
+  await page.getByLabel('Remind me to add my drinks', { exact: true }).check();
   await page.getByLabel('How often?', { exact: true }).selectOption('30');
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
   await expect(page.locator('body')).toHaveJSProperty(
@@ -608,7 +608,7 @@ test('two accounts: setup refresh, drink confirmations, live check-ins, guest ro
 
     await recipient.bringToFront();
     await recipient.goto('/account');
-    await recipient.getByLabel('Display name', { exact: true }).fill('Renamed Member');
+    await recipient.getByLabel('Your name', { exact: true }).fill('Renamed Member');
     await recipient.getByRole('button', { name: 'Save name', exact: true }).click();
     await expect(recipient.getByText('Saved', { exact: true })).toBeVisible();
     await page.bringToFront();

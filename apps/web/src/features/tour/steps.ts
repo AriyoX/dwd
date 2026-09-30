@@ -59,6 +59,17 @@ export const tourSteps: readonly TourStep[] = [
     interactive: true,
   },
   {
+    id: 'bottles',
+    route: '/night/tour?tour=bottles',
+    target: 'shared-bottles',
+    title: 'One bottle, your own pace',
+    description:
+      'Share a bottle with everyone or selected friends. Each person chooses their pours and plan; drinks come off the same bottle. Tap to try it.',
+    placement: 'top',
+    sample: 'night',
+    interactive: true,
+  },
+  {
     id: 'group',
     route: '/night/tour?view=group&tour=group',
     target: 'group-card',
@@ -94,6 +105,17 @@ export const tourSteps: readonly TourStep[] = [
       description:
         'Your summary shows the drinks and chasers you logged. Your real nights will appear here after they end.',
     },
+  },
+  {
+    id: 'photos',
+    route: '/night/tour/summary?tour=photos',
+    target: 'night-photos',
+    title: 'Keep a little of the night',
+    description:
+      'After a night ends, open its recap and tap Add photos. Everyone from the night can see them at the top. Try a photo here — it stays on this device and isn’t saved.',
+    placement: 'bottom',
+    sample: 'history',
+    interactive: true,
   },
   {
     id: 'reminders',

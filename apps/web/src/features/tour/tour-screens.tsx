@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { CustomDrinkInput } from '@dwd/core';
+import { calculateMemberTotals, type CustomDrinkInput } from '@dwd/core';
 import { TonightView, ParticipantCard, DrinkChooser } from '@/features/nights/night-content';
 import { NightFrame, type NightSegment } from '@/features/nights/night-frame';
 import { HistoryScreen } from '@/features/nights/history-screen';
@@ -10,6 +10,7 @@ import { SummaryScreen } from '@/features/nights/summary-screen';
 import { EmergencyPanel } from '@/features/alerts/emergency-panel';
 import { useTour } from './tour-provider';
 import { addTourDrink, undoTourDrink } from './sample-state';
+import { TourBottles, TourPhotos } from './tour-extras';
 
 const noAction = () => undefined;
 function OpeningTour() {
@@ -52,18 +53,21 @@ export function TourNightScreen() {
         sample
       >
         {segment === 'tonight' ? (
-          <TonightView
-            member={member}
-            alerts={[]}
-            busy={false}
-            pendingLogs={[]}
-            onQuick={() => add('alcohol')}
-            onChoose={() => setChoosing(true)}
-            onWater={() => add('water')}
-            onUndo={() =>
-              tour?.setSample((previous) => (previous ? undoTourDrink(previous) : previous))
-            }
-          />
+          <div className="stack">
+            <TonightView
+              member={member}
+              alerts={[]}
+              busy={false}
+              pendingLogs={[]}
+              onQuick={() => add('alcohol')}
+              onChoose={() => setChoosing(true)}
+              onWater={() => add('water')}
+              onUndo={() =>
+                tour?.setSample((previous) => (previous ? undoTourDrink(previous) : previous))
+              }
+            />
+            <TourBottles />
+          </div>
         ) : (
           <section className="stack">
             <h2>Your people</h2>
@@ -106,6 +110,8 @@ export function TourNightScreen() {
 export function TourHistoryScreen() {
   const tour = useTour();
   if (!tour?.active || !tour.sample) return <OpeningTour />;
+  const member = tour.sample.members.find((item) => item.id === tour.sample?.currentMemberId);
+  const totals = calculateMemberTotals(member?.drinkLogs ?? [], member?.waterLogs ?? []);
   return (
     <HistoryScreen
       sample
@@ -120,8 +126,8 @@ export function TourHistoryScreen() {
             timezone: tour.sample.night.timezone,
             role: 'host',
             memberId: tour.sample.currentMemberId,
-            alcoholCount: 0,
-            waterCount: 0,
+            alcoholCount: totals.alcoholCount,
+            waterCount: totals.waterCount,
             categoryCounts: {},
           },
         ],
@@ -137,6 +143,7 @@ export function TourSummaryScreen() {
   return (
     <SummaryScreen
       sample
+      photoGallery={<TourPhotos />}
       snapshot={{
         ...tour.sample,
         night: { ...tour.sample.night, status: 'ended', endedAt: tour.sample.night.endsAt },
