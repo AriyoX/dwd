@@ -119,6 +119,16 @@ export async function replacePlanAction(input: unknown): Promise<NightActionResu
     if (message.includes('below activity already logged')) {
       return { ok: false, error: 'Your adjusted plan must cover the drinks already logged.' };
     }
+    if (message.includes('Join this bottle before adding it')) {
+      return {
+        ok: false,
+        error:
+          'A bottle in this plan is unavailable or you haven’t joined it. Choose a shared bottle, or remove it from your plan.',
+      };
+    }
+    if (message.includes('Bottle details changed')) {
+      return { ok: false, error: 'The bottle details have changed. Choose the bottle again.' };
+    }
     if (message.includes('invalid') || message.includes('quick-log')) {
       return { ok: false, error: message };
     }

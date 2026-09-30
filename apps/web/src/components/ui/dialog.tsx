@@ -35,9 +35,11 @@ export function Dialog({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const focusableSelector =
-      'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+      'button:not(:disabled), summary, a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
     const focusables = () =>
-      Array.from(dialog?.querySelectorAll<HTMLElement>(focusableSelector) ?? []);
+      Array.from(dialog?.querySelectorAll<HTMLElement>(focusableSelector) ?? []).filter(
+        (element) => element.getClientRects().length > 0,
+      );
     queueMicrotask(() => (focusables()[0] ?? dialog)?.focus());
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {

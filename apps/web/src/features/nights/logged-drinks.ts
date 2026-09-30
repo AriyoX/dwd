@@ -29,6 +29,7 @@ export function withPendingDrinks(
           nightMemberId: member.id,
           actorUserId: record.actorUserId,
           planItemId: record.planItemId ?? null,
+          ...(drink.sharedBottleId ? { sharedBottleId: drink.sharedBottleId } : {}),
           labelSnapshot: drink.label,
           categorySnapshot: drink.category,
           volumeMl: drink.volumeMl,

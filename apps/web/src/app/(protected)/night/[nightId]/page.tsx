@@ -36,6 +36,7 @@ export default async function ActiveNightPage({
   return (
     <ActiveNightClient
       initialSnapshot={snapshot}
+      openBottlesInitially={query['bottles'] === '1'}
       openInviteInitially={query['invite'] === '1'}
       setupPlanInitially={query['setup'] === '1' || currentMember.planSetupCompletedAt === null}
       fastInitially={query['fast'] === 'drink' || query['fast'] === 'chaser' ? query['fast'] : null}

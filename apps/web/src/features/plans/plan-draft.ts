@@ -7,6 +7,7 @@ import {
 } from '@dwd/core';
 
 export type PlanDraftItem = {
+  sharedBottleId?: string | null | undefined;
   id?: string | undefined;
   clientId?: string | undefined;
   label: string;
@@ -49,6 +50,7 @@ export function materializePlanDraft(
       ...(item.id === undefined ? {} : { id: item.id }),
       ...(item.clientId === undefined ? {} : { clientId: item.clientId }),
       label: item.label,
+      ...(item.sharedBottleId ? { sharedBottleId: item.sharedBottleId } : {}),
       category: item.category,
       volumeMl: typeof item.volumeMl === 'string' ? Number(item.volumeMl) : item.volumeMl,
       abvPercent: typeof item.abvPercent === 'string' ? Number(item.abvPercent) : item.abvPercent,

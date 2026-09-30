@@ -159,11 +159,17 @@ export function PlanEditor({
                   </button>
                 </div>
                 <div className="field-grid">
+                  {item.sharedBottleId && (
+                    <p className="small bottle-joined" style={{ gridColumn: '1 / -1' }}>
+                      From a shared bottle
+                    </p>
+                  )}
                   <div className="field" style={{ gridColumn: '1 / -1' }}>
                     <label htmlFor={`label-${domId}`}>Drink name</label>
                     <input
                       className="input"
                       id={`label-${domId}`}
+                      readOnly={Boolean(item.sharedBottleId)}
                       value={item.label}
                       maxLength={60}
                       required
@@ -175,6 +181,7 @@ export function PlanEditor({
                     <select
                       className="select"
                       id={`category-${domId}`}
+                      disabled={Boolean(item.sharedBottleId)}
                       value={item.category}
                       onChange={(event) => {
                         const parsed = drinkCategorySchema.safeParse(event.target.value);
@@ -190,7 +197,9 @@ export function PlanEditor({
                     </select>
                   </div>
                   <div className="field">
-                    <label htmlFor={`quantity-${domId}`}>Quantity</label>
+                    <label htmlFor={`quantity-${domId}`}>
+                      {item.sharedBottleId ? 'Planned drinks' : 'Quantity'}
+                    </label>
                     <input
                       className="input"
                       id={`quantity-${domId}`}
@@ -204,7 +213,11 @@ export function PlanEditor({
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor={`volume-${domId}`}>Drink size (ml)</label>
+                    <label htmlFor={`volume-${domId}`}>
+                      {item.sharedBottleId && item.category === 'spirit'
+                        ? 'Shot size (ml)'
+                        : 'Drink size (ml)'}
+                    </label>
                     <input
                       className="input"
                       id={`volume-${domId}`}
@@ -222,6 +235,7 @@ export function PlanEditor({
                     <input
                       className="input"
                       id={`abv-${domId}`}
+                      readOnly={Boolean(item.sharedBottleId)}
                       type="number"
                       min="0.1"
                       max="95"

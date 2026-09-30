@@ -2,6 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { materializePlanDraft, newPlanItem } from './plan-draft';
 
 describe('plan draft materialization', () => {
+  it('preserves a shared bottle when reviewing and saving a plan', () => {
+    const sharedBottleId = 'a1000000-0000-4000-8000-000000000001';
+    const result = materializePlanDraft('drinks', [
+      {
+        ...newPlanItem('shot'),
+        label: 'Gin',
+        category: 'spirit',
+        volumeMl: '30',
+        abvPercent: '40',
+        plannedQuantity: '2',
+        sharedBottleId,
+      },
+    ]);
+    expect(result).toMatchObject({
+      success: true,
+      data: [{ sharedBottleId, volumeMl: 30, plannedQuantity: 2 }],
+    });
+  });
   it('starts a new row without choosing a drink', () => {
     const draft = newPlanItem();
 

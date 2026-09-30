@@ -8,6 +8,7 @@ const STORAGE_KEY = 'dwd:pending-logs:v1';
 const LEGACY_STORAGE_KEY = 'drink-mates:pending-logs:v1';
 
 const customDrinkSchema = z.object({
+  sharedBottleId: z.uuid().nullish(),
   label: z.string(),
   category: z.enum(['beer', 'wine', 'spirit', 'cocktail', 'other']),
   volumeMl: z.number(),

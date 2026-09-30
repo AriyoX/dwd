@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import {
   resolveWallTimeInTimeZone,
+  bottleDrinkWord,
   startNightSchema,
   type PlanSetupMode,
   type StartNightInput,
@@ -15,6 +16,8 @@ import { PlanEditor, materializePlanDraft, type PlanDraftItem } from '@/features
 import { startNightAction } from './actions';
 import { newInviteRequestToken } from '@/features/invites/invite-request';
 import { nightDraftKey, readNightDraft } from './night-draft';
+import { BottleFields } from '@/features/bottles/bottle-fields';
+import { materializeBottle, newBottleDraft } from '@/features/bottles/bottle-draft';
 
 type GuestDraft = {
   clientId: string;
@@ -65,6 +68,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
   const [hasDraft, setHasDraft] = useState(false);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [withPeople, setWithPeople] = useState(true);
+  const [shareBottleNext, setShareBottleNext] = useState(false);
+  const [bottleDraft, setBottleDraft] = useState(newBottleDraft);
   const [hostPlan, setHostPlan] = useState<PlanDraftItem[]>([]);
   const [hostPlanMode, setHostPlanMode] = useState<PlanSetupMode>('unselected');
   const [guests, setGuests] = useState<GuestDraft[]>([]);
@@ -90,6 +95,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
           setEndDate(draft.endDate);
           setTimeZone(draft.timezone ?? initialTimeZone);
           setWithPeople(draft.withPeople);
+          setShareBottleNext(draft.shareBottleNext ?? false);
+          if (draft.bottleDraft) setBottleDraft(draft.bottleDraft);
           setHostPlan(draft.hostPlan);
           setHostPlanMode(
             draft.hostPlanMode ?? (draft.hostPlan.length > 0 ? 'drinks' : 'unselected'),
@@ -130,6 +137,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
             endDate,
             timezone: timeZone,
             withPeople,
+            shareBottleNext,
+            bottleDraft,
             hostPlan,
             hostPlanMode,
             guests,
@@ -152,6 +161,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
     endDate,
     timeZone,
     withPeople,
+    shareBottleNext,
+    bottleDraft,
     hostPlan,
     hostPlanMode,
     guests,
@@ -167,6 +178,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
     setEndTime(nextEnd.time);
     setEndDate(nextEnd.date);
     setWithPeople(true);
+    setShareBottleNext(false);
+    setBottleDraft(newBottleDraft());
     setHostPlan([]);
     setHostPlanMode('unselected');
     setGuests([]);
@@ -189,7 +202,14 @@ export function NewNightWizard({ userId }: { userId: string }) {
     if (inFlight.current) return;
     setError(null);
     if (step < 3) {
-      if (step === 2) {
+      if (step === 2 && withPeople && shareBottleNext) {
+        const bottle = materializeBottle(bottleDraft);
+        if (!bottle.success) {
+          setError(bottle.error.issues[0]?.message ?? 'Check the bottle details.');
+          return;
+        }
+      }
+      if (step === 2 && !(withPeople && shareBottleNext)) {
         const parsed = materializePlanDraft(hostPlanMode, hostPlan);
         if (!parsed.success) {
           setError(parsed.message);
@@ -199,7 +219,10 @@ export function NewNightWizard({ userId }: { userId: string }) {
       setStep((current) => current + 1);
       return;
     }
-    const hostParsed = materializePlanDraft(hostPlanMode, hostPlan);
+    const hostParsed =
+      withPeople && shareBottleNext
+        ? { success: true as const, data: [] }
+        : materializePlanDraft(hostPlanMode, hostPlan);
     if (!hostParsed.success) {
       setError(hostParsed.message);
       return;
@@ -224,6 +247,14 @@ export function NewNightWizard({ userId }: { userId: string }) {
       hostPlanItems: hostParsed.data,
       guests: guestInputs,
     };
+    if (withPeople && shareBottleNext) {
+      const bottle = materializeBottle(bottleDraft);
+      if (!bottle.success) {
+        setError(bottle.error.issues[0]?.message ?? 'Check the bottle details.');
+        return;
+      }
+      input.sharedBottle = bottle.data;
+    }
     const parsed = startNightSchema.safeParse(input);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Check the night details.');
@@ -378,12 +409,32 @@ export function NewNightWizard({ userId }: { userId: string }) {
             <h1 ref={heading} tabIndex={-1}>
               Your plan for tonight.
             </h1>
-            <PlanEditor
-              items={hostPlan}
-              mode={hostPlanMode}
-              onModeChange={setHostPlanMode}
-              onChange={setHostPlan}
-            />
+            {withPeople && (
+              <label className="bottle-setup-choice">
+                <input
+                  type="checkbox"
+                  checked={shareBottleNext}
+                  onChange={(event) => setShareBottleNext(event.target.checked)}
+                />
+                <span>
+                  <strong>Start with a shared bottle</strong>
+                  <span className="small muted">
+                    Choose your shots or drinks now, then start tracking.
+                  </span>
+                </span>
+              </label>
+            )}
+            {withPeople && shareBottleNext && (
+              <BottleFields draft={bottleDraft} onChange={setBottleDraft} initial />
+            )}
+            {!(withPeople && shareBottleNext) && (
+              <PlanEditor
+                items={hostPlan}
+                mode={hostPlanMode}
+                onModeChange={setHostPlanMode}
+                onChange={setHostPlan}
+              />
+            )}
           </Card>
         ) : null}
         {step === 3 ? (
@@ -410,13 +461,15 @@ export function NewNightWizard({ userId }: { userId: string }) {
                 <div>
                   <dt>Your plan</dt>
                   <dd>
-                    {hostPlanMode === 'unselected'
-                      ? 'Choose a plan'
-                      : hostPlanMode === 'water_only'
-                        ? 'Chaser only'
-                        : hostPlan
-                            .map((item) => `${item.plannedQuantity} × ${item.label}`)
-                            .join(', ')}
+                    {withPeople && shareBottleNext
+                      ? `${bottleDraft.defaultQuantity} ${bottleDrinkWord(bottleDraft.category)}${bottleDraft.defaultQuantity === '1' ? '' : 's'} · ${bottleDraft.label}`
+                      : hostPlanMode === 'unselected'
+                        ? 'Choose a plan'
+                        : hostPlanMode === 'water_only'
+                          ? 'Chaser only'
+                          : hostPlan
+                              .map((item) => `${item.plannedQuantity} × ${item.label}`)
+                              .join(', ')}
                   </dd>
                 </div>
               </dl>

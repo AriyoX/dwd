@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateMemberTotals, projectedPlanStatus } from '@dwd/core';
+import { bottlePlanProgress, calculateMemberTotals, projectedPlanStatus } from '@dwd/core';
 import type { PendingDrinkLog } from '@dwd/contracts';
 import { createTourNight } from '../tour/sample-state';
 import { withPendingDrinks } from './logged-drinks';
@@ -23,6 +23,21 @@ const pending: PendingDrinkLog = {
 };
 
 describe('optimistic alcohol totals', () => {
+  it('updates bottle progress while a drink is saving', () => {
+    const logs = withPendingDrinks(member, [
+      {
+        ...pending,
+        drinkSnapshot: {
+          label: 'Gin',
+          category: 'spirit',
+          volumeMl: 30,
+          abvPercent: 40,
+          sharedBottleId: 'bottle',
+        },
+      },
+    ]);
+    expect(bottlePlanProgress('bottle', logs, 30)).toBe(1);
+  });
   it('includes volume and strength of queued drinks in totals and confirmations', () => {
     const logs = withPendingDrinks(member, [pending]);
     expect(calculateMemberTotals(logs).ethanolGrams).toBe(44.579);

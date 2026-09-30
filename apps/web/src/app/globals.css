@@ -1,4 +1,375 @@
 @import 'tailwindcss';
+
+/* Shared bottles: a small table of bottles, with personal choices beneath each. */
+.bottle-launcher {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 19px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.bottle-launcher:hover {
+  border-color: var(--accent);
+}
+.bottle-launcher > span:nth-child(2) {
+  flex: 1;
+}
+.bottle-launcher > span:nth-child(2) > span {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.bottle-launcher-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.bottle-card {
+  padding: 22px;
+  border-radius: 23px;
+  border: 1px solid var(--border);
+  background: linear-gradient(140deg, var(--primary-soft), var(--surface) 55%);
+}
+.bottle-card-heading,
+.bottle-summary {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+}
+.bottle-card-heading > div:last-child {
+  min-width: 0;
+}
+.bottle-card h3,
+.bottle-summary h3 {
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+.bottle-access {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.73rem;
+  margin-bottom: 6px;
+}
+.bottle-remaining {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bottle-level {
+  height: 5px;
+  background: var(--surface-raised);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.bottle-level > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+.bottle-art {
+  position: relative;
+  flex: 0 0 57px;
+  height: 108px;
+  filter: drop-shadow(0 5px 4px #00000012);
+}
+.bottle-art-cap {
+  position: absolute;
+  width: 23px;
+  height: 12px;
+  background: var(--accent);
+  top: 0;
+  left: 17px;
+  border-radius: 4px 4px 1px 1px;
+  z-index: 2;
+}
+.bottle-art-neck {
+  position: absolute;
+  width: 21px;
+  height: 27px;
+  top: 10px;
+  left: 18px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+}
+.bottle-art-body {
+  position: absolute;
+  overflow: hidden;
+  left: 0;
+  bottom: 0;
+  width: 57px;
+  height: 76px;
+  border: 1px solid var(--accent);
+  border-radius: 16px 16px 10px 10px;
+  background: var(--surface);
+}
+.bottle-art-liquid {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: var(--bottle-fill);
+  background: color-mix(in srgb, var(--accent) 45%, var(--surface));
+}
+.bottle-art-body > span {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  top: 23px;
+  left: 7px;
+  right: 7px;
+  height: 29px;
+  background: var(--surface);
+  color: var(--accent);
+  border-radius: 3px;
+}
+.bottle-people {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  overflow-wrap: anywhere;
+}
+.bottle-avatars {
+  display: flex;
+  flex-shrink: 0;
+  padding-left: 4px;
+}
+.bottle-avatars span {
+  display: grid;
+  place-items: center;
+  height: 29px;
+  width: 29px;
+  border-radius: 50%;
+  margin-left: -4px;
+  border: 2px solid var(--surface);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.bottle-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.bottle-joined,
+.bottle-notice {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+}
+.bottle-notice {
+  padding: 12px;
+  background: var(--primary-soft);
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+.bottle-empty {
+  padding: 24px 10px;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 12px;
+}
+.bottle-empty svg {
+  color: var(--accent);
+}
+.bottle-sizes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.bottle-sizes .choice {
+  min-height: 43px;
+  padding: 8px 3px;
+  font-size: 0.83rem;
+}
+.bottle-invitees {
+  display: grid;
+  gap: 8px;
+}
+.bottle-person,
+.bottle-setup-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 15px;
+  cursor: pointer;
+}
+.bottle-setup-choice {
+  background: var(--primary-soft);
+}
+.bottle-setup-choice span > span {
+  display: block;
+  margin-top: 4px;
+}
+.bottle-person input,
+.bottle-setup-choice input {
+  accent-color: var(--primary);
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.bottle-history summary {
+  cursor: pointer;
+  padding: 12px 0;
+}
+.bottle-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--primary-soft);
+}
+.bottle-stepper button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  height: 48px;
+  border-radius: 13px;
+  color: var(--primary);
+  background: var(--surface);
+  cursor: pointer;
+}
+.bottle-stepper button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.bottle-stepper input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px;
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 750;
+  color: var(--text);
+  appearance: textfield;
+  border-radius: 12px;
+}
+.bottle-stepper input::-webkit-inner-spin-button,
+.bottle-stepper input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.bottle-details,
+.bottle-options {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.bottle-details > summary,
+.bottle-options > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  min-height: 44px;
+  align-content: center;
+}
+.bottle-details > summary > span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 4px 0 0 16px;
+}
+.bottle-details[open] > summary,
+.bottle-options[open] > summary {
+  margin-bottom: 12px;
+}
+.bottle-options > summary svg {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.bottle-main-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+.bottle-personal-progress {
+  display: grid;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+[data-bottle-tracking] {
+  scroll-margin-top: 18px;
+}
+.bottle-progress-track {
+  height: 7px;
+  overflow: hidden;
+  background: var(--surface-raised);
+  border-radius: 7px;
+}
+.bottle-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 0.2s;
+}
+.bottle-main-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: var(--primary-soft);
+  font-size: 0.82rem;
+}
+.bottle-main-hint > svg {
+  flex-shrink: 0;
+  color: var(--primary);
+  margin-top: 2px;
+}
+.bottle-main-hint > div {
+  flex: 1;
+  min-width: 0;
+}
+.bottle-main-hint p {
+  margin-top: 4px;
+  line-height: 1.55;
+}
+.bottle-main-hint button {
+  flex: 0 0 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.bottle-main-hint button:hover {
+  background: var(--surface);
+}
+@media (max-width: 380px) {
+  .bottle-card {
+    padding: 16px;
+  }
+  .bottle-actions {
+    grid-template-columns: 1fr;
+  }
+}
 :root {
   color-scheme: light;
   --bg: #f8f4ef;

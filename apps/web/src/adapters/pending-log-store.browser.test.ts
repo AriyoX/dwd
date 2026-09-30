@@ -36,6 +36,23 @@ function setup(values: Record<string, PendingDrinkLog[]>) {
 
 afterEach(() => vi.unstubAllGlobals());
 
+describe('queued bottle drinks', () => {
+  it('preserves the bottle through save, read and retry updates', async () => {
+    const { store } = setup({});
+    const drink = {
+      label: 'Gin',
+      category: 'spirit' as const,
+      volumeMl: 30,
+      abvPercent: 40,
+      sharedBottleId: '00000000-0000-4000-8000-000000000009',
+    };
+    const log = pending({ kind: 'alcohol', customDrink: drink, drinkSnapshot: drink });
+    await store.save(log);
+    await store.update(log.idempotencyKey, { status: 'syncing', retryCount: 1 });
+    expect(await store.getAll()).toEqual([{ ...log, status: 'syncing', retryCount: 1 }]);
+  });
+});
+
 describe('pending logs after the brand rename', () => {
   it('preserves queued logs and uses the newer state of duplicate entries', async () => {
     const latest = pending({ status: 'needs_confirmation', retryCount: 1 });

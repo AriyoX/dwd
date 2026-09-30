@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { nightDraftKey, readNightDraft, type NightDraft } from './night-draft';
+import { newBottleDraft } from '../bottles/bottle-draft';
 
 const first = '00000000-0000-4000-8000-000000000001';
 const second = '00000000-0000-4000-8000-000000000002';
@@ -17,6 +18,14 @@ const draft: NightDraft = {
   guests: [{ clientId: second, displayName: '', planItems: [] }],
 };
 describe('unfinished night setup', () => {
+  it('restores a shared bottle, its personal quantity and its retry id', () => {
+    const saved = {
+      ...draft,
+      shareBottleNext: true,
+      bottleDraft: { ...newBottleDraft(), label: 'Friday gin', defaultQuantity: '3' },
+    };
+    expect(readNightDraft({ getItem: () => JSON.stringify(saved) }, first)).toEqual(saved);
+  });
   it('restores incomplete fields, water-only choices, step and retry identifiers', () => {
     expect(readNightDraft({ getItem: () => JSON.stringify(draft) }, first)).toEqual(draft);
   });

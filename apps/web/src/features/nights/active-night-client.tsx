@@ -61,6 +61,13 @@ import {
 import { NightRealtimeProvider, useRealtimeStatus } from '@/providers/realtime-provider';
 import { useConnection } from '@/providers/connection-provider';
 import { ActiveReminderControls } from '@/features/notifications/active-reminder-controls';
+import {
+  availableBottles,
+  BottleJoinPrompt,
+  BottleLauncher,
+  BottleShelf,
+} from '@/features/bottles/bottle-shelf';
+import { useBottleInvitations } from '@/features/bottles/use-bottle-invitations';
 
 type Segment = 'tonight' | 'group' | 'more';
 type ActivityKind = 'alcohol' | 'water';
@@ -84,12 +91,14 @@ interface UndoTarget {
 }
 
 export function ActiveNightClient({
+  openBottlesInitially = false,
   initialSnapshot,
   openInviteInitially,
   setupPlanInitially,
   fastInitially,
   initialNotificationPreferences,
 }: {
+  openBottlesInitially?: boolean;
   initialSnapshot: NightSnapshot;
   openInviteInitially: boolean;
   setupPlanInitially: boolean;
@@ -120,6 +129,7 @@ export function ActiveNightClient({
       onInvalidate={refresh}
     >
       <ActiveNightView
+        openBottlesInitially={openBottlesInitially}
         snapshot={snapshot}
         setSnapshot={setSnapshot}
         refresh={refresh}
@@ -133,6 +143,7 @@ export function ActiveNightClient({
 }
 
 function ActiveNightView({
+  openBottlesInitially,
   snapshot,
   setSnapshot,
   refresh,
@@ -141,6 +152,7 @@ function ActiveNightView({
   fastInitially,
   initialNotificationPreferences,
 }: {
+  openBottlesInitially: boolean;
   snapshot: NightSnapshot;
   setSnapshot: (snapshot: NightSnapshot) => void;
   refresh: () => Promise<void>;
@@ -170,12 +182,36 @@ function ActiveNightView({
     : snapshot.currentMemberId;
   const selectedMember =
     loggableMembers.find((member) => member.id === effectiveSelectedMemberId) ?? currentMember;
+  const invitations = useBottleInvitations(snapshot, selectedMember);
+  const mainBottle = snapshot.sharedBottles?.find(
+    (bottle) =>
+      bottle.id === selectedMember.planItems.find((item) => item.isQuickLog)?.sharedBottleId,
+  );
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [bottlesOpen, setBottlesOpen] = useState(openBottlesInitially);
+  const [bottlePlanReturn, setBottlePlanReturn] = useState<MemberSnapshot | null>(null);
+  const bottleMember = bottlePlanReturn
+    ? (snapshot.members.find((member) => member.id === bottlePlanReturn.id) ?? selectedMember)
+    : selectedMember;
+  const bottleCount = (snapshot.sharedBottles ?? []).filter(
+    (bottle) =>
+      !bottle.closedAt &&
+      (bottle.access === 'everyone' || bottle.allowedMemberIds.includes(selectedMember.id)),
+  ).length;
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [drinkChooser, setDrinkChooser] = useState<MemberSnapshot | null>(null);
   const [confirmation, setConfirmation] = useState<DrinkDraft | null>(null);
   const [planMember, setPlanMember] = useState<MemberSnapshot | null>(
-    setupPlanInitially && currentMember.planSetupCompletedAt === null ? currentMember : null,
+    setupPlanInitially &&
+      currentMember.planSetupCompletedAt === null &&
+      !availableBottles(snapshot, currentMember.id).some(
+        (bottle) =>
+          !bottle.closedAt &&
+          bottle.remainingMl > 0 &&
+          !currentMember.planItems.some((item) => item.sharedBottleId === bottle.id),
+      )
+      ? currentMember
+      : null,
   );
   const [planDraft, setPlanDraft] = useState<PlanDraftItem[]>(() =>
     draftItemsFromPlan(currentMember.planItems),
@@ -284,6 +320,13 @@ function ActiveNightView({
   }, [isHost, openInviteInitially, router, snapshot.night.id, setMessage]);
 
   useEffect(() => {
+    if (!openBottlesInitially) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('bottles');
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+  }, [openBottlesInitially, router]);
+
+  useEffect(() => {
     if (!setupPlanInitially) return;
     const url = new URL(window.location.href);
     if (!url.searchParams.has('setup')) return;
@@ -352,6 +395,7 @@ function ActiveNightView({
 
   const timeStatus = determineNightTimeStatus(snapshot.night, now);
   const anotherDialogOpen =
+    bottlesOpen ||
     inviteOpen ||
     drinkChooser !== null ||
     confirmation !== null ||
@@ -364,6 +408,27 @@ function ActiveNightView({
     leaveOpen;
   const overdueOpen =
     timeStatus === 'overdue' && overdueDismissedFor !== snapshot.night.endsAt && !anotherDialogOpen;
+  const lastBottleTrackingView = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !mainBottle ||
+      segment !== 'tonight' ||
+      anotherDialogOpen ||
+      overdueOpen ||
+      invitations.next
+    )
+      return;
+    const key = `${selectedMember.id}:${mainBottle.id}`;
+    if (lastBottleTrackingView.current === key) return;
+    const frame = requestAnimationFrame(() => {
+      const card = document.querySelector<HTMLElement>('[data-bottle-tracking]');
+      if (card) {
+        lastBottleTrackingView.current = key;
+        card.scrollIntoView({ block: 'start', behavior: 'instant' });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [mainBottle, selectedMember.id, segment, anotherDialogOpen, overdueOpen, invitations.next]);
   const remainingText = formatRemaining(snapshot.night.endsAt, now);
   const canonicalIdempotencyKeys = new Set(
     snapshot.members.flatMap((member) => [
@@ -427,6 +492,26 @@ function ActiveNightView({
       activityInFlight.current = false;
       return;
     }
+    if (drinkValues.sharedBottleId && !online) {
+      setMessage('Go online to log from a shared bottle so we can check what’s left.');
+      activityInFlight.current = false;
+      return;
+    }
+    if (drinkValues.sharedBottleId) {
+      const bottle = snapshot.sharedBottles?.find((item) => item.id === drinkValues.sharedBottleId);
+      if (!bottle || bottle.closedAt || !bottle.joinedMemberIds.includes(draft.member.id)) {
+        setMessage(
+          'This bottle is no longer available. Choose another bottle or adjust your plan.',
+        );
+        activityInFlight.current = false;
+        return;
+      }
+      if (drinkValues.volumeMl > bottle.remainingMl) {
+        setMessage(`Only ${bottle.remainingMl} ml is left. Use Adjust to choose a smaller drink.`);
+        activityInFlight.current = false;
+        return;
+      }
+    }
 
     let previewWarnings: Array<'plan_exceeded' | 'after_end'>;
     try {
@@ -449,6 +534,7 @@ function ActiveNightView({
     }
     const warnings = [...new Set([...(draft.warnings ?? []), ...previewWarnings])];
     if (!acknowledge && warnings.length > 0) {
+      setBottlesOpen(false);
       setDrinkChooser(null);
       setConfirmation({ ...draft, warnings });
       activityInFlight.current = false;
@@ -466,6 +552,7 @@ function ActiveNightView({
         ? {}
         : { planItemId: draft.planItemId, planItemLabel: planItem?.label ?? drinkValues.label }),
       drinkSnapshot: {
+        ...(drinkValues.sharedBottleId ? { sharedBottleId: drinkValues.sharedBottleId } : {}),
         label: drinkValues.label,
         category: drinkValues.category,
         volumeMl: drinkValues.volumeMl,
@@ -501,7 +588,11 @@ function ActiveNightView({
       setDrinkChooser(null);
       setConfirmation(null);
       if (record.kind === 'alcohol' && 'labelSnapshot' in outcome.result.log) {
-        setMessage(`${record.memberDisplayName}: ${outcome.result.log.labelSnapshot} logged.`);
+        setMessage(
+          bottlesOpen
+            ? null
+            : `${record.memberDisplayName}: ${outcome.result.log.labelSnapshot} logged.`,
+        );
         setUndoTarget({
           id: outcome.result.log.id,
           kind: 'alcohol',
@@ -528,6 +619,7 @@ function ActiveNightView({
       return;
     }
     if (outcome.status === 'needs_confirmation') {
+      setBottlesOpen(false);
       const member = snapshot.members.find((item) => item.id === record.nightMemberId);
       if (member !== undefined && record.kind === 'alcohol') {
         setDrinkChooser(null);
@@ -558,10 +650,14 @@ function ActiveNightView({
   }
 
   function logPlanned(member: MemberSnapshot, planItemId: string) {
+    const item = member.planItems.find((entry) => entry.id === planItemId);
     void submitDrink({
       member,
       planItemId,
-      consumedAt: new Date().toISOString(),
+      // A just-saved plan may be a fraction ahead of this device's clock.
+      consumedAt: new Date(
+        Math.max(new Date().getTime(), (Date.parse(item?.createdAt ?? '') || 0) + 1),
+      ).toISOString(),
       idempotencyKey: crypto.randomUUID(),
     });
   }
@@ -967,6 +1063,7 @@ function ActiveNightView({
             onAdd={isHost ? () => setGuestOpen(true) : undefined}
           />
           <TonightView
+            bottle={mainBottle}
             member={selectedMember}
             managed={selectedMember.managedByUserId === snapshot.currentUserId}
             alerts={visibleAlerts(selectedMember)}
@@ -983,11 +1080,27 @@ function ActiveNightView({
               (record) => record.nightMemberId === selectedMember.id,
             )}
           />
+          <BottleLauncher
+            count={bottleCount}
+            onClick={() => {
+              setMessage(null);
+              setBottlePlanReturn(null);
+              setBottlesOpen(true);
+            }}
+          />
         </>
       ) : null}
 
       {segment === 'group' ? (
         <section className="stack">
+          <BottleLauncher
+            count={bottleCount}
+            onClick={() => {
+              setMessage(null);
+              setBottlePlanReturn(null);
+              setBottlesOpen(true);
+            }}
+          />
           <header>
             <h2>Your people</h2>
           </header>
@@ -1140,6 +1253,19 @@ function ActiveNightView({
         onConfirm={(draft) => void submitDrink(draft, true)}
       />
       <PlanDialog
+        onBottles={() => {
+          if (
+            planMember &&
+            JSON.stringify(planDraft) !== JSON.stringify(draftItemsFromPlan(planMember.planItems))
+          ) {
+            setMessage('Save your plan changes first, then choose a bottle.');
+            return;
+          }
+          setMessage(null);
+          setBottlePlanReturn(planMember);
+          setPlanMember(null);
+          setBottlesOpen(true);
+        }}
         member={planMember}
         items={planDraft}
         setItems={setPlanDraft}
@@ -1151,6 +1277,82 @@ function ActiveNightView({
         }}
         onSave={() => void savePlan()}
       />
+      {bottlesOpen && (
+        <BottleShelf
+          snapshot={snapshot}
+          member={bottleMember}
+          online={online}
+          busy={busy}
+          onChange={setSnapshot}
+          onClose={() => {
+            setBottlesOpen(false);
+            if (bottlePlanReturn) setPlanMember(bottlePlanReturn);
+          }}
+          onTracking={(next) => {
+            lastBottleTrackingView.current = null;
+            setSnapshot(next);
+            setSelectedMemberId(bottleMember.id);
+            setSegment('tonight');
+            setPlanMember(null);
+            setBottlesOpen(false);
+            setBottlePlanReturn(null);
+            setMessage(null);
+          }}
+          onFullPlan={() => {
+            setBottlesOpen(false);
+            setBottlePlanReturn(null);
+            editPlan(bottleMember);
+          }}
+          onUndo={(bottleId) => {
+            const log = bottleMember.drinkLogs
+              .filter((entry) => entry.sharedBottleId === bottleId && !entry.deletedAt)
+              .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+            if (log)
+              void undo(bottleMember, {
+                id: log.id,
+                kind: 'alcohol',
+                memberId: bottleMember.id,
+                memberName: bottleMember.displayName,
+              });
+          }}
+          onLog={(customDrink) => {
+            void submitDrink({
+              member: bottleMember,
+              customDrink,
+              consumedAt: new Date(
+                Math.max(
+                  new Date().getTime(),
+                  ...bottleMember.planItems.map((item) => Date.parse(item.createdAt) + 1),
+                ),
+              ).toISOString(),
+              idempotencyKey: crypto.randomUUID(),
+            });
+          }}
+        />
+      )}
+      {invitations.next && !anotherDialogOpen && !overdueOpen && !busy && online && (
+        <BottleJoinPrompt
+          key={`${selectedMember.id}:${invitations.next.id}`}
+          bottle={invitations.next}
+          member={selectedMember}
+          online={online}
+          onTracking={(next, bottleId) => {
+            lastBottleTrackingView.current = null;
+            invitations.dismiss(bottleId);
+            setSnapshot(next);
+            setSegment('tonight');
+            setMessage(null);
+          }}
+          onSkip={() => {
+            if (invitations.next) invitations.dismiss(invitations.next.id);
+            if (selectedMember.planSetupCompletedAt === null) editPlan(selectedMember);
+          }}
+          onFullPlan={() => {
+            if (invitations.next) invitations.dismiss(invitations.next.id);
+            editPlan(selectedMember);
+          }}
+        />
+      )}
       <GuestDialog
         open={guestOpen}
         name={guestName}
@@ -1378,6 +1580,7 @@ function ConfirmationDialog({
 }
 
 function PlanDialog({
+  onBottles,
   member,
   items,
   setItems,
@@ -1387,6 +1590,7 @@ function PlanDialog({
   onClose,
   onSave,
 }: {
+  onBottles: () => void;
   member: MemberSnapshot | null;
   items: PlanDraftItem[];
   setItems: (items: PlanDraftItem[]) => void;
@@ -1403,6 +1607,9 @@ function PlanDialog({
       description="Changes apply to future entries."
       onClose={onClose}
     >
+      <Button type="button" variant="secondary" full disabled={busy} onClick={onBottles}>
+        Choose a shared bottle
+      </Button>
       <PlanEditor items={items} mode={mode} onModeChange={setMode} onChange={setItems} />
       <Button type="button" full disabled={busy} onClick={onSave}>
         {busy ? 'Saving…' : 'Save plan'}

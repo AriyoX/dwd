@@ -33,7 +33,10 @@ export async function logDrinkAction(input: unknown): Promise<DrinkLogResult> {
   }
   try {
     const client = await authenticatedClient();
-    return await createDrinkLog(client, parsed.data);
+    const result = await createDrinkLog(client, parsed.data);
+    return 'message' in result
+      ? { ...result, message: result.message.replace(/\bpour\b/gi, 'drink') }
+      : result;
   } catch (error) {
     if (error instanceof Error && error.message === 'Authentication required.') {
       return {

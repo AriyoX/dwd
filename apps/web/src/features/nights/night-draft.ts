@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { drinkCategorySchema } from '@dwd/core';
+import { bottleDraftSchema } from '@/features/bottles/bottle-draft';
 
 // Drafts deliberately allow incomplete form values; submission uses startNightSchema.
 const draftPlan = z
@@ -27,6 +28,8 @@ export const nightDraftSchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   timezone: z.string().max(80).optional(),
   withPeople: z.boolean(),
+  shareBottleNext: z.boolean().optional(),
+  bottleDraft: bottleDraftSchema.optional(),
   hostPlanMode: z.enum(['unselected', 'water_only', 'drinks']).optional(),
   hostPlan: draftPlan,
   guests: z

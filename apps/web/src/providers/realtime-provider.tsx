@@ -50,6 +50,11 @@ export function NightRealtimeProvider({
       .channel(`night:${nightId}`)
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'shared_bottles', filter: `night_id=eq.${nightId}` },
+        invalidate,
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'nights', filter: `id=eq.${nightId}` },
         invalidate,
       )

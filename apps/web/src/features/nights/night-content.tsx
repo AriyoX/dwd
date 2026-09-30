@@ -9,6 +9,8 @@ import {
   type MemberSnapshot,
   type NightSnapshot,
   calculatePlanPacing,
+  bottleDrinkWord,
+  type SharedBottle,
   type Night,
 } from '@dwd/core';
 import type { PendingDrinkLog } from '@dwd/contracts';
@@ -16,6 +18,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TimedNotice } from '@/components/feedback/timed-notice';
 import { withPendingDrinks } from './logged-drinks';
+import { BottleProgress } from '@/features/bottles/bottle-shelf';
+import { BottleMainHint } from '@/features/bottles/bottle-main-hint';
 export { DrinkChooser } from './drink-chooser';
 
 export function ParticipantSwitcher({
@@ -68,6 +72,7 @@ export function ParticipantSwitcher({
 }
 
 export function TonightView({
+  bottle,
   member,
   alerts,
   busy,
@@ -82,6 +87,7 @@ export function TonightView({
   onDismissAlert,
   managed = false,
 }: {
+  bottle?: SharedBottle | undefined;
   night?: Night;
   now?: Date;
   onEditPlan?: () => void;
@@ -115,7 +121,7 @@ export function TonightView({
           <span>{chaserCopy(alert.message)}</span>
         </TimedNotice>
       ))}
-      <Card className="personal-card stack-lg">
+      <Card className="personal-card stack-lg" data-bottle-tracking={bottle ? '' : undefined}>
         <div className="logging-context row-between">
           <div className="row">
             <span className="avatar avatar-large" aria-hidden="true">
@@ -175,6 +181,17 @@ export function TonightView({
             )}
           </div>
         )}
+        {bottle && quick?.sharedBottleId === bottle.id && (
+          <>
+            <BottleProgress bottle={bottle} member={{ ...member, drinkLogs: drinks }} />
+            <BottleMainHint
+              key={`${member.id}:${bottle.id}`}
+              memberId={member.id}
+              bottleId={bottle.id}
+              label={bottle.label}
+            />
+          </>
+        )}
         <Button
           data-tour="log-drink"
           data-fast-log="drink"
@@ -184,7 +201,11 @@ export function TonightView({
           onClick={onQuick}
         >
           <Plus aria-hidden="true" size={26} />{' '}
-          {quick === undefined ? 'Plan drinks' : `Log ${quick.label}`}
+          {quick === undefined
+            ? 'Plan drinks'
+            : bottle
+              ? `Log ${bottleDrinkWord(bottle.category)}`
+              : `Log ${quick.label}`}
         </Button>
         <div className="quick-actions" data-tour="drink-options">
           <Button
