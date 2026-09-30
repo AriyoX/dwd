@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import {
   resolveWallTimeInTimeZone,
+  formatNightDateTime,
   bottleDrinkWord,
   startNightSchema,
   type PlanSetupMode,
@@ -294,6 +295,7 @@ export function NewNightWizard({ userId }: { userId: string }) {
     }
   }
 
+  const reviewEnd = step === 3 ? resolveEndsAt() : '';
   return (
     <form
       className="stack-lg"
@@ -330,19 +332,6 @@ export function NewNightWizard({ userId }: { userId: string }) {
             <h1 ref={heading} tabIndex={-1}>
               Make it your night.
             </h1>
-            <div className="field">
-              <label htmlFor="night-timezone">Night time zone</label>
-              <input
-                className="input"
-                id="night-timezone"
-                value={timeZone}
-                onChange={(event) => setTimeZone(event.target.value)}
-                aria-describedby="night-timezone-hint"
-              />
-              <span id="night-timezone-hint" className="muted small">
-                Used for everyone in this night. For example, Africa/Nairobi.
-              </span>
-            </div>
             <div className="field">
               <label htmlFor="night-title">Night name</label>
               <input
@@ -383,6 +372,25 @@ export function NewNightWizard({ userId }: { userId: string }) {
                 </span>
               </div>
             </div>
+            <details className="wizard-timezone">
+              <summary>
+                <span>Time zone</span>
+                <span className="muted">{timeZone || 'Choose a time zone'}</span>
+              </summary>
+              <div className="field">
+                <label htmlFor="night-timezone">Night time zone</label>
+                <input
+                  className="input"
+                  id="night-timezone"
+                  value={timeZone}
+                  onChange={(event) => setTimeZone(event.target.value)}
+                  aria-describedby="night-timezone-hint"
+                />
+                <span id="night-timezone-hint" className="muted small">
+                  Used for everyone’s night times. For example, Africa/Nairobi.
+                </span>
+              </div>
+            </details>
             <fieldset className="choice-grid">
               <legend className="field-label">Who’s joining?</legend>
               <button
@@ -452,7 +460,11 @@ export function NewNightWizard({ userId }: { userId: string }) {
                   <dt className="row">
                     <Clock3 size={16} aria-hidden="true" /> Planned end
                   </dt>
-                  <dd>{endTime}</dd>
+                  <dd>
+                    {reviewEnd
+                      ? formatNightDateTime(reviewEnd, timeZone)
+                      : 'Check your finish time'}
+                  </dd>
                 </div>
                 <div>
                   <dt>Company</dt>
@@ -478,9 +490,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
                   <hr className="divider" />
                   <h2>Bring your people</h2>
                   <p className="muted small">
-                    Invite someone: they use their own account and phone. Track for someone: you
-                    manage their entries on this device. Ask them before tracking for them. You can
-                    share an invite after starting.
+                    Share an invite once the night starts. To add drinks for a friend on your phone,
+                    choose Track for someone. Ask them first.
                   </p>
                   {guests.map((guest, index) => (
                     <div className="plan-item stack" key={guest.clientId}>

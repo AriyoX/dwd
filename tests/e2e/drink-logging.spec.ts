@@ -18,6 +18,7 @@ test('main drink, simple alternate logging, notices and offline plan checks', as
   await page.getByRole('button', { name: 'Skip tour', exact: true }).click();
   await page.getByRole('link', { name: /Start a night/ }).click();
   await page.getByLabel('Night name').fill('Drink UX test');
+  await page.locator('.wizard-timezone > summary').click();
   await page.getByLabel('Night time zone').fill('UTC');
   const end = new Date(Date.now() + 4 * 60 * 60_000).toISOString();
   await page.getByLabel('Planned end date').fill(end.slice(0, 10));

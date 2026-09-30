@@ -1284,6 +1284,75 @@ p {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.8rem;
 }
+.invite-link-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-soft);
+}
+.invite-link-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+.invite-link-card .invite-url {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  font-family: inherit;
+  color: var(--muted);
+  user-select: all;
+}
+.invite-share-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.invite-link-options {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.invite-link-options > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 8px 0;
+}
+.invite-link-options > .stack {
+  margin-top: 12px;
+}
+.wizard-timezone {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+.wizard-timezone > summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 4px 0;
+  overflow-wrap: anywhere;
+}
+.wizard-timezone > summary > span + span {
+  margin-left: 10px;
+}
+.wizard-timezone > .field {
+  margin-top: 16px;
+}
+.wizard-card .review-list > div {
+  gap: 22px;
+}
+.wizard-card .review-list dt {
+  flex-shrink: 0;
+}
+.wizard-card .review-list dd {
+  max-width: 68%;
+}
 .warning-signs {
   display: grid;
   gap: 10px;

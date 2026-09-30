@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, RefreshCw, Share2, Unlink } from 'lucide-react';
+import { Copy, Link2, RefreshCw, Share2, Unlink } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -74,7 +74,7 @@ export function ShareInviteDialog({
         }
         setRevoked(true);
         setUrl(null);
-        setMessage('Invite links revoked. Create a new link when you are ready.');
+        setMessage('Invite links are off. Create a new link whenever you’re ready.');
       } else {
         const result = await createInviteAction(
           nightId,
@@ -90,7 +90,7 @@ export function ShareInviteDialog({
         setUrl(result.data.url);
         setMessage(
           operation.kind === 'rotate'
-            ? 'New link ready. Earlier links were revoked.'
+            ? 'New link ready. Earlier links no longer work.'
             : 'Private link ready. It expires in 24 hours.',
         );
       }
@@ -150,19 +150,24 @@ export function ShareInviteDialog({
     <Dialog
       open={open}
       title="Invite someone"
-      description="They use their own account and phone, and manage their own entries. This private link expires in 24 hours."
+      description="Friends join on their own phone and add their own drinks. Your private link expires in 24 hours."
       onClose={() => {
         if (!pending) onClose();
       }}
     >
       {pending && (
         <p className="notice-box" role="status">
-          Working?
+          Just a moment…
         </p>
       )}
       {effectiveUrl && (
-        <div className="invite-url" tabIndex={0}>
-          {effectiveUrl}
+        <div className="invite-link-card">
+          <span className="invite-link-label">
+            <Link2 size={17} aria-hidden="true" /> Your invite link
+          </span>
+          <div className="invite-url" tabIndex={0} aria-label="Your invite link">
+            {effectiveUrl}
+          </div>
         </div>
       )}
       {message && (
@@ -182,45 +187,60 @@ export function ShareInviteDialog({
             </Button>
           )
         )}
-        <Button
-          type="button"
-          full
-          disabled={!effectiveUrl || pending || failed}
-          onClick={() => void share()}
-        >
-          <Share2 size={20} aria-hidden="true" />
-          Share
-        </Button>
-        <Button
-          type="button"
-          full
-          variant="secondary"
-          disabled={!effectiveUrl || pending || failed}
-          onClick={() => void copy()}
-        >
-          <Copy size={20} aria-hidden="true" />
-          Copy link
-        </Button>
-        <Button
-          type="button"
-          full
-          variant="ghost"
-          disabled={pending || failed || !effectiveUrl}
-          onClick={() => void mutate('rotate')}
-        >
-          <RefreshCw size={18} aria-hidden="true" />
-          Replace invite link
-        </Button>
-        <Button
-          type="button"
-          full
-          variant="ghost"
-          disabled={pending || failed || !effectiveUrl}
-          onClick={() => void mutate('revoke')}
-        >
-          <Unlink size={18} aria-hidden="true" />
-          Revoke links
-        </Button>
+        {effectiveUrl && (
+          <div className="invite-share-actions">
+            <Button
+              type="button"
+              full
+              disabled={!effectiveUrl || pending || failed}
+              onClick={() => void share()}
+            >
+              <Share2 size={20} aria-hidden="true" />
+              Share
+            </Button>
+            <Button
+              type="button"
+              full
+              variant="secondary"
+              disabled={!effectiveUrl || pending || failed}
+              onClick={() => void copy()}
+            >
+              <Copy size={20} aria-hidden="true" />
+              Copy link
+            </Button>
+          </div>
+        )}
+        {effectiveUrl && (
+          <details className="invite-link-options">
+            <summary>Link options</summary>
+            <div className="stack">
+              <p className="muted small">
+                Replacing or turning off links stops anyone else joining with the old ones. Friends
+                already in the night stay.
+              </p>
+              <Button
+                type="button"
+                full
+                variant="ghost"
+                disabled={pending || failed || !effectiveUrl}
+                onClick={() => void mutate('rotate')}
+              >
+                <RefreshCw size={18} aria-hidden="true" />
+                Replace invite link
+              </Button>
+              <Button
+                type="button"
+                full
+                variant="ghost"
+                disabled={pending || failed || !effectiveUrl}
+                onClick={() => void mutate('revoke')}
+              >
+                <Unlink size={18} aria-hidden="true" />
+                Turn off invite links
+              </Button>
+            </div>
+          </details>
+        )}
       </div>
     </Dialog>
   );

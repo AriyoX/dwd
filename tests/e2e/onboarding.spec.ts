@@ -86,6 +86,7 @@ test('real local signup, draft recovery, water-only night, support and history',
   await dialog.getByRole('button', { name: 'Create invite link' }).click();
   await expect(dialog.locator('.invite-url')).toContainText('/join/');
   const originalLink = await dialog.locator('.invite-url').innerText();
+  await dialog.locator('.invite-link-options > summary').click();
   // A real offline transition is reliable across engines and verifies that
   // the idempotent operation survives an ambiguous network failure.
   await context.setOffline(true);
