@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Card } from '@/components/ui/card';
-import { RequestForm } from '@/features/support/request-form';
+import { AccountDeletion } from '@/features/account/account-deletion';
 import { TourButton } from '@/features/tour/tour-provider';
 import { DisplayNameForm, NotificationSettings } from '@/features/account/account-controls';
 import { NotificationInbox } from '@/features/notifications/notification-inbox';
@@ -31,9 +31,10 @@ export default async function AccountPage() {
     .order('created_at', { ascending: false })
     .limit(100);
   const requests = result.data ?? [];
-  const deletion = requests.find(
-    (request) => request.kind === 'deletion' && request.status !== 'completed',
-  );
+  const deletionResult = await client
+    .from('account_deletions')
+    .select('delete_after, status')
+    .maybeSingle();
   const [preferences, events] = await Promise.all([
     getNotificationPreferences(client).catch(() => null),
     getMyNotificationEvents(client).catch((): NotificationEvent[] => []),
@@ -152,32 +153,13 @@ export default async function AccountPage() {
               <Link href="/privacy" className="text-link">
                 Your privacy <ArrowUpRight size={16} aria-hidden="true" />
               </Link>
-              <details className="account-deletion">
-                <summary>Delete your account</summary>
-                <div className="stack">
-                  <p>
-                    Ask us to delete your account. You can keep using it while we review your
-                    request.
-                  </p>
-                  <p className="muted small">
-                    Shared nights and your past drinks aren’t deleted straight away. We’ll review
-                    which personal details we can remove or make anonymous while keeping your
-                    friends’ records. Check Your messages for a reply. There’s no set completion
-                    date.
-                  </p>
-                  <p className="muted small">
-                    Before sharing this device, save or remove any unsaved drinks and unfinished
-                    nights.
-                  </p>
-                  {deletion ? (
-                    <p className="notice-box">
-                      We’ve received your deletion request. You can follow it in Your messages.
-                    </p>
-                  ) : (
-                    <RequestForm deletion />
-                  )}
-                </div>
-              </details>
+              {deletionResult.error ? (
+                <p className="error-box" role="alert">
+                  Account deletion settings could not load. Reload this page to retry.
+                </p>
+              ) : (
+                <AccountDeletion initialDeletion={deletionResult.data} />
+              )}
             </Card>
           </div>
         </div>

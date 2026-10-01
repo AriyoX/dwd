@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'Sign in' };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string; updated?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; updated?: string; deletion?: string }>;
 }) {
   const params = await searchParams;
   const next = safeReturnPath(params.next);
@@ -30,6 +30,11 @@ export default async function LoginPage({
         <div className="success-box" role="status">
           Password updated. Sign in with your new password.
         </div>
+      ) : null}
+      {params.deletion === 'scheduled' ? (
+        <p className="notice-box" role="status">
+          Account deletion is scheduled in 30 days. Signing in before deletion starts cancels it.
+        </p>
       ) : null}
       <LoginForm next={next} />
     </section>

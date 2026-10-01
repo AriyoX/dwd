@@ -62,18 +62,27 @@ export default function PrivacyPage() {
           registration when connected. Delayed or unverified pushes show a generic update with no
           private night link.
         </p>
-        <h2>Feedback and deletion requests</h2>
+        <h2>Feedback</h2>
         <p>
-          Reports and deletion requests store your account identifier, the text you submit, request
-          status, and any operator response. You can see your own requests; other night members
-          cannot. The app operator reviews requests through the backend. No screenshots or
-          diagnostics are attached automatically, and submitting a request does not send an email.
+          Reports store your account identifier, the text you submit, request status, and any
+          operator response. You can see your own requests; other night members cannot. The app
+          operator reviews requests through the backend. No screenshots or diagnostics are attached
+          automatically, and submitting a request does not send an email.
         </p>
+        <h2>Account deletion</h2>
         <p>
-          Request account deletion in Your account. A request does not immediately delete your
-          account, shared records, or local data. Shared nights include other people’s records, so
-          the operator must review removal or anonymisation and communicate the outcome in your
-          request. The app does not specify a deletion turnaround or a fixed data-retention period.
+          Schedule deletion in Your account. You are signed out, and your account and uploaded
+          photos are automatically deleted after 30 days without signing in. Signing in before
+          deletion starts cancels it. Shared night records are retained anonymously; nights you host
+          are closed. Deletion removes your profile, login details, private messages and
+          notification data. Records saved on your devices must be removed on each device.
+        </p>
+        <h2>Photo memories</h2>
+        <p>
+          Each participant can save up to two photos per night, up to 5 MB each. Larger photos are
+          compressed in your browser and rejected if they still exceed 5 MB. Photos are stored
+          privately for participants from that night. Deleting a photo frees a slot. Existing photos
+          uploaded before these limits remain available.
         </p>
         <h2>Collection limits</h2>
         <p>

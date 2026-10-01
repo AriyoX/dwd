@@ -159,6 +159,7 @@ function sourceFiles(directory: string): string[] {
     if (
       entry === 'node_modules' ||
       entry === '.next' ||
+      entry === '.next-e2e' ||
       entry === 'dist' ||
       entry === '.git' ||
       entry === '.tmp'
@@ -178,6 +179,7 @@ function findNamed(directory: string, name: string): string[] {
     if (
       entry === 'node_modules' ||
       entry === '.next' ||
+      entry === '.next-e2e' ||
       entry === 'dist' ||
       entry === '.git' ||
       entry === '.tmp'

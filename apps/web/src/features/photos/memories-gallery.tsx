@@ -6,14 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { deleteNightPhotoAction, getNightPhotosAction, registerNightPhotoAction } from './actions';
-import { prepareImage } from './image-upload';
+import { prepareImage, type PreparedImage } from './image-upload';
 import { PhotoCollection, type VisiblePhoto } from './photo-collection';
+import { MAX_PHOTOS_PER_PERSON_PER_NIGHT } from '@dwd/core';
 
 interface UploadTask {
   id: string;
   file: File;
   state: 'queued' | 'preparing' | 'uploading' | 'saving' | 'failed';
   error?: string;
+  objectPath?: string;
+  uploaded?: PreparedImage;
 }
 
 export function MemoriesGallery({
@@ -31,6 +34,14 @@ export function MemoriesGallery({
   const [viewingId, setViewingId] = useState<string | null>(null);
   const viewing = photos.find((photo) => photo.id === viewingId);
   const input = useRef<HTMLInputElement>(null);
+  const uploadInFlight = useRef(false);
+  const ownPhotos = photos.filter((photo) => photo.uploadedByUserId === currentUserId);
+  const remaining = Math.max(
+    0,
+    MAX_PHOTOS_PER_PERSON_PER_NIGHT -
+      ownPhotos.length -
+      tasks.filter((task) => !ownPhotos.some((photo) => photo.id === task.id)).length,
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -102,19 +113,27 @@ export function MemoriesGallery({
       }),
     );
     try {
-      const prepared = await prepareImage(task.file);
+      const prepared = task.uploaded ?? (await prepareImage(task.file));
       const objectPath = `${nightId}/${currentUserId}/${task.id}${prepared.extension}`;
-      setTasks((items) =>
-        items.map((item) => (item.id === task.id ? { ...item, state: 'uploading' } : item)),
-      );
       const client = createBrowserSupabaseClient();
-      const { error: uploadError } = await client.storage
-        .from('night-memories')
-        .upload(objectPath, prepared.blob, { contentType: prepared.mimeType, upsert: false });
-      if (uploadError && !uploadError.message.toLowerCase().includes('already exists'))
-        throw uploadError;
+      if (!task.uploaded) {
+        setTasks((items) =>
+          items.map((item) =>
+            item.id === task.id ? { ...item, state: 'uploading', objectPath } : item,
+          ),
+        );
+        const { error: uploadError } = await client.storage
+          .from('night-memories')
+          .upload(objectPath, prepared.blob, { contentType: prepared.mimeType, upsert: false });
+        if (uploadError && !uploadError.message.toLowerCase().includes('already exists'))
+          throw uploadError;
+      }
+      // A metadata-save retry must not insert the same Storage object again:
+      // the upload quota is already full when both files reached Storage.
       setTasks((items) =>
-        items.map((item) => (item.id === task.id ? { ...item, state: 'saving' } : item)),
+        items.map((item) =>
+          item.id === task.id ? { ...item, state: 'saving', uploaded: prepared } : item,
+        ),
       );
       const result = await registerNightPhotoAction({
         id: task.id,
@@ -125,7 +144,25 @@ export function MemoriesGallery({
         width: prepared.width,
         height: prepared.height,
       });
-      if (!result.ok) throw new Error(result.error);
+      if (!result.ok) {
+        if (result.permanent) {
+          const { error: cleanupError } = await client.storage
+            .from('night-memories')
+            .remove([objectPath]);
+          if (cleanupError)
+            throw new Error(`${result.error} Remove this upload before trying another photo.`);
+          setTasks((items) =>
+            items.map((item) => {
+              if (item.id !== task.id) return item;
+              const cleaned = { ...item };
+              delete cleaned.uploaded;
+              delete cleaned.objectPath;
+              return cleaned;
+            }),
+          );
+        }
+        throw new Error(result.error);
+      }
       setTasks((items) => items.filter((item) => item.id !== task.id));
       await refresh();
     } catch (cause) {
@@ -144,15 +181,66 @@ export function MemoriesGallery({
   }
 
   async function choose(files: FileList | null) {
-    if (!files) return;
-    const next = [...files].slice(0, 12).map((file) => ({
+    if (!files || uploadInFlight.current || loading) return;
+    if (files.length > remaining) {
+      setError(
+        `You can save up to 2 photos per night. You have ${remaining} ${remaining === 1 ? 'slot' : 'slots'} left.`,
+      );
+      if (input.current) input.current.value = '';
+      return;
+    }
+    uploadInFlight.current = true;
+    const next = [...files].map((file) => ({
       id: crypto.randomUUID(),
       file,
       state: 'queued' as const,
     }));
     setTasks((current) => [...current, ...next]);
-    for (const task of next) await upload(task);
-    if (input.current) input.current.value = '';
+    try {
+      for (const task of next) await upload(task);
+    } finally {
+      uploadInFlight.current = false;
+      if (input.current) input.current.value = '';
+    }
+  }
+
+  async function discard(task: UploadTask) {
+    if (uploadInFlight.current) return;
+    uploadInFlight.current = true;
+    try {
+      const client = createBrowserSupabaseClient();
+      const { data, error: lookupError } = await client
+        .from('night_photos')
+        .select('id')
+        .eq('id', task.id)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      if (data) {
+        const result = await deleteNightPhotoAction(task.id);
+        if (!result.ok) throw new Error(result.error);
+      } else if (task.objectPath) {
+        const { error: removalError } = await client.storage
+          .from('night-memories')
+          .remove([task.objectPath]);
+        if (removalError) throw removalError;
+      }
+      setTasks((items) => items.filter((item) => item.id !== task.id));
+      await refresh();
+    } catch {
+      setError('The upload could not be removed. Retry when connected.');
+    } finally {
+      uploadInFlight.current = false;
+    }
+  }
+
+  async function retry(task: UploadTask) {
+    if (uploadInFlight.current) return;
+    uploadInFlight.current = true;
+    try {
+      await upload(task);
+    } finally {
+      uploadInFlight.current = false;
+    }
   }
 
   async function remove(photo: VisiblePhoto) {
@@ -182,7 +270,12 @@ export function MemoriesGallery({
             {photos.length > 0 && <span className="pill">{photos.length}</span>}
           </h2>
         </div>
-        <Button type="button" variant="secondary" onClick={() => input.current?.click()}>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={loading || remaining === 0 || tasks.some((task) => task.state !== 'failed')}
+          onClick={() => input.current?.click()}
+        >
           <Plus size={18} aria-hidden="true" /> Add photos
         </Button>
         <input
@@ -195,6 +288,9 @@ export function MemoriesGallery({
           onChange={(event) => void choose(event.target.files)}
         />
       </div>
+      <p className="muted small">
+        Up to 2 photos per person per night · 5 MB each · {ownPhotos.length}/2 saved
+      </p>
       {tasks.length > 0 ? (
         <div className="stack" aria-live="polite">
           {tasks.map((task) => (
@@ -218,9 +314,14 @@ export function MemoriesGallery({
               ) : null}
               {task.error ? <p className="error-box small">{task.error}</p> : null}
               {task.state === 'failed' ? (
-                <Button type="button" variant="secondary" onClick={() => void upload(task)}>
-                  <RefreshCw size={17} aria-hidden="true" /> Retry
-                </Button>
+                <div className="row">
+                  <Button type="button" variant="secondary" onClick={() => void retry(task)}>
+                    <RefreshCw size={17} aria-hidden="true" /> Retry
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => void discard(task)}>
+                    Remove upload
+                  </Button>
+                </div>
               ) : null}
             </div>
           ))}

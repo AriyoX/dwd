@@ -4,35 +4,25 @@ export type Database = {
   private: {
     Tables: {
       bottle_plan_requests: {
-        Row: { actor_user_id: string; request_key: string; member_id: string; bottle_id: string };
+        Row: {
+          actor_user_id: string;
+          bottle_id: string;
+          member_id: string;
+          request_key: string;
+        };
         Insert: {
           actor_user_id: string;
-          request_key: string;
-          member_id: string;
           bottle_id: string;
+          member_id: string;
+          request_key: string;
         };
         Update: {
           actor_user_id?: string;
-          request_key?: string;
-          member_id?: string;
           bottle_id?: string;
+          member_id?: string;
+          request_key?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'bottle_plan_requests_member_id_fkey';
-            columns: ['member_id'];
-            isOneToOne: false;
-            referencedRelation: 'night_members';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'bottle_plan_requests_bottle_id_fkey';
-            columns: ['bottle_id'];
-            isOneToOne: false;
-            referencedRelation: 'shared_bottles';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       invite_revocations: {
         Row: {
@@ -60,30 +50,6 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      complete_signup: {
-        Args: { p_age_confirmed: boolean; p_display_name: string };
-        Returns: undefined;
-      };
-      can_view_bottle: {
-        Args: { p_bottle_id: string; p_user_id: string };
-        Returns: boolean;
-      };
-      log_drink_without_bottle: {
-        Args: {
-          p_ack_after_end?: boolean;
-          p_ack_plan_exceeded?: boolean;
-          p_consumed_at?: string;
-          p_custom_drink?: Json;
-          p_idempotency_key?: string;
-          p_plan_item_id?: string;
-          p_target_member_id: string;
-        };
-        Returns: Json;
-      };
-      shared_bottles_json: {
-        Args: { p_night_id: string; p_user_id: string };
-        Returns: Json;
-      };
       alert_json: {
         Args: { p_alert: Database['public']['Tables']['night_alerts']['Row'] };
         Returns: Json;
@@ -108,7 +74,18 @@ export type Database = {
         Args: { p_profile_id: string; p_user_id: string };
         Returns: boolean;
       };
+      can_upload_night_memory: { Args: { p_path: string }; Returns: boolean };
+      can_view_bottle: {
+        Args: { p_bottle_id: string; p_user_id: string };
+        Returns: boolean;
+      };
+      complete_signup: {
+        Args: { p_age_confirmed: boolean; p_display_name: string };
+        Returns: undefined;
+      };
       create_due_notification_events: { Args: never; Returns: undefined };
+      dispatch_account_deletions: { Args: never; Returns: number };
+      dispatch_due_notifications: { Args: never; Returns: number };
       drink_log_json: {
         Args: { p_log: Database['public']['Tables']['drink_logs']['Row'] };
         Returns: Json;
@@ -142,6 +119,19 @@ export type Database = {
         Args: { p_night_id: string; p_user_id: string };
         Returns: boolean;
       };
+      log_drink_without_bottle: {
+        Args: {
+          p_ack_after_end?: boolean;
+          p_ack_plan_exceeded?: boolean;
+          p_consumed_at?: string;
+          p_custom_drink?: Json;
+          p_idempotency_key?: string;
+          p_plan_item_id?: string;
+          p_target_member_id: string;
+        };
+        Returns: Json;
+      };
+      memory_account_available: { Args: never; Returns: boolean };
       notification_is_current: {
         Args: { e: Database['public']['Tables']['notification_events']['Row'] };
         Returns: boolean;
@@ -150,8 +140,24 @@ export type Database = {
         Args: { p_user_id?: string };
         Returns: undefined;
       };
+      register_night_photo: {
+        Args: {
+          p_byte_size: number;
+          p_height?: number;
+          p_mime_type: string;
+          p_night_id: string;
+          p_object_path: string;
+          p_photo_id: string;
+          p_width?: number;
+        };
+        Returns: Json;
+      };
       revoke_invite_once: {
         Args: { p_night_id: string; p_request_key: string };
+        Returns: Json;
+      };
+      shared_bottles_json: {
+        Args: { p_night_id: string; p_user_id: string };
         Returns: Json;
       };
       submit_support_request: {
@@ -177,6 +183,36 @@ export type Database = {
   };
   public: {
     Tables: {
+      account_deletions: {
+        Row: {
+          claim_id: string | null;
+          claimed_at: string | null;
+          delete_after: string;
+          request_id: string;
+          requested_at: string;
+          status: string;
+          user_id: string;
+        };
+        Insert: {
+          claim_id?: string | null;
+          claimed_at?: string | null;
+          delete_after: string;
+          request_id?: string;
+          requested_at?: string;
+          status?: string;
+          user_id: string;
+        };
+        Update: {
+          claim_id?: string | null;
+          claimed_at?: string | null;
+          delete_after?: string;
+          request_id?: string;
+          requested_at?: string;
+          status?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       audit_events: {
         Row: {
           action: string;
@@ -215,7 +251,6 @@ export type Database = {
           {
             foreignKeyName: 'audit_events_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
@@ -262,28 +297,24 @@ export type Database = {
           {
             foreignKeyName: 'checkin_requests_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'checkin_requests_recipient_user_id_fkey';
             columns: ['recipient_user_id'];
-            isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'checkin_requests_sender_user_id_fkey';
             columns: ['sender_user_id'];
-            isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'checkin_requests_target_member_id_fkey';
             columns: ['target_member_id'];
-            isOneToOne: false;
             referencedRelation: 'night_members';
             referencedColumns: ['id'];
           },
@@ -348,28 +379,24 @@ export type Database = {
           {
             foreignKeyName: 'drink_logs_member_night_fk';
             columns: ['night_id', 'night_member_id'];
-            isOneToOne: false;
             referencedRelation: 'night_members';
             referencedColumns: ['night_id', 'id'];
           },
           {
             foreignKeyName: 'drink_logs_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'drink_logs_plan_member_fk';
             columns: ['night_member_id', 'plan_item_id'];
-            isOneToOne: false;
             referencedRelation: 'drink_plan_items';
             referencedColumns: ['night_member_id', 'id'];
           },
           {
             foreignKeyName: 'drink_logs_shared_bottle_id_fkey';
             columns: ['shared_bottle_id'];
-            isOneToOne: false;
             referencedRelation: 'shared_bottles';
             referencedColumns: ['id'];
           },
@@ -425,14 +452,12 @@ export type Database = {
           {
             foreignKeyName: 'drink_plan_items_night_member_id_fkey';
             columns: ['night_member_id'];
-            isOneToOne: false;
             referencedRelation: 'night_members';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'drink_plan_items_shared_bottle_id_fkey';
             columns: ['shared_bottle_id'];
-            isOneToOne: false;
             referencedRelation: 'shared_bottles';
             referencedColumns: ['id'];
           },
@@ -479,14 +504,12 @@ export type Database = {
           {
             foreignKeyName: 'night_alerts_member_night_fk';
             columns: ['night_id', 'night_member_id'];
-            isOneToOne: false;
             referencedRelation: 'night_members';
             referencedColumns: ['night_id', 'id'];
           },
           {
             foreignKeyName: 'night_alerts_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
@@ -494,7 +517,7 @@ export type Database = {
       };
       night_end_time_changes: {
         Row: {
-          changed_by: string;
+          changed_by: string | null;
           created_at: string;
           effective_at: string;
           id: string;
@@ -503,7 +526,7 @@ export type Database = {
           previous_ends_at: string;
         };
         Insert: {
-          changed_by: string;
+          changed_by?: string | null;
           created_at?: string;
           effective_at?: string;
           id?: string;
@@ -512,7 +535,7 @@ export type Database = {
           previous_ends_at: string;
         };
         Update: {
-          changed_by?: string;
+          changed_by?: string | null;
           created_at?: string;
           effective_at?: string;
           id?: string;
@@ -524,7 +547,6 @@ export type Database = {
           {
             foreignKeyName: 'night_end_time_changes_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
@@ -568,7 +590,6 @@ export type Database = {
           {
             foreignKeyName: 'night_invites_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
@@ -624,56 +645,10 @@ export type Database = {
           {
             foreignKeyName: 'night_members_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
         ];
-      };
-      nights: {
-        Row: {
-          created_at: string;
-          creation_key: string;
-          ended_at: string | null;
-          ends_at: string;
-          host_user_id: string;
-          id: string;
-          initial_ends_at: string;
-          starts_at: string;
-          status: string;
-          timezone: string;
-          title: string;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          creation_key: string;
-          ended_at?: string | null;
-          ends_at: string;
-          host_user_id: string;
-          id?: string;
-          initial_ends_at: string;
-          starts_at: string;
-          status?: string;
-          timezone: string;
-          title?: string;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          creation_key?: string;
-          ended_at?: string | null;
-          ends_at?: string;
-          host_user_id?: string;
-          id?: string;
-          initial_ends_at?: string;
-          starts_at?: string;
-          status?: string;
-          timezone?: string;
-          title?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
       };
       night_photos: {
         Row: {
@@ -719,11 +694,55 @@ export type Database = {
           {
             foreignKeyName: 'night_photos_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
         ];
+      };
+      nights: {
+        Row: {
+          created_at: string;
+          creation_key: string;
+          ended_at: string | null;
+          ends_at: string;
+          host_user_id: string | null;
+          id: string;
+          initial_ends_at: string;
+          starts_at: string;
+          status: string;
+          timezone: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          creation_key: string;
+          ended_at?: string | null;
+          ends_at: string;
+          host_user_id?: string | null;
+          id?: string;
+          initial_ends_at: string;
+          starts_at: string;
+          status?: string;
+          timezone: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          creation_key?: string;
+          ended_at?: string | null;
+          ends_at?: string;
+          host_user_id?: string | null;
+          id?: string;
+          initial_ends_at?: string;
+          starts_at?: string;
+          status?: string;
+          timezone?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       notification_deliveries: {
         Row: {
@@ -763,14 +782,12 @@ export type Database = {
           {
             foreignKeyName: 'notification_deliveries_event_id_fkey';
             columns: ['event_id'];
-            isOneToOne: false;
             referencedRelation: 'notification_events';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'notification_deliveries_subscription_id_fkey';
             columns: ['subscription_id'];
-            isOneToOne: false;
             referencedRelation: 'push_subscriptions';
             referencedColumns: ['id'];
           },
@@ -829,21 +846,18 @@ export type Database = {
           {
             foreignKeyName: 'notification_events_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'notification_events_recipient_user_id_fkey';
             columns: ['recipient_user_id'];
-            isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'notification_events_target_member_id_fkey';
             columns: ['target_member_id'];
-            isOneToOne: false;
             referencedRelation: 'night_members';
             referencedColumns: ['id'];
           },
@@ -887,7 +901,6 @@ export type Database = {
           {
             foreignKeyName: 'notification_preferences_user_id_fkey';
             columns: ['user_id'];
-            isOneToOne: true;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
@@ -928,14 +941,12 @@ export type Database = {
           {
             foreignKeyName: 'notification_schedules_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'notification_schedules_user_id_fkey';
             columns: ['user_id'];
-            isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
@@ -1000,51 +1011,6 @@ export type Database = {
           {
             foreignKeyName: 'push_subscriptions_user_id_fkey';
             columns: ['user_id'];
-            isOneToOne: false;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      support_requests: {
-        Row: {
-          created_at: string;
-          id: string;
-          kind: string;
-          message: string;
-          request_key: string;
-          response: string | null;
-          status: string;
-          updated_at: string;
-          user_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          kind: string;
-          message: string;
-          request_key: string;
-          response?: string | null;
-          status?: string;
-          updated_at?: string;
-          user_id: string;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          kind?: string;
-          message?: string;
-          request_key?: string;
-          response?: string | null;
-          status?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'support_requests_user_id_fkey';
-            columns: ['user_id'];
-            isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
@@ -1103,15 +1069,56 @@ export type Database = {
           {
             foreignKeyName: 'shared_bottles_creator_member_id_fkey';
             columns: ['creator_member_id'];
-            isOneToOne: false;
             referencedRelation: 'night_members';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'shared_bottles_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      support_requests: {
+        Row: {
+          created_at: string;
+          id: string;
+          kind: string;
+          message: string;
+          request_key: string;
+          response: string | null;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          kind: string;
+          message: string;
+          request_key: string;
+          response?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          message?: string;
+          request_key?: string;
+          response?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'support_requests_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
         ];
@@ -1151,14 +1158,12 @@ export type Database = {
           {
             foreignKeyName: 'water_logs_member_night_fk';
             columns: ['night_id', 'night_member_id'];
-            isOneToOne: false;
             referencedRelation: 'night_members';
             referencedColumns: ['night_id', 'id'];
           },
           {
             foreignKeyName: 'water_logs_night_id_fkey';
             columns: ['night_id'];
-            isOneToOne: false;
             referencedRelation: 'nights';
             referencedColumns: ['id'];
           },
@@ -1191,10 +1196,13 @@ export type Database = {
         Args: { p_event_id: string };
         Returns: boolean;
       };
+      cancel_account_deletion: { Args: never; Returns: undefined };
+      claim_account_deletions: { Args: { p_limit?: number }; Returns: Json };
       claim_notification_jobs: { Args: { p_limit?: number }; Returns: Json };
-      complete_signup: {
-        Args: { p_age_confirmed: boolean; p_display_name: string };
-        Returns: undefined;
+      close_shared_bottle: { Args: { p_bottle_id: string }; Returns: Json };
+      complete_account_deletion: {
+        Args: { p_claim_id: string; p_request_id: string; p_user_id: string };
+        Returns: boolean;
       };
       complete_notification_job: {
         Args: {
@@ -1206,49 +1214,10 @@ export type Database = {
         };
         Returns: Json;
       };
-      create_shared_bottle: {
-        Args: { p_bottle: Json; p_night_id: string };
-        Returns: Json;
+      complete_signup: {
+        Args: { p_age_confirmed: boolean; p_display_name: string };
+        Returns: undefined;
       };
-      share_bottle_and_plan: {
-        Args: {
-          p_night_id: string;
-          p_bottle: Json;
-          p_member_id: string;
-          p_expected_revision: number;
-          p_request_key: string;
-        };
-        Returns: Json;
-      };
-      plan_shared_bottle: {
-        Args: {
-          p_bottle_id: string;
-          p_member_id: string;
-          p_quantity: number;
-          p_serving_ml: number;
-          p_expected_revision: number;
-          p_request_key: string;
-          p_make_main?: boolean;
-        };
-        Returns: Json;
-      };
-      start_night_with_bottle: {
-        Args: {
-          p_creation_key: string;
-          p_title: string;
-          p_ends_at: string;
-          p_timezone: string;
-          p_host_plan: Json;
-          p_guests: Json;
-          p_bottle: Json;
-        };
-        Returns: Json;
-      };
-      set_shared_bottle_membership: {
-        Args: { p_bottle_id: string; p_join: boolean; p_member_id: string };
-        Returns: Json;
-      };
-      close_shared_bottle: { Args: { p_bottle_id: string }; Returns: Json };
       create_night_invite: {
         Args: {
           p_expires_at: string;
@@ -1258,6 +1227,11 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_shared_bottle: {
+        Args: { p_bottle: Json; p_night_id: string };
+        Returns: Json;
+      };
+      delete_night_photo: { Args: { p_photo_id: string }; Returns: Json };
       end_night: { Args: { p_night_id: string }; Returns: Json };
       extend_night: {
         Args: { p_minutes: number; p_night_id: string };
@@ -1275,8 +1249,8 @@ export type Database = {
       get_finished_nights: { Args: { p_page?: number }; Returns: Json };
       get_invite_preview: { Args: { p_token_hash: string }; Returns: Json };
       get_my_notification_events: { Args: { p_limit?: number }; Returns: Json };
-      get_night_snapshot: { Args: { p_night_id: string }; Returns: Json };
       get_night_photos: { Args: { p_night_id: string }; Returns: Json };
+      get_night_snapshot: { Args: { p_night_id: string }; Returns: Json };
       get_notification_preferences: { Args: never; Returns: Json };
       leave_night: { Args: { p_night_id: string }; Returns: Json };
       log_drink: {
@@ -1299,18 +1273,19 @@ export type Database = {
         };
         Returns: Json;
       };
-      redeem_night_invite: { Args: { p_token_hash: string }; Returns: Json };
-      register_push_subscription: {
+      plan_shared_bottle: {
         Args: {
-          p_auth: string;
-          p_endpoint: string;
-          p_expiration_time?: string;
-          p_p256dh: string;
+          p_bottle_id: string;
+          p_expected_revision: number;
+          p_make_main?: boolean;
+          p_member_id: string;
+          p_quantity: number;
+          p_request_key: string;
+          p_serving_ml: number;
         };
         Returns: Json;
       };
-      remove_managed_guest: { Args: { p_member_id: string }; Returns: Json };
-      remove_push_subscription: { Args: { p_endpoint: string }; Returns: Json };
+      redeem_night_invite: { Args: { p_token_hash: string }; Returns: Json };
       register_night_photo: {
         Args: {
           p_byte_size: number;
@@ -1323,7 +1298,17 @@ export type Database = {
         };
         Returns: Json;
       };
-      delete_night_photo: { Args: { p_photo_id: string }; Returns: Json };
+      register_push_subscription: {
+        Args: {
+          p_auth: string;
+          p_endpoint: string;
+          p_expiration_time?: string;
+          p_p256dh: string;
+        };
+        Returns: Json;
+      };
+      remove_managed_guest: { Args: { p_member_id: string }; Returns: Json };
+      remove_push_subscription: { Args: { p_endpoint: string }; Returns: Json };
       replace_member_plan: {
         Args: { p_items: Json; p_member_id: string };
         Returns: Json;
@@ -1350,6 +1335,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      schedule_account_deletion: { Args: never; Returns: Json };
       send_check_in: {
         Args: {
           p_night_id: string;
@@ -1359,6 +1345,20 @@ export type Database = {
         Returns: Json;
       };
       set_reminder_pause: { Args: { p_minutes?: number }; Returns: Json };
+      set_shared_bottle_membership: {
+        Args: { p_bottle_id: string; p_join: boolean; p_member_id: string };
+        Returns: Json;
+      };
+      share_bottle_and_plan: {
+        Args: {
+          p_bottle: Json;
+          p_expected_revision: number;
+          p_member_id: string;
+          p_night_id: string;
+          p_request_key: string;
+        };
+        Returns: Json;
+      };
       soft_delete_activity: {
         Args: { p_kind: string; p_log_id: string };
         Returns: Json;
@@ -1368,6 +1368,18 @@ export type Database = {
           p_creation_key: string;
           p_ends_at: string;
           p_guests?: Json;
+          p_host_plan: Json;
+          p_timezone: string;
+          p_title: string;
+        };
+        Returns: Json;
+      };
+      start_night_with_bottle: {
+        Args: {
+          p_bottle: Json;
+          p_creation_key: string;
+          p_ends_at: string;
+          p_guests: Json;
           p_host_plan: Json;
           p_timezone: string;
           p_title: string;

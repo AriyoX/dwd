@@ -6,17 +6,14 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 const requestSchema = z.object({
   requestKey: z.uuid(),
-  kind: z.enum(['feedback', 'problem', 'deletion']),
+  kind: z.enum(['feedback', 'problem']),
   message: z.string().trim().min(10).max(4000),
-  confirmed: z.boolean(),
 });
 export async function submitSupportRequest(
   input: unknown,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const parsed = requestSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Write between 10 and 4,000 characters.' };
-  if (parsed.data.kind === 'deletion' && !parsed.data.confirmed)
-    return { ok: false, error: 'Please tick the box to confirm your deletion request.' };
   try {
     const client = await createServerSupabaseClient();
     const claims = await client.auth.getClaims();

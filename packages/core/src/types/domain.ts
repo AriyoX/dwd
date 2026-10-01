@@ -9,7 +9,7 @@ export type PlanSetupMode = 'unselected' | 'water_only' | 'drinks';
 
 export interface Night {
   id: string;
-  hostUserId: string;
+  hostUserId: string | null;
   title: string;
   status: NightStatus;
   startsAt: string;
@@ -22,7 +22,7 @@ export interface Night {
 export interface NightEndTimeChange {
   id: string;
   nightId: string;
-  changedBy: string;
+  changedBy: string | null;
   previousEndsAt: string;
   newEndsAt: string;
   effectiveAt: string;

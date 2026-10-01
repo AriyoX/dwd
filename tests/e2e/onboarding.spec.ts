@@ -102,8 +102,10 @@ test('real local signup, draft recovery, water-only night, support and history',
   await page.getByRole('button', { name: 'End night and view summary' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'End night', exact: true }).click();
   await expect(page).toHaveURL(/\/summary$/);
+  await expect(page.getByRole('heading', { name: 'How the night went' })).toBeVisible();
   const summary = page.url();
-  await page.goto('/history');
+  await page.getByRole('link', { name: 'Night history', exact: true }).click();
+  await expect(page).toHaveURL(/\/history$/);
   await expect(page.getByRole('link', { name: /Chaser-only test night/ })).toHaveAttribute(
     'href',
     new URL(summary).pathname,
@@ -122,11 +124,10 @@ test('real local signup, draft recovery, water-only night, support and history',
     page.getByRole('article').getByText('Something went wrong', { exact: true }),
   ).toBeVisible();
   await page.locator('.account-deletion > summary').click();
-  await page
-    .getByLabel('I understand my account and shared nights won’t be deleted straight away.')
-    .check();
-  await page.getByRole('button', { name: 'Request account deletion' }).click();
+  await page.getByRole('checkbox', { name: /I understand I will be signed out/ }).check();
+  await page.getByRole('button', { name: 'Delete account in 30 days' }).click();
+  await expect(page).toHaveURL(/\/login\?deletion=scheduled$/);
   await expect(
-    page.getByText('We’ve received your deletion request.', { exact: false }),
+    page.getByText('Account deletion is scheduled in 30 days.', { exact: false }),
   ).toBeVisible();
 });

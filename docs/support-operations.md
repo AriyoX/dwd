@@ -1,6 +1,6 @@
-# Feedback and deletion requests
+# Feedback and account deletion
 
-Authenticated users submit reports at `/feedback` and deletion requests at `/account`. Requests receive a UUID reference and appear in that user's account with a status and optional operator reply. No email is sent, no public issue is created, and no diagnostics are attached. SMTP is unrelated to this queue.
+Authenticated users submit reports at `/feedback`. Reports receive a UUID reference and appear in that user's account with a status and optional operator reply. Account deletion at `/account` uses a separate automatic 30-day countdown; see [account deletion and photo limits](account-deletion-and-photo-limits.md). No email is sent, no public issue is created, and no diagnostics are attached. SMTP is unrelated to this queue.
 
 The app operator reviews `public.support_requests` using the **dedicated DWD Supabase project** (`kdplbebaotvgcvjggacz`) with dashboard/operator privileges. Ordinary accounts can read only their own requests and submit through a constrained RPC; they cannot change ownership, status, or responses. Requests are idempotent and limited to ten new requests per account in a rolling 24-hour period; an account can have one open deletion request.
 
@@ -15,12 +15,10 @@ order by created_at;
 
 After selecting a particular request, update its `status` to `in_review`, and put a factual user-facing reply in `response`. Supported statuses are `pending`, `in_review`, and `completed`. Do not put credentials or other users' private information in a reply. The user sees updates on refreshing `/account`; the app does not notify them by email. Monitor this queue as an operational task; no automated responder or response-time promise is implemented.
 
-## Deletion review
+## Legacy deletion requests
 
-Submitting a deletion request changes no account, shared-night, or pending-log data. When an operator later deletes a non-host Auth user, DWD preserves their shared-night plans and entries but clears account identifiers, replaces their stored participant name with `Deleted user`, marks the membership as left, removes private support and notification data, and scrubs profile audit payloads. Deletion of a user who hosts shared nights remains blocked pending an explicit ownership decision.
+Existing support requests with kind `deletion` remain historical messages. They do not create an automatic countdown. Reply with the new account deletion flow and resolve the support request separately. New deletion schedules need no operator review.
 
-For each request, verify the requesting account and whether it hosts any nights. Non-host accounts use the automatic anonymisation path described above. For a host, review its hosted nights, managed guests, authored entries, and other participants before choosing transfer, deletion, or another documented treatment. Communicate the proposed handling and any information required through the request.
-
-Before any approved Auth deletion, revoke sessions and account access and account for already issued access tokens. Do not assume deleting an Auth row alone invalidates its JWTs. Record exactly what was removed, anonymised, or retained in the response; mark `completed` only after the agreed operation is actually complete. No legal approval, retention schedule, contact address, or deletion deadline is implied by this flow.
+The automatic worker handles shared-night records, host ownership and photo removal. Direct deletion of an unprepared host remains blocked. Monitor failures through the worker and scheduler described in the release guide.
 
 Users manage browser-held data separately: discard unfinished setup, review/remove queued entries on each night or summary, and reset demo data from `/account` or `/demo`. Demo reset only affects the dedicated `dwd-demo:v1` key; it never clears all browser storage or the real outbox.

@@ -38,3 +38,5 @@ export const EMERGENCY_SIGNS = [
   'Severe confusion',
   'Clammy or unusually cold skin',
 ] as const;
+export const MAX_PHOTOS_PER_PERSON_PER_NIGHT = 2;
+export const MAX_MEMORY_PHOTO_BYTES = 5 * 1024 * 1024;

@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { deleteNightPhoto, getNightPhotos, registerNightPhoto } from '@dwd/data';
-import type { NightPhoto } from '@dwd/core';
+import { MAX_MEMORY_PHOTO_BYTES, type NightPhoto } from '@dwd/core';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 const nightIdSchema = z.uuid();
@@ -11,11 +11,7 @@ const photoSchema = z.object({
   nightId: z.uuid(),
   objectPath: z.string().min(10).max(500),
   mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
-  byteSize: z
-    .number()
-    .int()
-    .min(1)
-    .max(10 * 1024 * 1024),
+  byteSize: z.number().int().min(1).max(MAX_MEMORY_PHOTO_BYTES),
   width: z.number().int().min(1).max(10_000),
   height: z.number().int().min(1).max(10_000),
 });
@@ -58,15 +54,25 @@ export async function getNightPhotosAction(
 
 export async function registerNightPhotoAction(
   input: unknown,
-): Promise<{ ok: true; photo: NightPhoto } | { ok: false; error: string }> {
+): Promise<{ ok: true; photo: NightPhoto } | { ok: false; error: string; permanent?: boolean }> {
   const parsed = photoSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'That photo is invalid.' };
+  if (!parsed.success)
+    return { ok: false, error: 'Photos must be valid images of 5 MB or smaller.', permanent: true };
   try {
     return {
       ok: true,
       photo: await registerNightPhoto(await authenticatedClient(), parsed.data),
     };
-  } catch {
+  } catch (cause) {
+    const code = cause && typeof cause === 'object' && 'code' in cause ? cause.code : null;
+    if (code === '54000')
+      return { ok: false, error: 'You can save up to 2 photos per night.', permanent: true };
+    if (code === '22023')
+      return {
+        ok: false,
+        error: 'The photo could not be saved. Use an image of 5 MB or smaller.',
+        permanent: true,
+      };
     return { ok: false, error: 'The upload finished, but the photo could not be saved. Retry.' };
   }
 }
