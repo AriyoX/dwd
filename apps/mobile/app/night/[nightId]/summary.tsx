@@ -1,6 +1,8 @@
 import { RefreshControl, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { NightActivity } from '@/components/night-activity';
+import { NightMetrics } from '@/components/night-metrics';
+import { NightArtwork } from '@/components/night-artwork';
 import { PrimaryButton } from '@/components/primary-button';
 import {
   LoadingPanel,
@@ -53,13 +55,14 @@ export default function SummaryScreen() {
           {member ? (
             <>
               <Panel>
+                <NightArtwork compact />
                 <Text accessibilityRole="header" style={typography.sectionTitle}>
                   Your recap
                 </Text>
-                <Text style={{ color: colors.text, fontSize: 26, fontWeight: '600' }}>
-                  {member.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
-                  {member.waterLogs.filter((log) => !log.deletedAt).length} waters
-                </Text>
+                <NightMetrics
+                  drinks={member.drinkLogs.filter((log) => !log.deletedAt).length}
+                  water={member.waterLogs.filter((log) => !log.deletedAt).length}
+                />
               </Panel>
               <NightActivity member={member} timezone={snapshot.night.timezone} />
             </>
@@ -76,7 +79,7 @@ export default function SummaryScreen() {
                   </Text>
                   <Text style={typography.body}>
                     {m.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
-                    {m.waterLogs.filter((log) => !log.deletedAt).length} waters
+                    {m.waterLogs.filter((log) => !log.deletedAt).length} chasers
                   </Text>
                 </View>
               ))}

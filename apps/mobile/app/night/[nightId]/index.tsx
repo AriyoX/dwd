@@ -17,6 +17,8 @@ import {
   softDeleteActivity,
 } from '@dwd/data';
 import { Choice } from '@/components/choice';
+import { NightMetrics } from '@/components/night-metrics';
+import { Ionicons } from '@expo/vector-icons';
 import { NightActivity } from '@/components/night-activity';
 import { PrimaryButton } from '@/components/primary-button';
 import {
@@ -187,18 +189,16 @@ export default function NightScreen() {
                 </View>
               ) : null}
               {member ? (
-                <Panel>
+                <Panel style={{ padding: 18, gap: 18 }}>
                   <Text accessibilityRole="header" style={typography.sectionTitle}>
                     {member.id === actor?.id ? 'Your evening' : member.displayName}
                   </Text>
-                  <Text style={{ color: colors.text, fontSize: 24, fontWeight: '600' }}>
-                    {drinks.length} drinks · {water.length} waters
-                  </Text>
+                  <NightMetrics drinks={drinks.length} water={water.length} />
                   <Text style={typography.body}>
                     {member.planSetupCompletedAt === null
                       ? 'Choose a plan to start'
                       : planned === 0
-                        ? 'Water-only plan'
+                        ? 'Chaser-only plan'
                         : planStatus === 'within_plan'
                           ? 'Within your plan'
                           : planStatus === 'reached'
@@ -208,7 +208,7 @@ export default function NightScreen() {
                   {member.id === actor?.id ? (
                     <PrimaryButton
                       label={member.planSetupCompletedAt === null ? 'Set your plan' : 'Edit plan'}
-                      variant="secondary"
+                      variant="quiet"
                       disabled={busy || logging.busy}
                       onPress={() => router.push(`/night/${nightId}/plan`)}
                     />
@@ -216,12 +216,25 @@ export default function NightScreen() {
                   {allowed ? (
                     <>
                       {quick ? (
-                        <PrimaryButton
-                          label={`Log ${quick.label.toLowerCase()}`}
-                          busy={logging.busy}
-                          disabled={busy}
-                          onPress={() => void logging.log(member.id, { planItemId: quick.id })}
-                        />
+                        <View style={{ gap: 10 }}>
+                          <Text
+                            style={{
+                              color: colors.muted,
+                              fontSize: 13,
+                              fontWeight: '500',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {quick.label} · {quick.volumeMl} ml · {quick.abvPercent}%
+                          </Text>
+                          <PrimaryButton
+                            label={`Log ${quick.label.toLowerCase()}`}
+                            icon="add-circle-outline"
+                            busy={logging.busy}
+                            disabled={busy}
+                            onPress={() => void logging.log(member.id, { planItemId: quick.id })}
+                          />
+                        </View>
                       ) : null}
                       <PrimaryButton
                         label={quick ? 'Log another drink' : 'Log a drink'}
@@ -235,7 +248,8 @@ export default function NightScreen() {
                         }
                       />
                       <PrimaryButton
-                        label="Log water"
+                        label="Log chaser"
+                        icon="water-outline"
                         variant="water"
                         disabled={busy}
                         busy={logging.busy}
@@ -294,15 +308,48 @@ export default function NightScreen() {
             {snapshot.members
               .filter((m) => m.leftAt === null)
               .map((m) => (
-                <View key={m.id} style={{ gap: 4 }}>
-                  <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
-                    {m.displayName}
-                    {m.role === 'host' ? ' · Host' : ''}
-                  </Text>
-                  <Text style={typography.body}>
-                    {m.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
-                    {m.waterLogs.filter((log) => !log.deletedAt).length} waters
-                  </Text>
+                <View
+                  key={m.id}
+                  style={{
+                    gap: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 6,
+                  }}
+                >
+                  <View
+                    accessible={false}
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 21,
+                      backgroundColor: colors.primarySoft,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '600' }}>
+                      {m.displayName.slice(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
+                      {m.displayName}
+                      {m.role === 'host' ? ' · Host' : ''}
+                    </Text>
+                    <Text style={typography.body}>
+                      {m.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
+                      {m.waterLogs.filter((log) => !log.deletedAt).length} chasers
+                    </Text>
+                  </View>
+                  {m.role === 'host' ? (
+                    <Ionicons
+                      name="star-outline"
+                      size={18}
+                      color={colors.primary}
+                      accessible={false}
+                    />
+                  ) : null}
                 </View>
               ))}
           </Panel>
@@ -314,6 +361,7 @@ export default function NightScreen() {
               </Text>
               <PrimaryButton
                 label="Share invite code"
+                icon="share-outline"
                 variant="secondary"
                 busy={busy}
                 disabled={logging.busy}
@@ -321,6 +369,7 @@ export default function NightScreen() {
               />
               <PrimaryButton
                 label="Extend by 30 minutes"
+                icon="time-outline"
                 variant="secondary"
                 busy={busy}
                 disabled={logging.busy}
@@ -331,7 +380,7 @@ export default function NightScreen() {
               />
               <PrimaryButton
                 label="End night"
-                variant="secondary"
+                variant="danger"
                 disabled={busy || logging.busy}
                 onPress={() => void finish()}
               />

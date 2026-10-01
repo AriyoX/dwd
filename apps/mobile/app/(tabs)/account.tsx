@@ -7,14 +7,13 @@ import { Brand } from '@/components/brand';
 import { PrimaryButton } from '@/components/primary-button';
 import { Panel, Screen, ScreenHeading } from '@/components/screen';
 import { TextField } from '@/components/text-field';
-import { Choice } from '@/components/choice';
+import { AppearancePicker } from '@/components/appearance-picker';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme, useThemedStyles } from '@/providers/theme-provider';
-import type { ThemePreference } from '@/providers/theme-provider';
 import type { ThemeColors, makeTypography } from '@/theme/tokens';
 
 export default function AccountScreen() {
-  const { colors, preference, setPreference } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const { client, session, status, issue } = useSupabase();
   const [email, setEmail] = useState('');
@@ -88,18 +87,19 @@ export default function AccountScreen() {
         </Panel>
       ) : session ? (
         <Panel>
-          <Text accessibilityRole="header" style={styles.panelTitle}>
-            Your profile
-          </Text>
-          <View style={styles.avatar} accessible={false}>
-            <Text style={styles.initial}>{(profileName || 'You').slice(0, 1).toUpperCase()}</Text>
+          <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+            <View style={styles.avatar} accessible={false}>
+              <Text style={styles.initial}>{(profileName || 'You').slice(0, 1).toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              {profileLoading ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={styles.panelTitle}>{profileName ?? 'Signed in'}</Text>
+              )}
+              <Text style={styles.body}>{session.user.email}</Text>
+            </View>
           </View>
-          {profileLoading ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <Text style={styles.panelTitle}>{profileName ?? 'Signed in'}</Text>
-          )}
-          <Text style={styles.body}>{session.user.email}</Text>
           {message ? (
             <Text accessibilityRole="alert" style={styles.error}>
               {message}
@@ -108,7 +108,7 @@ export default function AccountScreen() {
           <PrimaryButton
             busy={busy}
             label="Sign out"
-            variant="secondary"
+            variant="quiet"
             onPress={() => void signOut()}
           />
         </Panel>
@@ -149,14 +149,7 @@ export default function AccountScreen() {
         <Text accessibilityRole="header" style={styles.panelTitle}>
           Appearance
         </Text>
-        {(['system', 'light', 'dark'] as const).map((value: ThemePreference) => (
-          <Choice
-            key={value}
-            label={value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark'}
-            selected={preference === value}
-            onPress={() => setPreference(value)}
-          />
-        ))}
+        <AppearancePicker />
       </Panel>
     </Screen>
   );

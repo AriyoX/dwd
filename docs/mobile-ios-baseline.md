@@ -57,6 +57,8 @@ The activity/widget extension is planned, not installed or shipped in this updat
 
 ## Remaining mobile work
 
+See [Mobile UI and web parity review](mobile-ui-and-parity-review.md) for the October 2026 UI pass, emulator verification and prioritized feature handoff to Sol.
+
 Full auth onboarding and recovery/deep-link handling, persistent offline replay, managed-guest creation, shared-bottle editing, photo memories, native notifications/check-ins, and profile/account editing remain follow-up work. Logging currently needs a connection; immediate retries retain their identity while that screen remains mounted, but no persistent offline outbox is shipped yet.
 
 ## Verification and device checks

@@ -38,7 +38,7 @@ export function PlanEditor({
   return (
     <View style={{ gap: 16 }}>
       <Choice
-        label="Water only"
+        label="Chaser only"
         selected={mode === 'water_only'}
         disabled={disabled}
         onPress={() => onModeChange('water_only')}
@@ -129,7 +129,7 @@ export function PlanEditor({
                 </Action>
               </View>
               <Choice
-                label="Use for quick log"
+                label="Main drink"
                 selected={item.isQuickLog}
                 disabled={disabled}
                 onPress={() => onChange(items.map((p, i) => ({ ...p, isQuickLog: i === index })))}

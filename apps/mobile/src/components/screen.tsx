@@ -40,7 +40,7 @@ export function Screen({
             width: '100%',
             maxWidth: 600,
             paddingHorizontal: 22,
-            paddingTop: 24,
+            paddingTop: 16,
             paddingBottom: 40,
             gap: 24,
           },
@@ -64,9 +64,10 @@ export function Panel({ children, style }: { children: ReactNode; style?: StyleP
         {
           padding: 20,
           borderRadius: radii.card,
-          borderWidth: 1,
+          borderWidth: 0.5,
           borderColor: colors.border,
           backgroundColor: colors.surface,
+          borderCurve: 'continuous',
           gap: 16,
         },
         style,
@@ -93,7 +94,12 @@ export function Notice({ message, error = false }: { message: string; error?: bo
     <Text
       accessibilityRole={error ? 'alert' : 'text'}
       accessibilityLiveRegion="polite"
-      style={{ color: error ? colors.danger : colors.muted, fontSize: 15, lineHeight: 23 }}
+      style={{
+        color: error ? colors.danger : colors.muted,
+        fontSize: 15,
+        lineHeight: 23,
+        ...(error ? { padding: 14, borderRadius: 14, backgroundColor: colors.surfaceSoft } : {}),
+      }}
     >
       {message}
     </Text>

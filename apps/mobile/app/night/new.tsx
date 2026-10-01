@@ -9,9 +9,8 @@ import {
   type StartNightInput,
 } from '@dwd/core';
 import { startNightOut } from '@dwd/data';
-import { Choice } from '@/components/choice';
 import { PlanEditor } from '@/components/plan-editor';
-import { PrimaryButton } from '@/components/primary-button';
+import { Action, PrimaryButton } from '@/components/primary-button';
 import { Notice, Panel, Screen, ScreenHeading } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { useSupabase } from '@/providers/supabase-provider';
@@ -20,7 +19,7 @@ import { useTheme } from '@/providers/theme-provider';
 export default function NewNightScreen() {
   const router = useRouter();
   const { client, status } = useSupabase();
-  const { typography } = useTheme();
+  const { colors, typography } = useTheme();
   const [title, setTitle] = useState('Tonight');
   const [hours, setHours] = useState(2);
   const [mode, setMode] = useState<PlanSetupMode>('unselected');
@@ -36,7 +35,7 @@ export default function NewNightScreen() {
   async function start() {
     if (!client || status !== 'signed-in' || inFlight.current) return;
     if (mode === 'unselected') {
-      setIssue('Choose water only or a drink plan.');
+      setIssue('Choose chaser only or a drink plan.');
       return;
     }
     if (mode === 'drinks' && items.length === 0) {
@@ -93,18 +92,39 @@ export default function NewNightScreen() {
             <Text accessibilityRole="header" style={typography.sectionTitle}>
               Planned duration
             </Text>
-            <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {[1, 2, 3, 4].map((value) => (
-                <Choice
-                  key={value}
-                  label={`${value} hour${value > 1 ? 's' : ''}`}
-                  selected={hours === value}
-                  disabled={busy}
-                  onPress={() => {
-                    edit();
-                    setHours(value);
-                  }}
-                />
+                <View key={value} style={{ flex: 1, minWidth: 58 }}>
+                  <Action
+                    label={`${value} hour${value > 1 ? 's' : ''}`}
+                    selected={hours === value}
+                    disabled={busy}
+                    onPress={() => {
+                      edit();
+                      setHours(value);
+                    }}
+                    style={{
+                      minHeight: 52,
+                      paddingHorizontal: 8,
+                      paddingVertical: 14,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 12,
+                      backgroundColor: hours === value ? colors.primary : colors.surfaceSoft,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: hours === value ? colors.onPrimary : colors.text,
+                        fontSize: 16,
+                        fontWeight: '600',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {value}h
+                    </Text>
+                  </Action>
+                </View>
               ))}
             </View>
           </Panel>

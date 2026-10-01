@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { FinishedNight } from '@dwd/core';
 import { getFinishedNights } from '@dwd/data';
 import { Brand } from '@/components/brand';
+import { NightArtwork } from '@/components/night-artwork';
 import { PrimaryButton } from '@/components/primary-button';
 import { Panel, Screen, ScreenHeading } from '@/components/screen';
 import { useSupabase } from '@/providers/supabase-provider';
@@ -42,14 +43,7 @@ export default function HistoryScreen() {
       }
     >
       <Brand />
-      <ScreenHeading
-        title="Night history"
-        leading={
-          <View style={styles.featureIcon}>
-            <Ionicons name="moon-outline" color={colors.primary} size={28} accessible={false} />
-          </View>
-        }
-      />
+      <ScreenHeading title="Night history" />
 
       {status === 'unconfigured' ? (
         <Panel>
@@ -74,7 +68,7 @@ export default function HistoryScreen() {
         </Panel>
       ) : nights.length === 0 ? (
         <Panel style={styles.emptyPanel}>
-          <Ionicons name="moon-outline" color={colors.primary} size={34} accessible={false} />
+          <NightArtwork compact />
           <Text accessibilityRole="header" style={styles.emptyTitle}>
             {page === 0 ? 'No finished nights yet' : 'No more nights'}
           </Text>

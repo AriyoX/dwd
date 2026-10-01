@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, type StyleProp, type ViewStyle } fr
 import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { useTheme } from '@/providers/theme-provider';
 import { radii } from '@/theme/tokens';
+import { Ionicons } from '@expo/vector-icons';
 
 export function Action({
   children,
@@ -56,16 +57,26 @@ export function PrimaryButton({
   disabled = false,
   busy = false,
   variant = 'primary',
+  icon,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   busy?: boolean;
-  variant?: 'primary' | 'secondary' | 'water';
+  variant?: 'primary' | 'secondary' | 'water' | 'quiet' | 'danger';
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
 }) {
   const { colors } = useTheme();
   const foreground =
-    variant === 'primary' ? colors.onPrimary : variant === 'water' ? colors.waterText : colors.text;
+    variant === 'primary'
+      ? colors.onPrimary
+      : variant === 'water'
+        ? colors.waterText
+        : variant === 'danger'
+          ? colors.danger
+          : variant === 'quiet'
+            ? colors.primary
+            : colors.text;
   return (
     <Action
       label={busy ? `${label}, saving` : label}
@@ -73,6 +84,8 @@ export function PrimaryButton({
       onPress={onPress}
       style={{
         minHeight: 52,
+        flexDirection: 'row',
+        gap: 10,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 18,
@@ -85,15 +98,28 @@ export function PrimaryButton({
             ? colors.primary
             : variant === 'water'
               ? colors.waterSoft
-              : colors.surface,
+              : variant === 'quiet'
+                ? 'transparent'
+                : colors.surface,
       }}
     >
       {busy ? (
         <ActivityIndicator accessibilityLabel="Saving" color={foreground} />
       ) : (
-        <Text style={{ color: foreground, fontSize: 16, fontWeight: '600', textAlign: 'center' }}>
-          {label}
-        </Text>
+        <>
+          {icon ? <Ionicons name={icon} size={20} color={foreground} accessible={false} /> : null}
+          <Text
+            style={{
+              color: foreground,
+              fontSize: 16,
+              fontWeight: '600',
+              textAlign: 'center',
+              flexShrink: 1,
+            }}
+          >
+            {label}
+          </Text>
+        </>
       )}
     </Action>
   );
