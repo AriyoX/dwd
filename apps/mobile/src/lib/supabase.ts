@@ -8,10 +8,18 @@ let client: SupabaseClient<Database> | null | undefined;
 export function getSupabaseClient(): SupabaseClient<Database> | null {
   if (client !== undefined) return client;
 
-  const url = process.env['EXPO_PUBLIC_SUPABASE_URL'];
-  const publishableKey = process.env['EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
+  // Expo only inlines EXPO_PUBLIC variables accessed with static dot notation.
+  const url: unknown = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const publishableKey: unknown = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  if (!url || !publishableKey || url.includes('YOUR_') || publishableKey.includes('REPLACE_ME')) {
+  if (
+    typeof url !== 'string' ||
+    typeof publishableKey !== 'string' ||
+    !url ||
+    !publishableKey ||
+    url.includes('YOUR_') ||
+    publishableKey.includes('REPLACE_ME')
+  ) {
     client = null;
     return client;
   }

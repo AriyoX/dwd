@@ -16,7 +16,7 @@ interface SupabaseContextValue {
 const SupabaseContext = createContext<SupabaseContextValue | null>(null);
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
-  const client = useMemo(getSupabaseClient, []);
+  const client = useMemo(() => getSupabaseClient(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<AuthStatus>(client ? 'loading' : 'unconfigured');
   const [issue, setIssue] = useState<string | null>(null);
@@ -33,12 +33,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     }).data.subscription;
 
     const appStateSubscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') client.auth.startAutoRefresh();
-      else client.auth.stopAutoRefresh();
+      if (state === 'active') void client.auth.startAutoRefresh();
+      else void client.auth.stopAutoRefresh();
     });
 
-    if (AppState.currentState === 'active') client.auth.startAutoRefresh();
-    else client.auth.stopAutoRefresh();
+    if (AppState.currentState === 'active') void client.auth.startAutoRefresh();
+    else void client.auth.stopAutoRefresh();
 
     void client.auth
       .getSession()
@@ -59,7 +59,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       mounted = false;
       authSubscription.unsubscribe();
       appStateSubscription.remove();
-      client.auth.stopAutoRefresh();
+      void client.auth.stopAutoRefresh();
     };
   }, [client]);
 

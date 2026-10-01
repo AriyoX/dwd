@@ -6,11 +6,12 @@
     "scheme": "dwd",
     "icon": "./assets/icon.png",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "plugins": ["expo-router", "expo-sqlite", "expo-status-bar"],
     "ios": {
       "bundleIdentifier": "com.drinkwithdesire.mobile",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": { "CADisableMinimumFrameDurationOnPhone": true }
     }
   }
 }

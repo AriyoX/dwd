@@ -1,50 +1,33 @@
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/tokens';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { useTheme } from '@/providers/theme-provider';
 
 export default function TabLayout() {
+  const { colors, reduceTransparency } = useTheme();
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
-        tabBarStyle: {
-          paddingTop: 6,
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        },
-      }}
+    <NativeTabs
+      tintColor={colors.primary}
+      backgroundColor={colors.surface}
+      blurEffect={reduceTransparency ? 'none' : 'systemChromeMaterial'}
+      disableTransparentOnScrollEdge={reduceTransparency}
+      minimizeBehavior="never"
+      iconColor={{ default: colors.muted, selected: colors.primary }}
+      labelStyle={{ default: { color: colors.muted }, selected: { color: colors.primary } }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Tonight',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="moon-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'History',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="account"
-        options={{
-          title: 'Account',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" color={color} size={size} />
-          ),
-        }}
-      />
-    </Tabs>
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Icon sf={{ default: 'moon', selected: 'moon.fill' }} md="dark_mode" />
+        <NativeTabs.Trigger.Label>Tonight</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="history">
+        <NativeTabs.Trigger.Icon sf="clock" md="history" />
+        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="account">
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }}
+          md="account_circle"
+        />
+        <NativeTabs.Trigger.Label>Account</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }

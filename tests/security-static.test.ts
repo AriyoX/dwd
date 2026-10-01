@@ -130,11 +130,13 @@ describe('workspace and secret boundaries', () => {
     }
   });
 
-  it('contains no mobile workspace or native dependency', () => {
-    expect(existsSync(join(root, 'apps', 'mobile'))).toBe(false);
+  it('isolates native dependencies in the mobile workspace', () => {
+    expect(existsSync(join(root, 'apps', 'mobile'))).toBe(true);
     expect(existsSync(join(root, 'android'))).toBe(false);
     expect(existsSync(join(root, 'ios'))).toBe(false);
-    const packageFiles = [join(root, 'package.json'), ...findNamed(root, 'package.json')];
+    const packageFiles = [join(root, 'package.json'), ...findNamed(root, 'package.json')].filter(
+      (file) => file !== join(root, 'apps', 'mobile', 'package.json'),
+    );
     const packages = packageFiles.map((file) => readFileSync(file, 'utf8')).join('\n');
     expect(packages).not.toMatch(
       /"(?:react-native|expo|expo-router|nativewind|@react-native-async-storage\/async-storage|expo-secure-store)"\s*:/i,

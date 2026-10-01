@@ -1,6 +1,55 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { colors, radii } from '@/theme/tokens';
+import { useState, type ReactNode } from 'react';
+import { ActivityIndicator, Pressable, Text, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
+import { useTheme } from '@/providers/theme-provider';
+import { radii } from '@/theme/tokens';
 
+export function Action({
+  children,
+  onPress,
+  label,
+  disabled = false,
+  selected,
+  style,
+}: {
+  children: ReactNode;
+  onPress: () => void;
+  label: string;
+  disabled?: boolean;
+  selected?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const [pressed, setPressed] = useState(false);
+  const reduced = useReducedMotion();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, ...(selected === undefined ? {} : { selected }) }}
+      disabled={disabled}
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      pressRetentionOffset={16}
+      hitSlop={4}
+    >
+      <Animated.View
+        style={[
+          style,
+          {
+            opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
+            transform: [{ scale: pressed && !reduced ? 0.97 : 1 }],
+            transitionProperty: ['transform', 'opacity'],
+            transitionDuration: reduced ? 0 : 120,
+            transitionTimingFunction: cubicBezier(0.23, 1, 0.32, 1),
+          },
+        ]}
+      >
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
 export function PrimaryButton({
   label,
   onPress,
@@ -12,51 +61,40 @@ export function PrimaryButton({
   onPress: () => void;
   disabled?: boolean;
   busy?: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'water';
 }) {
+  const { colors } = useTheme();
+  const foreground =
+    variant === 'primary' ? colors.onPrimary : variant === 'water' ? colors.waterText : colors.text;
   return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || busy, busy }}
+    <Action
+      label={busy ? `${label}, saving` : label}
       disabled={disabled || busy}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        variant === 'secondary' && styles.secondary,
-        pressed &&
-          !disabled &&
-          (variant === 'secondary' ? styles.secondaryPressed : styles.pressed),
-        (disabled || busy) && styles.disabled,
-      ]}
+      style={{
+        minHeight: 52,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 18,
+        paddingVertical: 14,
+        borderRadius: radii.control,
+        borderWidth: 1,
+        borderColor: variant === 'secondary' ? colors.border : 'transparent',
+        backgroundColor:
+          variant === 'primary'
+            ? colors.primary
+            : variant === 'water'
+              ? colors.waterSoft
+              : colors.surface,
+      }}
     >
       {busy ? (
-        <ActivityIndicator color={variant === 'secondary' ? colors.primary : colors.white} />
+        <ActivityIndicator accessibilityLabel="Saving" color={foreground} />
       ) : (
-        <Text style={[styles.label, variant === 'secondary' && styles.secondaryLabel]}>
+        <Text style={{ color: foreground, fontSize: 16, fontWeight: '600', textAlign: 'center' }}>
           {label}
         </Text>
       )}
-    </Pressable>
+    </Action>
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    borderRadius: radii.control,
-    backgroundColor: colors.primary,
-  },
-  label: { color: colors.white, fontSize: 15, fontWeight: '600', textAlign: 'center' },
-  secondary: { backgroundColor: colors.surface, borderColor: colors.border },
-  secondaryLabel: { color: colors.text },
-  secondaryPressed: { backgroundColor: colors.surfaceSoft },
-  pressed: { backgroundColor: colors.primaryHover, opacity: 0.92 },
-  disabled: { opacity: 0.55 },
-});
