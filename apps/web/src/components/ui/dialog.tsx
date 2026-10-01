@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from 'react';
 
 export function Dialog({
   open,
@@ -27,11 +27,18 @@ export function Dialog({
     closeRef.current = onClose;
   }, [onClose]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     const previouslyFocused =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = dialogRef.current;
+    // Keyboard users and urgent actions should see the content immediately.
+    if (dialog) {
+      dialog.dataset['motion'] =
+        !urgent && previouslyFocused && !previouslyFocused.matches(':focus-visible')
+          ? 'pointer'
+          : 'instant';
+    }
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const focusableSelector =
@@ -71,7 +78,7 @@ export function Dialog({
       document.removeEventListener('keydown', handleKeyDown);
       previouslyFocused?.focus();
     };
-  }, [open]);
+  }, [open, urgent]);
 
   if (!open) return null;
   return (

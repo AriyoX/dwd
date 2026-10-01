@@ -1145,8 +1145,7 @@ function ActiveNightView({
           </header>
           {isHost && (
             <p className="muted small">
-              Invite someone: they use their own account and phone. Track for someone: you manage
-              their entries on your phone.
+              Invite someone to log their own drinks, or choose Track for someone to log for them.
             </p>
           )}
           <Card className="action-list">
@@ -1647,7 +1646,7 @@ function GuestDialog({
     <Dialog
       open={open}
       title="Add person"
-      description="You’ll log their drinks on your phone."
+      description="You’ll log their drinks for them."
       onClose={onClose}
     >
       <div className="field">

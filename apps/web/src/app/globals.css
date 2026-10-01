@@ -390,6 +390,7 @@
   --red: #ad4138;
   --focus: #8c3657;
   --radius: 22px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   font-family:
     'Segoe UI',
@@ -548,12 +549,15 @@ p {
   font-size: 0.9rem;
   cursor: pointer;
   transition:
-    transform 150ms ease,
+    transform 160ms var(--ease-out),
     background-color 150ms ease,
     box-shadow 150ms ease;
 }
-.button:active:not(:disabled) {
-  transform: translateY(1px);
+.button:active:not(:disabled):not(:focus-visible) {
+  transform: scale(0.98);
+}
+.button:focus-visible {
+  transition: none;
 }
 .button:disabled {
   cursor: not-allowed;
@@ -748,7 +752,12 @@ p {
   background: var(--surface);
   padding: 28px 24px 24px;
   box-shadow: 0 24px 80px #160b1233;
-  animation: sheet-in 180ms ease-out;
+}
+.dialog-sheet[data-motion='pointer'] {
+  animation: sheet-in 200ms var(--ease-out);
+}
+.dialog-backdrop:has(> .dialog-sheet[data-motion='pointer']) {
+  animation: surface-fade-in 200ms var(--ease-out);
 }
 .dialog-sheet > h2 {
   padding-right: 38px;
@@ -872,6 +881,18 @@ p {
   background: var(--surface);
   padding: 8px;
   box-shadow: 0 18px 60px #160b1233;
+  transform-origin: top right;
+}
+.account-menu[data-motion='pointer'] .account-popover {
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+@starting-style {
+  .account-menu[open][data-motion='pointer'] .account-popover {
+    opacity: 0;
+    transform: scale(0.97);
+  }
 }
 .avatar {
   display: inline-grid;
@@ -1709,7 +1730,25 @@ p {
     transform: translateY(0);
   }
 }
-@media (hover: hover) {
+@keyframes surface-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
   .button-primary:hover:not(:disabled) {
     background: var(--primary-hover);
     box-shadow: 0 5px 14px #4a102f26;
@@ -1739,6 +1778,9 @@ p {
   }
   .dialog-backdrop {
     align-items: center;
+  }
+  .dialog-sheet[data-motion='pointer'] {
+    animation-name: dialog-in;
   }
 }
 @media (max-width: 800px) {
@@ -1865,6 +1907,24 @@ p {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+  .button:active:not(:disabled):not(:focus-visible) {
+    transform: none;
+  }
+  .dialog-sheet[data-motion='pointer'],
+  .dialog-backdrop:has(> .dialog-sheet[data-motion='pointer']) {
+    animation-name: surface-fade-in;
+    animation-duration: 120ms !important;
+  }
+  .account-menu[data-motion='pointer'] .account-popover {
+    transform: none;
+    transition-property: opacity;
+    transition-duration: 120ms !important;
+  }
+  @starting-style {
+    .account-menu[open][data-motion='pointer'] .account-popover {
+      transform: none;
+    }
   }
 }
 
@@ -2845,12 +2905,18 @@ body[data-tour-active='true'] .theme-toggle {
   border-radius: 22px;
   background: var(--surface);
   transition:
-    border-color 150ms,
-    transform 150ms;
+    border-color 150ms ease,
+    transform 160ms var(--ease-out);
 }
-.history-card:hover {
-  border-color: var(--primary);
-  transform: translateY(-2px);
+@media (hover: hover) and (pointer: fine) {
+  .history-card:hover {
+    border-color: var(--primary);
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .history-card:hover:not(:focus-visible) {
+    transform: translateY(-2px);
+  }
 }
 .history-date {
   display: grid;

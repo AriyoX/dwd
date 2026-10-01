@@ -150,7 +150,7 @@ export function ShareInviteDialog({
     <Dialog
       open={open}
       title="Invite someone"
-      description="Friends join on their own phone and add their own drinks. Your private link expires in 24 hours."
+      description="Friends join and log their own drinks. Your private link expires in 24 hours."
       onClose={() => {
         if (!pending) onClose();
       }}

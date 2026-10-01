@@ -56,11 +56,6 @@ export function HistoryScreen({
               <Card className="stack history-empty">
                 <Moon size={34} strokeWidth={1.3} aria-hidden="true" />
                 <h2>{page === 0 ? 'No finished nights yet' : 'No more nights'}</h2>
-                <p className="muted small">
-                  {page === 0
-                    ? 'Your nights and photos will be waiting here once the night ends.'
-                    : 'You’ve reached the start of your history.'}
-                </p>
                 <Link href={page === 0 ? '/home' : '/history'} className="text-link">
                   {page === 0 ? 'Go to your nights' : 'Back to latest nights'}
                 </Link>

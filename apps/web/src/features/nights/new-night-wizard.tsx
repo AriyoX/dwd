@@ -490,8 +490,8 @@ export function NewNightWizard({ userId }: { userId: string }) {
                   <hr className="divider" />
                   <h2>Bring your people</h2>
                   <p className="muted small">
-                    Share an invite once the night starts. To add drinks for a friend on your phone,
-                    choose Track for someone. Ask them first.
+                    Share an invite once the night starts, or choose Track for someone to log their
+                    drinks. Ask them first.
                   </p>
                   {guests.map((guest, index) => (
                     <div className="plan-item stack" key={guest.clientId}>

@@ -100,6 +100,23 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   const chooser = page.getByRole('dialog', { name: 'Log for You' });
   await expect(chooser).toBeVisible();
   await expect(page.locator('[data-tour-coach]')).toBeHidden();
+  if (info.project.name === 'desktop') {
+    await expect(chooser).toHaveCSS('animation-name', 'dialog-in');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(chooser).toHaveCSS('animation-name', 'surface-fade-in');
+    await expect(chooser).toHaveCSS('transform', 'none');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  }
+  await expect(chooser.getByRole('button', { name: 'Close dialog' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Choose another drink' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(chooser).toBeVisible();
+  await expect(chooser).toHaveCSS('animation-name', 'none');
+  await page.keyboard.press('Shift+Tab');
+  await expect(chooser.getByRole('button', { name: /Beer.*330/ })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(chooser.getByRole('button', { name: 'Close dialog' })).toBeFocused();
   await chooser.getByRole('button', { name: /Beer.*330/ }).click();
   await chooser.getByRole('button', { name: 'Log Beer', exact: true }).click();
   card = await coach(page, 'choices');
@@ -126,12 +143,19 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   card = await coach(page, 'help');
   await page.getByRole('button', { name: 'Get help', exact: true }).click();
   await expect(page.getByRole('alertdialog')).toBeVisible();
+  await expect(page.getByRole('alertdialog')).toHaveCSS('animation-name', 'none');
   await expect(page.getByRole('alertdialog').locator('a[href^="tel:"]')).toHaveCount(0);
   await page.keyboard.press('Escape');
   card = await coach(page, 'help');
   await card.getByRole('button', { name: 'Next', exact: true }).click();
   card = await coach(page, 'history');
   await expect(page).toHaveURL(/\/history\?tour=history$/);
+  if (info.project.name === 'desktop') {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.locator('[data-tour="history-entry"]').hover();
+    await expect(page.locator('[data-tour="history-entry"]')).toHaveCSS('transform', 'none');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  }
   await page.locator('[data-tour="history-entry"]').click();
   card = await coach(page, 'history');
   await expect(page).toHaveURL(/\/night\/tour\/summary\?tour=history$/);
@@ -216,6 +240,23 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Your evening, Tour.' })).toBeVisible();
   await expect(page.locator('[data-tour-coach], .install-hint')).toHaveCount(0);
+  const accountMenu = page.getByLabel('Account menu');
+  await accountMenu.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.account-popover')).toBeVisible();
+  await expect(page.locator('.account-popover')).toHaveCSS('transition-duration', '0s');
+  await page.keyboard.press('Tab');
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Your account' })
+      .getByRole('link', { name: 'Night history' }),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(accountMenu).toBeFocused();
+  await expect(page.locator('.account-popover')).toBeHidden();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('.account-popover')).toBeHidden();
   await page.getByRole('button', { name: 'Use dark mode' }).click();
   await page.getByLabel('Account menu').click();
   await page.getByRole('button', { name: 'Take a tour' }).click();

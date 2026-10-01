@@ -27,8 +27,22 @@ export function AccountMenu({ name }: { name: string }) {
     };
   }, []);
   return (
-    <details className="account-menu" ref={menu}>
-      <summary aria-label="Account menu">
+    <details
+      className="account-menu"
+      ref={menu}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+      }}
+    >
+      <summary
+        aria-label="Account menu"
+        onPointerDown={() => {
+          if (menu.current) menu.current.dataset['motion'] = 'pointer';
+        }}
+        onKeyDown={() => {
+          if (menu.current) menu.current.dataset['motion'] = 'instant';
+        }}
+      >
         <span className="avatar" aria-hidden="true">
           {name.slice(0, 1).toUpperCase()}
         </span>

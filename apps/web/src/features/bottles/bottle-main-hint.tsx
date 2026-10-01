@@ -29,7 +29,7 @@ export function BottleMainHint({
       <Sparkles size={20} aria-hidden="true" />
       <div>
         <strong>{label} is your main drink</strong>
-        <p>One tap logs it below. Use Adjust to change the size, number or main drink.</p>
+        <p>Use Adjust to change the size, number or main drink.</p>
       </div>
       <button
         type="button"
