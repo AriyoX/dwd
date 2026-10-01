@@ -6,7 +6,7 @@ See the [September 28 product update](docs/product-update-2026-09-28.md) for nig
 
 Live app: **https://dwdug.vercel.app** (the original address remains available). Public email delivery is deferred until SMTP setup.
 
-Drink with Desire is a mobile-first web application for adults who want a shared, factual record of drinks during a night out. Account participants keep ownership of their own plans and logs; a host can separately manage guests who do not have accounts.
+Drink with Desire is a mobile-first web product with an iOS-first native app foundation for adults who want a shared, factual record of drinks during a night out. Account participants keep ownership of their own plans and logs; a host can separately manage guests who do not have accounts.
 
 Drink with Desire is not a drinking game, competition, medical device, BAC calculator, sobriety detector, or driving-safety tool. A personal plan is an intention, never a medically safe allowance. Do not use this product to decide whether anyone should drive.
 
@@ -14,7 +14,7 @@ Drink with Desire is not a drinking game, competition, medical device, BAC calcu
 
 The working web MVP includes email/password authentication, audited profile creation, transactional night creation, personal and managed-guest plans, hashed invitations, idempotent redemption, one-tap alcohol and water logging, deterministic checkpoints, Realtime snapshot refresh, offline queuing, corrections, prospective end-time extensions, irreversible ending, and factual summaries.
 
-It deliberately has no marketing site, native/mobile project, social login, PIN or delegated-edit flow, spending, food logging, GPS, analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation, or guaranteed notification delivery when a browser is fully closed.
+It deliberately has no marketing site, full native/mobile feature set, social login, PIN or delegated-edit flow, spending, food logging, GPS, analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation, or guaranteed notification delivery when a browser is fully closed.
 
 ## Self-service onboarding
 
@@ -26,6 +26,7 @@ The repository is private and connected to the existing Vercel `dwd` project. Br
 
 ```text
 apps/web                 Next.js App Router web application and browser adapters
+apps/mobile              Expo React Native iOS-first application baseline
 packages/core            Pure rules, configuration, schemas, domain/API/database types
 packages/contracts       Infrastructure and platform interfaces used by the web MVP
 packages/data            Injected-client Supabase repositories and RPC mapping
@@ -33,7 +34,7 @@ supabase/migrations      Database schema, constraints, RPCs, RLS, grants, Realti
 docs                     Architecture, security, QA, and portability notes
 ```
 
-The only npm workspaces are `@dwd/web`, `@dwd/core`, `@dwd/contracts`, and `@dwd/data`. The three shared workspaces are exactly `core`, `contracts`, and `data`; there is no mobile workspace.
+The npm workspaces are `@dwd/web`, `@dwd/mobile`, `@dwd/core`, `@dwd/contracts`, and `@dwd/data`. Both clients consume the same three shared packages: `core`, `contracts`, and `data`.
 
 ## Prerequisites
 
@@ -56,6 +57,16 @@ npm run dev
 
 Update `apps/web/.env.local` with the local URL and publishable key reported by `supabase status`. Open `http://localhost:3000`.
 
+## Native mobile baseline
+
+The iOS-first Expo app lives in `apps/mobile` and uses the same Supabase backend and shared packages. Copy `apps/mobile/.env.example` to `apps/mobile/.env.local`, fill in the same project URL and publishable key as the web environment you want it to use, then run:
+
+```powershell
+npm run mobile
+```
+
+Press `i` to open an iOS Simulator on macOS with Xcode installed, or scan the QR code with Expo Go on an iPhone. A signed iOS app build needs an Apple Developer account; EAS can build it from Windows. Live Activities will require a development build. See [the mobile baseline and Live Activities notes](docs/mobile-ios-baseline.md).
+
 Local email confirmation is disabled in `supabase/config.toml`, so browser-created test accounts can sign in immediately. The local SMTP testing UI is available at `http://localhost:54324` if confirmation is enabled locally. Do not put test passwords in `seed.sql`; create accounts through the app or Supabase Studio.
 
 Both migrations pass 73 pgTAP assertions in isolated Supabase PostgreSQL. Six mobile/desktop browser flows pass against a separate local Supabase stack. See the deployment notes for reproduction and remaining email setup.
@@ -64,6 +75,7 @@ Both migrations pass 73 pgTAP assertions in isolated Supabase PostgreSQL. Six mo
 
 ```powershell
 npm run dev
+npm run mobile
 npm run typecheck
 npm run lint
 npm test

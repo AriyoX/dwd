@@ -18,6 +18,8 @@
   },
   "scripts": {
     "dev": "npm run dev --workspace @dwd/web",
+    "mobile": "npm run start --workspace @dwd/mobile",
+    "mobile:ios": "npm run ios --workspace @dwd/mobile",
     "deploy:check": "node --env-file-if-exists=apps/web/.env.production.local scripts/check-deployment.mjs",
     "build": "npm run build --workspace @dwd/core && npm run build --workspace @dwd/contracts && npm run build --workspace @dwd/data && npm run build --workspace @dwd/web",
     "typecheck": "npm run typecheck --workspaces --if-present",

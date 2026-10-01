@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Drink with Desire",
+    "slug": "drink-with-desire",
+    "version": "0.1.0",
+    "scheme": "dwd",
+    "icon": "./assets/icon.png",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-sqlite", "expo-status-bar"],
+    "ios": {
+      "bundleIdentifier": "com.drinkwithdesire.mobile",
+      "supportsTablet": true,
+      "infoPlist": { "CADisableMinimumFrameDurationOnPhone": true }
+    }
+  }
+}
