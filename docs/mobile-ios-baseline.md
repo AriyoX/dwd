@@ -1,21 +1,28 @@
-# iOS mobile baseline
+# React Native mobile development
 
-The native client is an Expo workspace in `apps/mobile`. It uses React Native components and Expo Router, with the existing `@dwd/core`, `@dwd/contracts`, and `@dwd/data` packages. Expo SDK 57 is the current stable SDK selected for this baseline; SDK 58 remains in beta.
+The native client lives in `apps/mobile`, using Expo SDK 57, React Native, Expo Router, and the existing `@dwd/core`, `@dwd/contracts`, and `@dwd/data` packages. The web app remains the reference for product behavior. This mobile update does not change its UI or database.
 
-## Included
+## Implemented
 
-- iOS-first app configuration, deep-link scheme, and three-tab shell for Tonight, History, and Account.
-- Web light-theme colors, the supplied DWD wordmark and app icon, matching heading weights, and accessible native controls.
-- A typed Supabase client using the dedicated DWD project URL and publishable key.
-- Session persistence through Expo SQLite's `localStorage` adapter, plus app foreground/background token refresh handling.
-- Sign-in, active-night list, and paginated finished-night list connected to the existing Supabase Auth and `@dwd/data` RPCs, with retry controls for failed list requests.
-- A no-secret `.env.example` template. No database changes are required.
+- Tonight, History, and Account use the platform's native tab bar, with SF Symbols on iOS.
+- The supplied DWD vector wordmark retains its trimmed bounds and aspect ratio. It renders in plum in light mode and warm white in dark mode. Regenerate it with `node scripts/generate-mobile-brand.mjs` when the source vector changes.
+- System, Light, and Dark appearance choices persist on the device. The palette covers screens, forms, sheets, native navigation, and status bar. System follows the device's appearance setting.
+- Existing sign-in and account session persistence through Expo SQLite; foreground/background token refresh.
+- Start a night: name, planned duration, an explicit water-only or drinks plan, planned quantities, and a quick-log drink.
+- Join a night: paste a web invite link or code, preview the host and night, join, and set a personal plan.
+- Active night: plan status, quick logging, planned/preset/custom drinks, water, activity timeline, and undo within the existing 15-minute correction window.
+- Hosts can log for their existing managed guests, share an invite code through the native share sheet, extend the night, or end it. Account members log for themselves; members can leave a night.
+- Plan editing uses the existing revision check. Drink logging preserves server-required plan/end-time acknowledgments and reuses the action's UUID/timestamp for warning confirmation and an immediate retry after an uncertain save.
+- RLS-protected Realtime changes invalidate the canonical snapshot. Focus, foreground, pull-to-refresh, and periodic reconciliation recover missed updates.
+- Finished-night history and individual recaps preserve the server's group/personal history scope.
 
-Night creation, invite redemption, full auth onboarding/recovery, logging, Realtime, offline replay, native sharing, and notifications remain follow-up features. The web product remains the complete client while these native flows are built.
+## Design and interaction
 
-The three native screens follow the web app's light-mode design: warm white surfaces, plum actions and active badges, rounded cards, and dated history entries with drink/chaser counts. Native tokens live in `src/theme/tokens.ts` and mirror `apps/web/src/app/globals.css`. The PNG wordmark and 1024px app icon are rendered from the existing web vectors; no additional image or font dependency is needed. Forms scroll above the iOS keyboard, and the tab bar hides while typing.
+Apply `.agents/skills/apple-design/SKILL.md` as the main design reference, translated into native components. `animate-expo` supplies native implementation details. Keep the warm DWD palette and concise labels from the web flow: start/join → plan → log → recap.
 
-Night entries remain read-only until native night and recap routes are implemented. Profile editing, the product tour, account settings, and dark mode are also outside this shell's current scope.
+Use the system font, size-specific tracking, scalable text, flexible row heights, and at least 48-point controls. Buttons respond on press-in; the action commits on release. Reanimated animates only transform/opacity for 120 ms, with scale removed under Reduce Motion. Successful logging pairs visible completion with a single success haptic; unavailable haptics never block saving.
+
+Use native stack transitions and native form sheets for joining, logging, and plans. The OS owns gesture tracking, velocity, interruption, and dismissal. Tabs are peer destinations; keep their platform default behavior. Native tab materials honor Reduce Transparency with a solid alternative. Avoid stacking translucent content surfaces or introducing custom drag physics where the platform already handles the interaction. Keep cancel, back, and Undo easy to reach.
 
 ## Start the app
 
@@ -23,23 +30,43 @@ From the repository root:
 
 ```powershell
 Copy-Item apps/mobile/.env.example apps/mobile/.env.local
-# Set the same dedicated DWD Supabase URL and publishable key used by apps/web/.env.local.
+# Set the same DWD Supabase URL and publishable key used by apps/web/.env.local.
 npm install
 npm run mobile
 ```
 
-The iOS Simulator requires macOS and Xcode. A signed device build requires an Apple Developer account; EAS can build iOS binaries from Windows. The baseline can run in Expo Go, but features that add a native module or extension need a development build. For physical iPhones, the current Expo Go app requires the same Expo account to be signed in on the CLI and in Expo Go; this does not apply to simulators or development builds ([Expo notice](https://expo.dev/changelog/expo-go-57-login)).
+Only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` belong in the app environment. Expo requires static `process.env.EXPO_PUBLIC_…` access to inline these values. Never bundle a Supabase secret or service-role key. Use the existing typed data APIs and shared schemas, with server RPCs enforcing membership, idempotency, and warnings. See [Supabase's Expo setup](https://docs.expo.dev/guides/using-supabase/).
 
-Only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` belong in the app environment. Mobile bundles are public clients; never expose a Supabase secret or service-role key. These session and client choices follow [Supabase's Expo setup](https://docs.expo.dev/guides/using-supabase/) and [Supabase's Expo React Native quickstart](https://supabase.com/docs/guides/getting-started/quickstarts/expo-react-native).
+The iOS Simulator requires macOS and Xcode. Windows can run Metro and export the native JS bundle; EAS can build signed iOS binaries. Expo Go is useful for basic development; custom extensions require a development build. See [Expo development builds](https://docs.expo.dev/develop/development-builds/use-development-builds/).
 
-## iOS Live Activities
+## Planned: Live Activities and Home Screen quick logging
 
-The best-fit implementation is [Expo Widgets](https://docs.expo.dev/versions/latest/sdk/widgets/), now stable for iOS in Expo. It exposes ActivityKit Live Activities through `createLiveActivity`, `start`, `update`, and `end`, and supplies a built-in WidgetKit target. Layouts use Expo UI's SwiftUI components and run in a separate widget runtime: pass the activity's display state as props, keep the layout pure and synchronous, and do not expect React hooks, app context, or network access inside it. Expo Widgets and its extension target are researched but are not installed in this baseline yet.
+We shall add an opt-in Live Activity for an active night, including quick actions to log the selected drink, log water, and open the night. Add a companion Home Screen widget for the same everyday logging actions. Live Activities primarily live on the Lock Screen and Dynamic Island; a Home Screen widget is the persistent Home Screen entry point. Both should reuse the app's canonical night and personal plan, rather than create a separate tracking flow. See [Apple's Live Activities guidance](https://developer.apple.com/design/human-interface-guidelines/live-activities) and [interactive widgets and Live Activities](https://developer.apple.com/documentation/widgetkit/adding-interactivity-to-widgets-and-live-activities).
 
-Live Activities are available from iOS 16.1. The app can start and update one locally while it is running, then end it when the user leaves or the night ends. Expo Widgets is not included in Expo Go, so implementation and device checks need a development build. Expo's SDK 56 release promoted iOS Widgets to stable; this app uses the following stable SDK line rather than the SDK 58 beta.
+Implementation sequence:
 
-For updates while the app is backgrounded, the backend would need to send ActivityKit pushes through APNs using the activity's push token. Remote push-to-start requires iOS 17.2 or later. That work would add the Expo Widgets push capability, Apple signing/APNs setup, token registration and cleanup, and a server-side sender. It must reuse canonical night data and never send directly from a mobile secret.
+1. Add `expo-widgets` and its WidgetKit target in a development build. Use `createLiveActivity` to start/update/end the activity, with pure synchronous layouts and display props. Build the Home Screen widget alongside it. See [Expo Widgets](https://docs.expo.dev/versions/latest/sdk/widgets/).
+2. Start only after the person explicitly chooses to track a night. Show the selected quick-log drink, planned end time, and last successful action; let people choose whether the night title and counts appear on locked surfaces. Adapt layouts to light/dark, large text, and accessibility settings. Never imply sobriety or driving safety.
+3. Begin with deep links into the existing logging/confirmation flow. For logging without opening the app, validate the Expo interaction runtime and native App Intent requirements on a real device, including background/cold-start execution. Interactive buttons need the supported OS version (Apple introduced them in iOS 17); gate against both API availability and this app's deployment target.
+4. Route every action through the same constrained `log_drink`/`log_water` RPC and actor-scoped idempotency UUID. Repeated taps, uncertain network responses, foreground/background handoff, and app restarts must not create duplicates. Persist pending operations in an app/extension-safe store before offering background actions. A warning requiring acknowledgment must open the app; never pre-acknowledge it on a locked surface. Show pending, success, and failure distinctly, and offer Undo only within the server's correction window.
+5. Keep credentials in the authenticated app's native security boundary; define the extension/app-group handoff before implementing background logging. Handle expired sessions and ended nights by opening the app or marking the action unavailable. Never put access tokens in URLs, activity props, or widget timelines.
+6. Reconcile display state with canonical snapshots after commits, plan edits, extensions, sign-out, and membership changes. End the Live Activity when the night ends or the person leaves. Clear sensitive widget state on sign-out. Opening from a stale widget must still recheck membership and night status.
+7. For remote background updates, add APNs ActivityKit token registration/cleanup and a server-side sender. Remote push-to-start requires the appropriate OS support. This is separate from local updates; delivery is not guaranteed and the user may disable Live Activities.
 
-For DWD, start the activity only after a user chooses to track a real active night. Keep the lock-screen content opt-in and minimal—such as a generic night label and planned end time. Do not show drink counts, pace warnings, alcohol calculations, or anything that implies sobriety or driving safety. Refresh the displayed end time after canonical snapshot changes and end the activity when the night ends. Treat Live Activities as a glanceable status surface, not as guaranteed real-time delivery: iOS can limit updates and the user can disable them.
+The activity/widget extension is planned, not installed or shipped in this update.
 
-References: [Apple ActivityKit](https://developer.apple.com/documentation/ActivityKit), [Apple Live Activity update guidance](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities), [Expo development builds](https://docs.expo.dev/develop/development-builds/use-development-builds/), and [Expo SDK 56 release notes](https://expo.dev/changelog/sdk-56).
+## Remaining mobile work
+
+Full auth onboarding and recovery/deep-link handling, persistent offline replay, managed-guest creation, shared-bottle editing, photo memories, native notifications/check-ins, and profile/account editing remain follow-up work. Logging currently needs a connection; immediate retries retain their identity while that screen remains mounted, but no persistent offline outbox is shipped yet.
+
+## Verification and device checks
+
+Run mobile TypeScript, targeted ESLint, mobile flow unit tests, and native Metro exports. These validate types, code paths, and bundling; they do not validate physical gesture feel or signed extensions. This update passed the mobile compatibility check, workspace TypeScript, targeted ESLint, all 236 unit tests, and iOS/Android bundling. A read-only Supabase RPC check verified anonymous access is denied. Authenticated end-to-end and physical-device checks remain pending; the Android emulator disconnected during visual QA.
+
+On a release build on a real iPhone and the slowest supported Android device, check:
+
+- Logo bounds/colour; persisted System/Light/Dark choices; system appearance changes; status bar and keyboard appearance.
+- VoiceOver/TalkBack labels, largest text size, Reduce Motion, Reduce Transparency, keyboard dismissal, and scroll reachability in all sheets.
+- Press cancellation by dragging away, sheet flick dismissal, interruption/reversal, and same-moment visual/haptic logging feedback.
+- Start/join/plan/log/water/undo/end/history flow against a test account; duplicate taps and dropped responses; account-user versus managed-guest permissions.
+- Realtime reconnect, missed-update recovery, foreground refresh, stale-plan revision errors, expired invites, and sign-out/account switching without stale personal data.

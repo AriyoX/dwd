@@ -1,6 +1,6 @@
 # Mobile portability
 
-`apps/mobile` now contains an iOS-first Expo and React Native foundation. It keeps the web app and all shared packages in place. See [mobile-ios-baseline.md](mobile-ios-baseline.md) for the app structure, local setup, and Live Activities research.
+`apps/mobile` contains an iOS-first Expo and React Native client with native tabs, light/dark/system appearance, start/join flows, personal plans, drink/water logging, corrections, host controls, Realtime refresh, and recaps. It keeps the web app and all shared packages in place. See [mobile-ios-baseline.md](mobile-ios-baseline.md) for setup, current scope, and the planned Live Activity and Home Screen widget for quick logging.
 
 ## Reusable without restructuring
 
@@ -10,7 +10,7 @@
 - `@dwd/contracts`: repository, pending storage, notifications, sharing/visibility, and Realtime boundaries where useful
 - `@dwd/data`: injected-client Supabase queries and RPC calls
 
-RLS authorizes `auth.uid()` and database membership, not Next.js, cookies, HTML routes, or user metadata. The native baseline uses the same Supabase project and typed database model; joining and starting nights will use the existing RPCs as those screens are implemented.
+RLS authorizes `auth.uid()` and database membership, not Next.js, cookies, HTML routes, or user metadata. The native client uses the same Supabase project, typed database model, shared validation, and existing RPCs for starting, joining, plans, logging, corrections, and host actions.
 
 ## Must be rebuilt for native
 
@@ -32,11 +32,12 @@ The native app uses React Native components rather than attempting to make the w
 apps/mobile/
   app/                  Expo Router screens and iOS tab shell
   src/lib/supabase.ts   Typed client and SQLite-backed session persistence
-  src/providers/        Auth-session lifecycle
+  src/providers/        Auth-session lifecycle and persisted appearance
+  src/hooks/            Focus/foreground refresh, Realtime snapshots, logging
   src/theme/            Native design tokens
 ```
 
-The Expo client consumes the existing three shared packages and injects its normal typed `@supabase/supabase-js` client into `@dwd/data`. Session persistence uses Expo SQLite's localStorage adapter. Platform-specific adapters for the offline outbox, notifications, sharing, and Realtime lifecycle will be added alongside the corresponding features, not as empty placeholders.
+The Expo client consumes the existing three shared packages and injects its normal typed `@supabase/supabase-js` client into `@dwd/data`. Session persistence uses Expo SQLite's localStorage adapter. Native sharing and Realtime invalidation are implemented. Persistent offline replay, notifications, and widget/Live Activity lifecycle adapters will be built with their corresponding features.
 
 ## Compatibility sequence
 
