@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.111.0';
 // @deno-types="npm:@types/web-push@3.6.4"
 import webpush from 'npm:web-push@3.6.7';
-import { createDispatchHandler, type PushJob } from './handler.ts';
+import { createDispatchHandler, createPushPayload, type PushJob } from './handler.ts';
 
 const url = Deno.env.get('SUPABASE_URL');
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -37,13 +37,7 @@ Deno.serve(
     async send(job) {
       await webpush.sendNotification(
         { endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.auth } },
-        JSON.stringify({
-          title: 'DWD notification',
-          body: job.body,
-          url: job.url,
-          eventId: job.eventId,
-          tag: `dwd-${job.eventId}`,
-        }),
+        JSON.stringify(createPushPayload(job)),
         { timeout: 10_000, TTL: 120 },
       );
     },

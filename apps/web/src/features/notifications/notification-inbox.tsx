@@ -7,6 +7,7 @@ import type { NotificationEvent } from '@dwd/core';
 import { Button } from '@/components/ui/button';
 import { BrowserNotificationService } from '@/adapters/notifications.browser';
 import { acknowledgeNotificationAction } from './actions';
+import { showForegroundNotification } from './foreground-notification';
 
 export function NotificationInbox({
   initialEvents = [],
@@ -67,11 +68,17 @@ export function NotificationInbox({
             try {
               if (localStorage.getItem(key) !== null) return;
               if (
-                await service.show({
-                  title: 'DWD notification',
-                  body: 'You have a DWD update.',
-                  tag: event.id,
-                })
+                await showForegroundNotification(
+                  event,
+                  {
+                    title: chaserCopy(event.title),
+                    body: chaserCopy(event.body),
+                    tag: event.id,
+                  },
+                  service,
+                  controller.signal,
+                  () => mounted.current && !read.current.has(event.id),
+                )
               )
                 localStorage.setItem(key, '1');
             } catch {

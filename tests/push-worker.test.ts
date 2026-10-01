@@ -22,7 +22,11 @@ function worker(status = 204) {
       clients: { matchAll: () => Promise.resolve([]), openWindow },
     },
   });
-  async function push(url: string, malformed = false) {
+  async function push(
+    url: string,
+    malformed = false,
+    message = { title: 'DWD notification', body: 'You have a DWD check-in.' },
+  ) {
     let done: Promise<unknown> = Promise.resolve();
     listeners.get('push')?.({
       data: {
@@ -32,8 +36,7 @@ function worker(status = 204) {
             : {
                 eventId: 'test-event',
                 url,
-                title: 'DWD notification',
-                body: 'You have a DWD check-in.',
+                ...message,
               },
       },
       waitUntil: (work: Promise<unknown>) => {
@@ -57,6 +60,20 @@ function worker(status = 204) {
 }
 
 describe('service worker notification privacy', () => {
+  it.each([
+    { title: 'Quick check-in — anything to log?', body: 'Keep your night record up to date.' },
+    { title: 'Night check-in', body: 'Your planned night has ended.' },
+    { title: 'Personal pace reminder', body: 'Your recent pace is faster than planned.' },
+    { title: 'Alex checked in on you', body: 'Alex checked in on you.' },
+    { title: 'Check in with Sam', body: 'Sam may need a check-in.' },
+  ])('shows the actual title and message: $title', async (message) => {
+    const app = worker();
+    await app.push('/night/test', false, message);
+    expect(app.show).toHaveBeenCalledWith(
+      message.title,
+      expect.objectContaining({ body: message.body, data: { url: '/night/test' } }),
+    );
+  });
   it('includes the night link only after the current account authorizes the event', async () => {
     const app = worker();
     await app.push('/night/test');
@@ -89,7 +106,10 @@ describe('service worker notification privacy', () => {
     'uses a generic visible fallback for an unauthorized or unverifiable payload (%i)',
     async (status) => {
       const app = worker(status);
-      await app.push('/night/test');
+      await app.push('/night/test', false, {
+        title: 'Alex checked in on you',
+        body: 'Alex checked in on you.',
+      });
       expect(app.show).toHaveBeenCalledWith('DWD update', {
         body: 'Open DWD to check your notifications.',
         tag: 'dwd-update',

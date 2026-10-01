@@ -5,8 +5,20 @@ export interface PushJob {
   endpoint: string;
   p256dh: string;
   auth: string;
+  title: string;
   body: string;
   url: string;
+}
+
+export function createPushPayload(job: PushJob) {
+  return {
+    // Keep rolling deployments compatible with jobs claimed before the migration.
+    title: job.title || 'DWD notification',
+    body: job.body,
+    url: job.url,
+    eventId: job.eventId,
+    tag: `dwd-${job.eventId}`,
+  };
 }
 
 export function supportedPushEndpoint(endpoint: string): boolean {

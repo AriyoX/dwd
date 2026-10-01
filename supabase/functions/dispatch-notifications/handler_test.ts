@@ -1,5 +1,10 @@
 import { deepStrictEqual, equal } from 'node:assert/strict';
-import { createDispatchHandler, supportedPushEndpoint, type PushJob } from './handler.ts';
+import {
+  createDispatchHandler,
+  createPushPayload,
+  supportedPushEndpoint,
+  type PushJob,
+} from './handler.ts';
 
 const job: PushJob = {
   deliveryId: 'delivery',
@@ -8,14 +13,35 @@ const job: PushJob = {
   endpoint: 'https://fcm.googleapis.com/fcm/send/fixture',
   p256dh: 'fixture',
   auth: 'fixture',
-  body: 'Update',
-  url: '/account',
+  title: 'Night check-in',
+  body: 'Your planned night has ended.',
+  url: '/night/fixture',
 };
 const request = () =>
   new Request('https://worker.example.test', {
     method: 'POST',
     headers: { 'x-dwd-dispatch-secret': 'fixture-secret' },
   });
+
+Deno.test('push payload preserves the event message and night link', () => {
+  deepStrictEqual(createPushPayload(job), {
+    title: 'Night check-in',
+    body: 'Your planned night has ended.',
+    url: '/night/fixture',
+    eventId: 'event',
+    tag: 'dwd-event',
+  });
+});
+Deno.test('jobs from an older database retain their message during rollout', () => {
+  const { title: _title, ...legacyJob } = job;
+  deepStrictEqual(createPushPayload(legacyJob as PushJob), {
+    title: 'DWD notification',
+    body: 'Your planned night has ended.',
+    url: '/night/fixture',
+    eventId: 'event',
+    tag: 'dwd-event',
+  });
+});
 
 Deno.test('dispatch rejects missing auth without claiming jobs', async () => {
   let claims = 0;
