@@ -4,7 +4,7 @@ September 8–14 verification: notification inboxes poll an authenticated, uncac
 
 ## Assumptions recorded before implementation
 
-- “Mobile-first” means a narrow, one-handed mobile browser interface. This iteration contains no native or React Native code.
+- The original mobile-first release meant a narrow, one-handed mobile browser interface. The iOS-first React Native foundation was added later; see [mobile-ios-baseline.md](mobile-ios-baseline.md).
 - A cocktail preset is an editable estimate of 200 ml at 15% ABV and is clearly marked as estimated.
 - A client may preview plan/end warnings for responsiveness, but the `log_drink` RPC is the sole authority and may require additional confirmation.
 - Delayed activity older than seven days is obviously stale and rejected; the stricter 24-hour post-end grace still controls ended nights.
@@ -15,21 +15,25 @@ September 8–14 verification: notification inboxes poll an authenticated, uncac
 
 `apps/web` owns HTML, React, Next.js routing, SSR cookies, Server Actions, browser storage, browser visibility/connectivity, sharing, notifications, and Realtime subscription lifecycle. Page files fetch or redirect and hand work to feature components.
 
+`apps/mobile` owns Expo Router screens, React Native controls, the native Supabase session lifecycle, and device adapters. The current baseline signs in and reads active/finished nights; feature flows and native device adapters are added as those features are ported.
+
 `packages/core` is pure TypeScript. It owns alcohol math, plan math, rolling-window warnings, time classification, permission decisions, limits, presets, Zod schemas, and domain/API/database types. It imports no React, Next.js, Supabase, browser global, cookie API, or Node-only module.
 
-`packages/contracts` defines only boundaries that the web application currently implements: pending-log storage, drink-log repositories, Realtime subscriptions, notifications, sharing, and visibility.
+`packages/contracts` defines platform boundaries such as pending-log storage, drink-log repositories, Realtime subscriptions, notifications, sharing, and visibility. The browser currently implements them; native adapters will implement them as mobile features are added.
 
 `packages/data` is Supabase-specific but Next.js-independent. Every function accepts an injected typed `SupabaseClient`; it never creates cookies, redirects, imports React, or reads browser globals.
 
 Dependencies flow in one direction:
 
 ```text
-apps/web ───────► packages/data ───────► packages/contracts
-    │                    │                        │
-    └────────────────────┴────────────────────────► packages/core
+apps/web ─────────────► packages/data ─────────────► packages/contracts
+    │                      │                            │
+    ├──────────────────────┴────────────────────────────┴──► packages/core
+apps/mobile ──────────► packages/data
+    └──────────────────────────────────────────────────────► packages/core
 ```
 
-No shared package imports from the web application.
+Shared packages do not import from either application.
 
 ## Canonical data flow
 
@@ -38,6 +42,8 @@ No shared package imports from the web application.
 3. Critical changes run through a small constrained Postgres RPC.
 4. The RPC derives `auth.uid()`, membership, target ownership, snapshots, ethanol, plan state, applicable end time, and alerts. Browser-calculated ownership or ethanol is ignored.
 5. The UI replaces its state with `get_night_snapshot`, the canonical aggregate.
+
+The native app uses its persisted Supabase Auth session to call the same injected-client functions in `@dwd/data`. Database RLS and RPC authorization remain authoritative; the mobile UI does not send trusted identity or ownership values.
 
 The transactional `start_night_out` RPC creates the active night, host membership, host plan, managed guests, guest plans, and audit rows. A host-scoped creation UUID makes retries idempotent. Only after that transaction succeeds does the server generate and persist a hashed invitation.
 
@@ -86,9 +92,9 @@ Reaching `ends_at` does not mutate status. Only the host can prospectively exten
 - All exposed tables have RLS. Browser roles receive read-only table grants, except a user’s constrained profile display-name update.
 - SECURITY DEFINER functions use `search_path = ''`, schema-qualified objects, explicit `auth.uid()` checks, and narrowed execute grants.
 
-## Package use by a future mobile client
+## Native mobile baseline
 
-An Expo app can consume `core`, `contracts`, and `data`, plus the same Supabase schema/RPC/RLS backend. It must build a native UI and native implementations for storage, visibility, sharing, notifications, deep links, and session persistence. See [mobile-portability.md](mobile-portability.md).
+`apps/mobile` consumes `core`, `contracts`, and `data` with the same Supabase schema/RPC/RLS backend. Its native UI, Expo SQLite-backed session persistence, and app-state token refresh are in place. Signup and recovery deep links, night creation/join/log flows, Realtime, offline storage, sharing, and notifications remain to be ported. See [mobile-ios-baseline.md](mobile-ios-baseline.md) and [mobile-portability.md](mobile-portability.md).
 
 ## Handoff additions
 

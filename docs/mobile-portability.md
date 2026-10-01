@@ -1,6 +1,6 @@
-# Future mobile portability
+# Mobile portability
 
-No mobile application exists in this repository. There is intentionally no Expo workspace, React Native dependency, native directory, Expo Router, AsyncStorage, SecureStore, NativeWind, mobile notification code, or native deep-link configuration.
+`apps/mobile` now contains an iOS-first Expo and React Native foundation. It keeps the web app and all shared packages in place. See [mobile-ios-baseline.md](mobile-ios-baseline.md) for the app structure, local setup, and Live Activities research.
 
 ## Reusable without restructuring
 
@@ -10,12 +10,12 @@ No mobile application exists in this repository. There is intentionally no Expo 
 - `@dwd/contracts`: repository, pending storage, notifications, sharing/visibility, and Realtime boundaries where useful
 - `@dwd/data`: injected-client Supabase queries and RPC calls
 
-RLS authorizes `auth.uid()` and database membership, not Next.js, cookies, HTML routes, or user metadata. The same Supabase user can therefore join the same night from web and a future native client.
+RLS authorizes `auth.uid()` and database membership, not Next.js, cookies, HTML routes, or user metadata. The native baseline uses the same Supabase project and typed database model; joining and starting nights will use the existing RPCs as those screens are implemented.
 
 ## Must be rebuilt for native
 
 - All routes, screens, dialogs, bottom sheets, HTML controls, CSS/Tailwind styling, and accessibility implementation
-- Session persistence and deep-link return handling
+- Auth onboarding, password recovery, and auth deep-link return handling
 - Browser `localStorage` outbox adapter
 - Browser online/focus/visibility lifecycle
 - Web Share and clipboard integration
@@ -24,23 +24,19 @@ RLS authorizes `auth.uid()` and database membership, not Next.js, cookies, HTML 
 - Cookie-backed SSR clients and Next.js proxy/session refresh
 - Vercel deployment configuration
 
-The future app should use React Native components rather than attempting to make the web UI universal.
+The native app uses React Native components rather than attempting to make the web UI universal.
 
-## Possible future layout
-
-Only when mobile work is authorized, add:
+## Current mobile layout
 
 ```text
 apps/mobile/
-  app/ or src/
-  adapters/
-    pending-log-store.native.ts
-    notifications.native.ts
-    share-service.native.ts
-  lib/supabase.ts
+  app/                  Expo Router screens and iOS tab shell
+  src/lib/supabase.ts   Typed client and SQLite-backed session persistence
+  src/providers/        Auth-session lifecycle
+  src/theme/            Native design tokens
 ```
 
-The Expo client would install the existing three shared packages and create a normal `@supabase/supabase-js` client with a native session storage adapter. `packages/data` already accepts that injected client. Native adapters would implement the contracts currently used by the browser; they should not be added as empty placeholders now.
+The Expo client consumes the existing three shared packages and injects its normal typed `@supabase/supabase-js` client into `@dwd/data`. Session persistence uses Expo SQLite's localStorage adapter. Platform-specific adapters for the offline outbox, notifications, sharing, and Realtime lifecycle will be added alongside the corresponding features, not as empty placeholders.
 
 ## Compatibility sequence
 
@@ -51,6 +47,6 @@ The Expo client would install the existing three shared packages and create a no
 5. Use the same actor-scoped idempotency UUID and outbox states.
 6. Preserve the browser product’s rule that account users control only themselves and hosts control only their managed guests.
 
-Adding `apps/mobile` later requires no movement of the existing web app or shared packages and no database fork.
+The baseline requires no movement of the existing web app or shared packages and no database fork.
 
 The web handoff does not add an avatar editor. Future editable avatars should define ownership, safe asset handling, and reduced-motion behavior before a native or web implementation is started.
