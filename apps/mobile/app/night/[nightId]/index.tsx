@@ -8,6 +8,7 @@ import {
   canUserLogForMember,
   canUserEndOrExtendNight,
   canUserLeaveNight,
+  bottlePlanProgress,
 } from '@dwd/core';
 import {
   createNightInvite,
@@ -15,10 +16,12 @@ import {
   extendNight,
   leaveNight,
   softDeleteActivity,
+  visibleAlerts,
 } from '@dwd/data';
 import { Choice } from '@/components/choice';
 import { NightMetrics } from '@/components/night-metrics';
-import { Ionicons } from '@expo/vector-icons';
+import { NightPeople } from '@/components/night-people';
+import { NightCheckIns } from '@/components/night-check-ins';
 import { NightActivity } from '@/components/night-activity';
 import { PrimaryButton } from '@/components/primary-button';
 import {
@@ -35,17 +38,21 @@ import { confirmAction } from '@/lib/confirm';
 import { hashInvite, newInviteToken } from '@/lib/invites';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { availableBottles, nightAccess } from '@/lib/night-features';
 
 export default function NightScreen() {
-  const { nightId } = useLocalSearchParams<{ nightId: string }>();
+  const { nightId, memberId } = useLocalSearchParams<{ nightId: string; memberId?: string }>();
   const router = useRouter();
   const { client, status } = useSupabase();
   const { colors, typography } = useTheme();
   const { snapshot, issue, refresh, connected, now, loading } = useNight(nightId);
   const logging = useLogging(() => {
     void refresh();
-  });
-  const [selected, setSelected] = useState<string | null>(null);
+  }, snapshot);
+  const [selection, setSelection] = useState<{
+    destination: string | undefined;
+    memberId: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -60,6 +67,7 @@ export default function NightScreen() {
         night: snapshot.night,
       }),
     ) ?? [];
+  const selected = selection?.destination === memberId ? selection?.memberId : memberId;
   const member = manageable.find((m) => m.id === selected) ?? actor;
   const allowed =
     member &&
@@ -73,6 +81,7 @@ export default function NightScreen() {
   const drinks = member?.drinkLogs.filter((log) => !log.deletedAt) ?? [];
   const water = member?.waterLogs.filter((log) => !log.deletedAt) ?? [];
   const quick = member?.planItems.find((p) => p.isQuickLog && !p.archivedAt);
+  const mainBottle = snapshot?.sharedBottles?.find((b) => b.id === quick?.sharedBottleId);
   const planned = calculatePlanTotal(member?.planItems.filter((p) => !p.archivedAt) ?? []);
   const planStatus = determinePlanStatus(
     drinks.reduce((sum, log) => sum + log.ethanolGrams, 0),
@@ -155,6 +164,12 @@ export default function NightScreen() {
       ) : (
         <>
           <ScreenHeading title={snapshot.night.title} />
+          <PrimaryButton
+            label="Get help"
+            icon="medical-outline"
+            variant="danger"
+            onPress={() => router.push(`/night/${nightId}/help`)}
+          />
           <Text style={typography.body}>
             {snapshot.night.status === 'ended'
               ? 'Ended'
@@ -183,7 +198,7 @@ export default function NightScreen() {
                       label={m.displayName}
                       selected={m.id === member?.id}
                       disabled={busy || logging.busy}
-                      onPress={() => setSelected(m.id)}
+                      onPress={() => setSelection({ destination: memberId, memberId: m.id })}
                     />
                   ))}
                 </View>
@@ -205,13 +220,34 @@ export default function NightScreen() {
                             ? 'Plan reached'
                             : 'Beyond your plan'}
                   </Text>
-                  {member.id === actor?.id ? (
+                  {nightAccess(snapshot, member.id).canEdit ? (
                     <PrimaryButton
                       label={member.planSetupCompletedAt === null ? 'Set your plan' : 'Edit plan'}
                       variant="quiet"
                       disabled={busy || logging.busy}
-                      onPress={() => router.push(`/night/${nightId}/plan`)}
+                      onPress={() =>
+                        router.push({
+                          pathname: `/night/${nightId}/plan`,
+                          params: { memberId: member.id },
+                        })
+                      }
                     />
+                  ) : null}
+                  {mainBottle && quick ? (
+                    <View style={{ gap: 8 }}>
+                      <Text style={typography.body}>
+                        {mainBottle.remainingMl} ml left in {mainBottle.label}
+                      </Text>
+                      <Text style={typography.body}>
+                        {bottlePlanProgress(mainBottle.id, drinks, quick.volumeMl)} drinks logged ·{' '}
+                        {quick.plannedQuantity} planned
+                      </Text>
+                      {mainBottle.closedAt ? (
+                        <Notice message="This bottle has been put away. Choose another main drink." />
+                      ) : mainBottle.remainingMl < quick.volumeMl ? (
+                        <Notice message="Less than one drink remains. Adjust the size in Shared bottles." />
+                      ) : null}
+                    </View>
                   ) : null}
                   {allowed ? (
                     <>
@@ -231,7 +267,13 @@ export default function NightScreen() {
                             label={`Log ${quick.label.toLowerCase()}`}
                             icon="add-circle-outline"
                             busy={logging.busy}
-                            disabled={busy}
+                            disabled={
+                              busy ||
+                              Boolean(
+                                mainBottle &&
+                                (mainBottle.closedAt || mainBottle.remainingMl < quick.volumeMl),
+                              )
+                            }
                             onPress={() => void logging.log(member.id, { planItemId: quick.id })}
                           />
                         </View>
@@ -265,10 +307,42 @@ export default function NightScreen() {
                   ) : null}
                 </Panel>
               ) : null}
+              {member && allowed ? (
+                <PrimaryButton
+                  label="Shared bottles"
+                  icon="wine-outline"
+                  variant="secondary"
+                  disabled={busy || logging.busy}
+                  onPress={() =>
+                    router.push({
+                      pathname: `/night/${nightId}/bottles`,
+                      params: { memberId: member.id },
+                    })
+                  }
+                />
+              ) : null}
+              {member &&
+              allowed &&
+              availableBottles(snapshot, member.id).some(
+                (b) => !b.closedAt && b.remainingMl > 0 && !b.joinedMemberIds.includes(member.id),
+              ) ? (
+                <Notice message="A shared bottle is available. Open Shared bottles to choose whether to join." />
+              ) : null}
+              <NightCheckIns
+                key={`${snapshot.currentUserId}:${nightId}`}
+                snapshot={snapshot}
+                now={now}
+              />
+              <PrimaryButton
+                label="Reminders"
+                icon="notifications-outline"
+                variant="quiet"
+                onPress={() => router.push(`/night/${nightId}/reminders`)}
+              />
               {Date.parse(snapshot.night.endsAt) <= now ? (
                 <Notice message="The planned end time has passed." />
               ) : null}
-              {snapshot.alerts
+              {visibleAlerts(snapshot)
                 .filter((alert) => !alert.expiresAt || Date.parse(alert.expiresAt) > now)
                 .map((alert) => (
                   <Panel key={alert.id}>
@@ -301,58 +375,12 @@ export default function NightScreen() {
               }}
             />
           ) : null}
-          <Panel>
-            <Text accessibilityRole="header" style={typography.sectionTitle}>
-              People
-            </Text>
-            {snapshot.members
-              .filter((m) => m.leftAt === null)
-              .map((m) => (
-                <View
-                  key={m.id}
-                  style={{
-                    gap: 14,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 6,
-                  }}
-                >
-                  <View
-                    accessible={false}
-                    style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 21,
-                      backgroundColor: colors.primarySoft,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '600' }}>
-                      {m.displayName.slice(0, 1).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
-                      {m.displayName}
-                      {m.role === 'host' ? ' · Host' : ''}
-                    </Text>
-                    <Text style={typography.body}>
-                      {m.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
-                      {m.waterLogs.filter((log) => !log.deletedAt).length} chasers
-                    </Text>
-                  </View>
-                  {m.role === 'host' ? (
-                    <Ionicons
-                      name="star-outline"
-                      size={18}
-                      color={colors.primary}
-                      accessible={false}
-                    />
-                  ) : null}
-                </View>
-              ))}
-          </Panel>
+          <NightPeople
+            key={`${snapshot.currentUserId}:${nightId}`}
+            snapshot={snapshot}
+            busy={busy || logging.busy}
+            refresh={refresh}
+          />
           {message ? <Notice message={message} /> : null}
           {host ? (
             <Panel>

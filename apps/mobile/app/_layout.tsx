@@ -94,6 +94,31 @@ function Navigation() {
           <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
           <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log a drink' }} />
           <Stack.Screen name="night/[nightId]/plan" options={{ ...sheet, title: 'Your plan' }} />
+          <Stack.Screen name="night/[nightId]/guest" options={{ ...sheet, title: 'Add person' }} />
+          <Stack.Screen
+            name="night/[nightId]/bottles"
+            options={{ ...sheet, title: 'Shared bottles' }}
+          />
+          <Stack.Screen
+            name="night/[nightId]/reminders"
+            options={{ ...sheet, title: 'Reminders' }}
+          />
+          <Stack.Screen
+            name="night/[nightId]/help"
+            options={{
+              ...sheet,
+              title: 'Get help',
+              headerRight: () => (
+                <Action
+                  label="Done"
+                  onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+                  style={{ minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 }}
+                >
+                  <Text style={{ color: colors.primary, fontSize: 17 }}>Done</Text>
+                </Action>
+              ),
+            }}
+          />
           <Stack.Screen name="night/[nightId]/summary" options={{ title: 'Night recap' }} />
         </Stack.Protected>
       </Stack>

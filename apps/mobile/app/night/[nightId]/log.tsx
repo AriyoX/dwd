@@ -20,7 +20,7 @@ export default function LogScreen() {
   const router = useRouter();
   const { typography } = useTheme();
   const { snapshot, issue: loadIssue, refresh } = useNight(nightId);
-  const logging = useLogging(() => router.back());
+  const logging = useLogging(() => router.back(), snapshot);
   const [choice, setChoice] = useState<string | null>(null);
   const [label, setLabel] = useState('');
   const [category, setCategory] = useState<DrinkCategory>('other');

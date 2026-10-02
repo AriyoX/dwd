@@ -11,7 +11,7 @@ export function safeDestination(value: unknown): string {
   const invite = value.match(/^\/join\?token=([A-Za-z0-9_-]+)$/)?.[1];
   if (invite && inviteTokenSchema.safeParse(invite).success) return value;
   if (
-    /^\/night\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/(?:plan|summary|log))?(?:\?memberId=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(
+    /^\/night\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/(?:plan|summary|log|guest|bottles|reminders|help))?(?:\?memberId=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(
       value,
     )
   )

@@ -11,6 +11,7 @@ export function Action({
   label,
   disabled = false,
   selected,
+  expanded,
   style,
 }: {
   children: ReactNode;
@@ -18,6 +19,7 @@ export function Action({
   label: string;
   disabled?: boolean;
   selected?: boolean;
+  expanded?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const [pressed, setPressed] = useState(false);
@@ -26,7 +28,11 @@ export function Action({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled, ...(selected === undefined ? {} : { selected }) }}
+      accessibilityState={{
+        disabled,
+        ...(selected === undefined ? {} : { selected }),
+        ...(expanded === undefined ? {} : { expanded }),
+      }}
       disabled={disabled}
       onPress={onPress}
       onPressIn={() => setPressed(true)}

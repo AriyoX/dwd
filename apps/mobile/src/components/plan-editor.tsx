@@ -23,7 +23,8 @@ export function PlanEditor({
     const preset = DRINK_PRESETS.find((p) => p.id === id);
     if (!preset) return;
     const existing = items.find(
-      (item) => item.label === preset.label && item.category === preset.category,
+      (item) =>
+        !item.sharedBottleId && item.label === preset.label && item.category === preset.category,
     );
     const next = existing
       ? items.filter((item) => item !== existing)
@@ -32,6 +33,15 @@ export function PlanEditor({
       next.map((item, index) => ({
         ...item,
         isQuickLog: next.some((p) => p.isQuickLog) ? item.isQuickLog : index === 0,
+      })),
+    );
+  }
+  function remove(index: number) {
+    const next = items.filter((_, i) => i !== index);
+    onChange(
+      next.map((item, i) => ({
+        ...item,
+        isQuickLog: next.some((p) => p.isQuickLog) ? item.isQuickLog : i === 0,
       })),
     );
   }
@@ -60,7 +70,10 @@ export function PlanEditor({
               label={preset.label}
               detail={`${preset.volumeMl} ml · ${preset.abvPercent}% ABV${preset.estimate ? ' · estimate' : ''}`}
               selected={items.some(
-                (item) => item.label === preset.label && item.category === preset.category,
+                (item) =>
+                  !item.sharedBottleId &&
+                  item.label === preset.label &&
+                  item.category === preset.category,
               )}
               disabled={disabled}
               onPress={() => togglePreset(preset.id)}
@@ -134,6 +147,14 @@ export function PlanEditor({
                 disabled={disabled}
                 onPress={() => onChange(items.map((p, i) => ({ ...p, isQuickLog: i === index })))}
               />
+              <Action
+                label={`Remove ${item.label} from plan`}
+                disabled={disabled}
+                onPress={() => remove(index)}
+                style={{ minHeight: 48, justifyContent: 'center' }}
+              >
+                <Text style={{ color: colors.danger, fontSize: 15 }}>Remove from plan</Text>
+              </Action>
             </Panel>
           ))}
         </>

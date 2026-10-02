@@ -88,10 +88,22 @@ export function useNight(nightId: string, recap = false) {
       };
     }, [client, accessToken, nightId, memberIds, recap, refresh]),
   );
+  const now = useNow();
+  return { ...query, snapshot: query.data, connected, now };
+}
+
+export function useNow() {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(timer);
+    const update = () => setNow(Date.now());
+    const timer = setInterval(update, 15_000);
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state === 'active') update();
+    });
+    return () => {
+      clearInterval(timer);
+      listener.remove();
+    };
   }, []);
-  return { ...query, snapshot: query.data, connected, now };
+  return now;
 }
