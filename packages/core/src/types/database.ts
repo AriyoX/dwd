@@ -1352,7 +1352,10 @@ export type Database = {
       share_bottle_and_plan: {
         Args: {
           p_bottle: Json;
+          p_creator_expected_revision?: number;
+          p_creator_make_main?: boolean;
           p_expected_revision: number;
+          p_make_main?: boolean;
           p_member_id: string;
           p_night_id: string;
           p_request_key: string;

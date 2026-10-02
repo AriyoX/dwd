@@ -5,6 +5,7 @@ import * as Crypto from 'expo-crypto';
 import { Ionicons } from '@expo/vector-icons';
 import {
   bottleDrinkWord,
+  bottleMainChoice,
   bottlePlanProgress,
   canUserDeleteLog,
   RECENT_CORRECTION_MINUTES,
@@ -423,6 +424,12 @@ function CreateBottle({
     allowedMemberIds: [],
   }));
   const [revision] = useState(member.planRevision);
+  const creator = snapshot.members.find((person) => person.id === snapshot.currentMemberId);
+  const [creatorRevision] = useState(creator?.planRevision ?? 0);
+  const [targetChoice] = useState(() => bottleMainChoice(member.planItems));
+  const [creatorChoice] = useState(() => bottleMainChoice(creator?.planItems ?? []));
+  const [main, setMain] = useState(targetChoice.isMain);
+  const [creatorMain, setCreatorMain] = useState(creatorChoice.isMain);
   const [requestKey] = useState(Crypto.randomUUID);
   const [issue, setIssue] = useState<string | null>(null);
   const action = useNightAction(refresh);
@@ -437,7 +444,19 @@ function CreateBottle({
     setIssue(null);
     await action.run(
       () =>
-        shareBottleAndPlan(client, snapshot.night.id, parsed.data, member.id, revision, requestKey),
+        shareBottleAndPlan(
+          client,
+          snapshot.night.id,
+          parsed.data,
+          member.id,
+          revision,
+          requestKey,
+          {
+            makeMain: main,
+            creatorExpectedRevision: creatorRevision,
+            creatorMakeMain: member.id === snapshot.currentMemberId ? main : creatorMain,
+          },
+        ),
       undefined,
       onSaved,
     );
@@ -500,7 +519,7 @@ function CreateBottle({
         onChangeText={(pourMl) => update({ pourMl })}
       />
       <TextField
-        label={`Planned ${bottleDrinkWord(draft.category)}s`}
+        label={`Planned ${bottleDrinkWord(draft.category)}s${member.id !== snapshot.currentMemberId ? ' per person' : ''}`}
         keyboardType="number-pad"
         value={draft.defaultQuantity}
         editable={!action.busy}
@@ -543,7 +562,34 @@ function CreateBottle({
               />
             ))
         : null}
-      <Notice message="This bottle becomes the main drink for the person you’re tracking." />
+      <Notice
+        message={
+          (member.id === snapshot.currentMemberId
+            ? 'Adds to your plan. Your other planned drinks stay.'
+            : `Adds the same quantity to your plan and ${member.displayName}’s plan. Your other planned drinks stay.`) +
+          ' Other people choose whether to join.'
+        }
+      />
+      <MainDrinkChoice
+        label={
+          member.id === snapshot.currentMemberId
+            ? 'Make this my main drink'
+            : `Make this ${member.displayName}’s main drink`
+        }
+        choice={targetChoice}
+        value={main}
+        disabled={action.busy}
+        onChange={setMain}
+      />
+      {member.id !== snapshot.currentMemberId ? (
+        <MainDrinkChoice
+          label="Make this my main drink"
+          choice={creatorChoice}
+          value={creatorMain}
+          disabled={action.busy}
+          onChange={setCreatorMain}
+        />
+      ) : null}
       {issue || action.issue ? <Notice error message={issue ?? action.issue ?? ''} /> : null}
       <PrimaryButton
         label="Share and start tracking"
@@ -570,20 +616,21 @@ function BottlePlan({
   const { client } = useSupabase();
   const { typography } = useTheme();
   const existing = member.planItems.find((p) => !p.archivedAt && p.sharedBottleId === bottle.id);
+  const [choice] = useState(() => bottleMainChoice(member.planItems, bottle.id));
   const [quantity, setQuantity] = useState(
     String(existing?.plannedQuantity ?? bottle.defaultQuantity ?? 1),
   );
   const [size, setSize] = useState(String(existing?.volumeMl ?? bottle.pourMl));
-  const [main, setMain] = useState(existing?.isQuickLog ?? true);
+  const [main, setMain] = useState(choice.isMain);
   const [revision] = useState(member.planRevision);
   const [requestKey] = useState(Crypto.randomUUID);
   const [issue, setIssue] = useState<string | null>(null);
   const action = useNightAction(refresh);
   async function save() {
     if (!client) return;
-    const parsed = materializeBottlePlan(quantity, size);
+    const parsed = materializeBottlePlan(quantity, size, bottle.volumeMl);
     if (!parsed.success) {
-      setIssue('Choose 1–50 drinks and a drink size of 1–2000 ml.');
+      setIssue(`Choose 1–50 drinks and a drink size of 1–${Math.min(2000, bottle.volumeMl)} ml.`);
       return;
     }
     setIssue(null);
@@ -625,8 +672,9 @@ function BottlePlan({
         editable={!action.busy}
         onChangeText={setSize}
       />
-      <SettingsRow
+      <MainDrinkChoice
         label="Make this the main drink"
+        choice={choice}
         value={main}
         disabled={action.busy}
         onChange={setMain}
@@ -645,5 +693,40 @@ function BottlePlan({
         onPress={onFullPlan}
       />
     </>
+  );
+}
+
+function MainDrinkChoice({
+  label,
+  choice,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  choice: ReturnType<typeof bottleMainChoice>;
+  value: boolean;
+  disabled: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  const { typography } = useTheme();
+  return (
+    <View style={{ gap: 4 }}>
+      <SettingsRow
+        label={label}
+        value={value}
+        disabled={disabled || choice.required}
+        onChange={onChange}
+      />
+      <Text style={typography.body}>
+        {choice.required
+          ? choice.currentMainLabel
+            ? 'Already the main drink. Choose another in the full plan to change it.'
+            : 'The first planned drink is the main drink.'
+          : value
+            ? `Replaces ${choice.currentMainLabel} as the main drink.`
+            : `Keeps ${choice.currentMainLabel} as the main drink.`}
+      </Text>
+    </View>
   );
 }

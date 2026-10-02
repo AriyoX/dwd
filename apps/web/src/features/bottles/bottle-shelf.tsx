@@ -4,6 +4,7 @@ import { ChevronLeft, MoreHorizontal, Plus, Users, Wine } from 'lucide-react';
 import { useRef, useState, type CSSProperties } from 'react';
 import {
   bottleDrinkWord,
+  bottleMainChoice,
   bottlePlanProgress,
   type CustomDrinkInput,
   type MemberSnapshot,
@@ -369,6 +370,12 @@ function CreateBottle({
   const [draft, setDraft] = useState(newBottleDraft);
   const [requestKey] = useState(() => crypto.randomUUID());
   const [revision] = useState(member.planRevision);
+  const creator = snapshot.members.find((person) => person.id === snapshot.currentMemberId);
+  const [creatorRevision] = useState(creator?.planRevision ?? 0);
+  const [targetChoice] = useState(() => bottleMainChoice(member.planItems));
+  const [creatorChoice] = useState(() => bottleMainChoice(creator?.planItems ?? []));
+  const [makeMain, setMakeMain] = useState(targetChoice.isMain);
+  const [creatorMakeMain, setCreatorMakeMain] = useState(creatorChoice.isMain);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -402,12 +409,26 @@ function CreateBottle({
             memberId: member.id,
             expectedRevision: revision,
             requestKey,
+            makeMain,
+            creatorExpectedRevision: creatorRevision,
+            creatorMakeMain: member.id === snapshot.currentMemberId ? makeMain : creatorMakeMain,
           });
           if (!result.ok) {
             setError(result.error);
             return;
           }
-          onTracking(result.data, bottle.id, true);
+          onTracking(
+            result.data,
+            bottle.id,
+            result.data.members.some(
+              (person) =>
+                person.id === member.id &&
+                person.planItems.some(
+                  (item) =>
+                    !item.archivedAt && item.sharedBottleId === bottle.id && item.isQuickLog,
+                ),
+            ),
+          );
         } catch {
           setError('Could not confirm that save. Try again to safely recover it.');
         } finally {
@@ -425,6 +446,30 @@ function CreateBottle({
           creatorMemberId={snapshot.currentMemberId}
           targetMemberId={member.id}
         />
+        <p className="small muted">
+          {member.id === snapshot.currentMemberId
+            ? 'Adds to your plan. Your other planned drinks stay.'
+            : `Adds the same quantity to your plan and ${member.displayName}’s plan. Your other planned drinks stay.`}{' '}
+          Other people choose whether to join.
+        </p>
+        <MainDrinkChoice
+          label={
+            member.id === snapshot.currentMemberId
+              ? 'Make this my main drink'
+              : `Make this ${member.displayName}’s main drink`
+          }
+          choice={targetChoice}
+          value={makeMain}
+          onChange={setMakeMain}
+        />
+        {member.id !== snapshot.currentMemberId && (
+          <MainDrinkChoice
+            label="Make this my main drink"
+            choice={creatorChoice}
+            value={creatorMakeMain}
+            onChange={setCreatorMakeMain}
+          />
+        )}
         {error && (
           <p className="error-box" role="alert">
             {error}
@@ -453,12 +498,15 @@ export function BottlePlanForm({
   onBusy: (busy: boolean) => void;
   onFullPlan: () => void;
 }) {
-  const existing = member.planItems.find((item) => item.sharedBottleId === bottle.id);
+  const existing = member.planItems.find(
+    (item) => !item.archivedAt && item.sharedBottleId === bottle.id,
+  );
+  const [choice] = useState(() => bottleMainChoice(member.planItems, bottle.id));
   const [quantity, setQuantity] = useState(
     String(existing?.plannedQuantity ?? bottle.defaultQuantity ?? 1),
   );
   const [size, setSize] = useState(String(existing?.volumeMl ?? bottle.pourMl));
-  const [makeMain, setMakeMain] = useState(existing?.isQuickLog ?? true);
+  const [makeMain, setMakeMain] = useState(choice.isMain);
   const [revision] = useState(member.planRevision);
   const [requestKey] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
@@ -490,7 +538,18 @@ export function BottlePlanForm({
             setError(result.error);
             return;
           }
-          onTracking(result.data, bottle.id, makeMain);
+          onTracking(
+            result.data,
+            bottle.id,
+            result.data.members.some(
+              (person) =>
+                person.id === member.id &&
+                person.planItems.some(
+                  (item) =>
+                    !item.archivedAt && item.sharedBottleId === bottle.id && item.isQuickLog,
+                ),
+            ),
+          );
         } catch {
           setError('Could not confirm that save. Try again to safely recover it.');
         } finally {
@@ -512,15 +571,15 @@ export function BottlePlanForm({
           </div>
         </div>
         <DrinkQuantity value={quantity} onChange={setQuantity} word={word} />
-        {!existing && (
-          <p className="small muted">
-            This becomes your main drink. Your other planned drinks stay.
-          </p>
-        )}
+        <MainDrinkChoice
+          label="Make this the main drink"
+          choice={choice}
+          value={makeMain}
+          onChange={setMakeMain}
+        />
+        <p className="small muted">Your other planned drinks stay.</p>
         <details className="bottle-details">
-          <summary>
-            Change {word} size{existing ? ' or main drink' : ''}
-          </summary>
+          <summary>Change {word} size</summary>
           <div className="stack">
             <div className="field">
               <label htmlFor="bottle-serving-size">
@@ -538,16 +597,6 @@ export function BottlePlanForm({
                 onChange={(event) => setSize(event.target.value)}
               />
             </div>
-            {existing && !existing.isQuickLog && (
-              <label className="radio-label">
-                <input
-                  type="checkbox"
-                  checked={makeMain}
-                  onChange={(event) => setMakeMain(event.target.checked)}
-                />{' '}
-                Use as my main drink
-              </label>
-            )}
             <button type="button" className="icon-text-button" onClick={onFullPlan}>
               Adjust my full plan
             </button>
@@ -563,6 +612,41 @@ export function BottlePlanForm({
         </Button>
       </fieldset>
     </form>
+  );
+}
+
+function MainDrinkChoice({
+  label,
+  choice,
+  value,
+  onChange,
+}: {
+  label: string;
+  choice: ReturnType<typeof bottleMainChoice>;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="bottle-main-choice">
+      <label className="radio-label">
+        <input
+          type="checkbox"
+          checked={value}
+          disabled={choice.required}
+          onChange={(event) => onChange(event.target.checked)}
+        />{' '}
+        {label}
+      </label>
+      <p className="small muted">
+        {choice.required
+          ? choice.currentMainLabel
+            ? 'Already the main drink. Choose another in the full plan to change it.'
+            : 'The first planned drink is the main drink.'
+          : value
+            ? `Replaces ${choice.currentMainLabel} as the main drink.`
+            : `Keeps ${choice.currentMainLabel} as the main drink.`}
+      </p>
+    </div>
   );
 }
 

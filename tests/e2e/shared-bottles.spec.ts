@@ -4,10 +4,13 @@ import { test, expect, type Page } from '@playwright/test';
 import type { Database, NightSnapshot } from '@dwd/core';
 
 async function account(name: string) {
-  const url = process.env['E2E_SUPABASE_URL'] ?? '';
+  const url = String(process.env['E2E_SUPABASE_URL'] ?? '');
   if (!['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
     throw new Error('Local backend required.');
-  const client = createClient<Database>(url, process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] ?? '');
+  const client = createClient<Database>(
+    url,
+    String(process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] ?? ''),
+  );
   const email = `bottles-${randomUUID()}@example.test`;
   const password = 'local-bottle-password-123';
   const { error } = await client.auth.signUp({
@@ -25,7 +28,86 @@ async function login(page: Page, user: Awaited<ReturnType<typeof account>>) {
   await page.getByLabel('Password', { exact: true }).fill(user.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/home$/);
+  await expect(page.getByRole('link', { name: /Start a night/ })).toBeVisible();
 }
+
+test('sharing while tracking a new guest adds both plans and asks about each main drink', async ({
+  page,
+}, info) => {
+  test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local test backend required.');
+  const host = await account('Ari');
+  const created = await host.client.rpc('start_night_out', {
+    p_creation_key: randomUUID(),
+    p_title: 'Guest bottle plans',
+    p_ends_at: new Date(Date.now() + 3 * 3600000).toISOString(),
+    p_timezone: 'UTC',
+    p_host_plan: [
+      {
+        label: 'Beer',
+        category: 'beer',
+        volumeMl: 330,
+        abvPercent: 5,
+        plannedQuantity: 2,
+        isQuickLog: true,
+      },
+    ],
+    p_guests: [],
+  });
+  if (created.error) throw created.error;
+  const nightId = (created.data as { nightId: string }).nightId;
+  await login(page, host);
+  await page.goto(`/night/${nightId}`);
+  await page.getByRole('button', { name: 'Add person', exact: true }).click();
+  const guestForm = page.getByRole('dialog', { name: 'Add person', exact: true });
+  await guestForm.getByLabel('Display name').fill('Jo');
+  await guestForm.getByRole('button', { name: 'Plan drinks', exact: true }).click();
+  await guestForm.getByRole('button', { name: 'Wine', exact: true }).click();
+  await guestForm.getByRole('button', { name: 'Add person', exact: true }).click();
+  await expect(guestForm).toHaveCount(0);
+  await expect(page.locator('.participant-chip-selected')).toContainText('Jo');
+  await page.locator('.bottle-launcher').click();
+  const form = page.getByRole('dialog', { name: 'Share a bottle', exact: true });
+  await form.getByLabel('Bottle name').fill('Shared gin');
+  await form.getByLabel('Planned shots per person').fill('2');
+  await expect(form.getByRole('button', { name: 'Everyone', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  const hostMain = form.getByRole('checkbox', { name: 'Make this my main drink', exact: true });
+  const guestMain = form.getByRole('checkbox', { name: 'Make this Jo’s main drink', exact: true });
+  await expect(hostMain).not.toBeChecked();
+  await expect(guestMain).not.toBeChecked();
+  await expect(form.getByText('Keeps Beer as the main drink.', { exact: true })).toBeVisible();
+  await hostMain.check();
+  await form.screenshot({
+    path: `.tmp/ui-review/bottle-guest-main-${info.project.name}.png`,
+    animations: 'disabled',
+  });
+  await form.getByRole('button', { name: 'Share & start tracking', exact: true }).click();
+  await expect(form).toHaveCount(0);
+  await expect(page.locator('.main-drink')).toContainText('Wine');
+  await page.locator('.participant-chip').filter({ hasText: 'Ari' }).click();
+  await expect(page.locator('.main-drink')).toContainText('Shared gin');
+  await page.reload();
+  await expect(page.locator('.main-drink')).toContainText('Shared gin');
+  const latest = await host.client.rpc('get_night_snapshot', { p_night_id: nightId });
+  if (latest.error) throw latest.error;
+  const snapshot = latest.data as unknown as NightSnapshot;
+  for (const member of snapshot.members) {
+    expect(member.planItems).toHaveLength(2);
+    expect(member.planItems.find((item) => item.sharedBottleId)?.plannedQuantity).toBe(2);
+  }
+  expect(
+    snapshot.members
+      .find((member) => member.displayName === 'Ari')
+      ?.planItems.find((item) => item.isQuickLog)?.label,
+  ).toBe('Shared gin');
+  expect(
+    snapshot.members
+      .find((member) => member.displayName === 'Jo')
+      ?.planItems.find((item) => item.isQuickLog)?.label,
+  ).toBe('Wine');
+});
 
 test('bottle quantity to one-tap tracking, joining, undo and adding another bottle', async ({
   page,
@@ -150,6 +232,8 @@ test('bottle quantity to one-tap tracking, joining, undo and adding another bott
     await form.getByLabel('Bottle name').fill('Sam’s rosé');
     await form.getByLabel('What’s in the bottle?').selectOption('wine');
     await form.getByLabel('Your drinks from this bottle').fill('1');
+    await expect(form.getByRole('checkbox', { name: 'Make this my main drink' })).not.toBeChecked();
+    await form.getByRole('checkbox', { name: 'Make this my main drink' }).check();
     await form.getByRole('button', { name: 'Share & start tracking', exact: true }).click();
     await expect(friendPage.getByRole('dialog')).toHaveCount(0);
     await expect(friendPage.locator('.main-drink')).toContainText('Sam’s rosé');
@@ -167,6 +251,10 @@ test('bottle quantity to one-tap tracking, joining, undo and adding another bott
     await hostShelf.getByRole('button', { name: 'Join bottle', exact: true }).click();
     const joinForm = page.getByRole('dialog', { name: 'Join this bottle', exact: true });
     await joinForm.getByLabel('Your drinks from this bottle').fill('2');
+    await expect(
+      joinForm.getByRole('checkbox', { name: 'Make this the main drink' }),
+    ).not.toBeChecked();
+    await joinForm.getByRole('checkbox', { name: 'Make this the main drink' }).check();
     await joinForm.getByRole('button', { name: 'Join & start tracking' }).click();
     await expect(page.locator('.main-drink')).toContainText('Sam’s rosé');
     await page.locator('.main-drink').getByRole('button', { name: 'Adjust' }).click();

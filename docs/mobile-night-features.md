@@ -22,7 +22,8 @@ Implemented 2 October 2026, using the web flows and existing shared contracts/da
 ## Shared bottles
 
 - The native shelf supports creating a bottle for everyone or selected people, joining with a planned quantity/serving size, adjusting that plan, choosing it as the main drink, logging, undo, leaving and putting it away.
-- Creation and planning use the existing atomic `shareBottleAndPlan` and `planSharedBottle` RPCs with the draft’s revision and stable request UUID. Creation includes the actor and the tracked guest in restricted access.
+- Creation and planning use the atomic `shareBottleAndPlan` and `planSharedBottle` RPCs with the draft’s revision and stable request UUID. Sharing while tracking a guest adds the bottle to both the creator’s plan and the guest’s plan, with independent main-drink choices and revision checks. Both saves roll back if either fails. Creation includes both people in restricted access; other account members choose whether to join.
+- Main-drink switches are visible when creating, joining and adjusting. An existing main is kept by default. The first planned drink becomes main automatically; changing a bottle that is already main requires choosing another drink in the full plan. The form explains each outcome.
 - Adjust edits a person’s quantity, serving size and main-drink selection, matching the web. The existing API fixes the bottle’s name, volume and strength once shared; this pass does not introduce global bottle-detail updates.
 - Remaining-volume display measures inventory. Logged/plan counts remain text, with no consumption completion rings or celebrations.
 - Bottle logs use the common warning-confirmation flow and retain the action UUID/time. Closed, unjoined, inaccessible and insufficient bottles are blocked locally and checked again by the server. Shared bottles require a connection; they are not queued for offline replay.
@@ -39,9 +40,13 @@ Protected route registration and authentication handoff include the new sheets. 
 
 - Mobile TypeScript and targeted ESLint.
 - Fourteen focused feature tests in `tests/mobile-night-features.test.ts`, plus the existing mobile flow/auth/onboarding and shared bottle/permission tests (76 tests in the focused run).
-- The complete unit suite passed: 302 tests across 35 files.
-- iOS and Android Metro/Hermes exports, written under `.tmp/mobile-features-export/` for local verification.
-- Read-only calls with the mobile publishable key confirmed that anonymous access to night snapshots, notification preferences and notification events is denied (`42501`). No authenticated nights, guests, bottles or messages were created during verification.
+- The complete unit suite passed: 304 tests across 35 files after the shared-bottle follow-up.
+- All 349 database assertions passed, including 28 new checks for both plans, independent main choices, stale/full plans, retries and account ownership. Local database schema lint found no errors.
+- Both bottle browser scenarios passed on desktop Chromium, mobile Chromium and mobile WebKit. The new scenario adds a guest through the UI, shares while tracking them, and confirms both saved plans after refresh. A WebKit sign-in/navigation race in the test was resolved by waiting for the home screen before continuing.
+- iOS and Android Metro/Hermes exports, with the latest verification under `.tmp/mobile-shared-bottle-export/`.
+- Read-only calls with the mobile publishable key confirmed that anonymous access to night snapshots, notification preferences and notification events is denied (`42501`). Authenticated bottle verification used disposable local test accounts. No hosted user data was changed.
+
+The shared-bottle follow-up requires `supabase/migrations/20261002181638_shared_bottle_creator_plan.sql` on the app’s backend. It was applied to the isolated local browser backend, not the hosted project. Five-argument calls from older builds and initial night creation remain compatible.
 
 An installed-build/device pass is still required. No device was connected for this implementation pass. Test light/dark rendering, largest Dynamic Type, VoiceOver/TalkBack, keyboard reachability, sheet interruption/dismissal and haptic timing. With test accounts, verify guest consent/add/edit/remove, check-in receipt/read/cooldown, reminder pause expiry, restricted bottle access, plan conflicts, last partial servings, undo/remaining volume, leaving/putting away and sign-out during a pending request. Do not place emergency calls as part of QA.
 

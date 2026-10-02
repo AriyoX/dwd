@@ -275,6 +275,13 @@
   border-top: 1px solid var(--border);
   padding-top: 12px;
 }
+.bottle-main-choice {
+  display: grid;
+  gap: 4px;
+}
+.bottle-main-choice p {
+  margin: 0;
+}
 .bottle-details > summary,
 .bottle-options > summary {
   cursor: pointer;

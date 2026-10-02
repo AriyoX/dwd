@@ -9,15 +9,17 @@ export function DrinkQuantity({
   value,
   onChange,
   word,
+  label,
 }: {
   value: string;
   onChange: (value: string) => void;
   word: string;
+  label?: string;
 }) {
   const id = useId();
   return (
     <div className="bottle-quantity field">
-      <label htmlFor={id}>Your {word}s from this bottle</label>
+      <label htmlFor={id}>{label ?? `Your ${word}s from this bottle`}</label>
       <div className="bottle-stepper">
         <button
           type="button"
@@ -118,6 +120,11 @@ export function BottleFields({
         value={draft.defaultQuantity}
         onChange={(defaultQuantity) => update({ defaultQuantity })}
         word={word}
+        label={
+          targetMemberId && targetMemberId !== creatorMemberId
+            ? `Planned ${word}s per person`
+            : `Your ${word}s from this bottle`
+        }
       />
       <details
         className="bottle-details"
@@ -168,7 +175,7 @@ export function BottleFields({
               id={`${id}-serving`}
               type="number"
               min={1}
-              max={2000}
+              max={Math.min(2000, Number(draft.volumeMl) || 2000)}
               step="any"
               required
               value={draft.pourMl}
@@ -230,10 +237,11 @@ export function BottleFields({
           )}
         </>
       )}
-      <p className="small muted">
-        {initial ? 'Everyone in the night can choose to join. ' : ''}This becomes your main drink.
-        You can change it with Adjust.
-      </p>
+      {initial && (
+        <p className="small muted">
+          This starts your plan as the main drink. Everyone in the night can choose to join.
+        </p>
+      )}
     </div>
   );
 }

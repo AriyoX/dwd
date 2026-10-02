@@ -204,6 +204,8 @@ describe('native shared bottle plans and logging', () => {
     expect(materializeBottle({ ...draft, abvPercent: '' }, id(1), id(1)).success).toBe(false);
     expect(materializeBottlePlan('2.5', '150').success).toBe(false);
     expect(materializeBottlePlan('2', '20,5').success).toBe(true);
+    expect(materializeBottlePlan('2', '151', 150).success).toBe(false);
+    expect(materializeBottlePlan('2', '150', 150).success).toBe(true);
   });
   it('shows only bottles available to the selected person', () => {
     const night = snapshot();
@@ -235,13 +237,20 @@ describe('native shared bottle plans and logging', () => {
     const { client, rpc } = rpcClient();
     const parsed = materializeBottle(draft, id(3), id(1));
     if (!parsed.success) throw new Error('Invalid fixture');
-    await shareBottleAndPlan(client, id(10), parsed.data, id(3), 4, id(50));
+    await shareBottleAndPlan(client, id(10), parsed.data, id(3), 4, id(50), {
+      makeMain: false,
+      creatorExpectedRevision: 7,
+      creatorMakeMain: true,
+    });
     expect(rpc).toHaveBeenLastCalledWith(
       'share_bottle_and_plan',
       expect.objectContaining({
         p_member_id: id(3),
         p_expected_revision: 4,
         p_request_key: id(50),
+        p_make_main: false,
+        p_creator_expected_revision: 7,
+        p_creator_make_main: true,
       }),
     );
     await planSharedBottle(client, id(30), id(3), 2, 150, 4, id(50), false);

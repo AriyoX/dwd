@@ -112,15 +112,17 @@ export function materializeBottle(draft: BottleDraft, memberId: string, creatorI
   });
 }
 
-export function materializeBottlePlan(quantity: string, size: string) {
-  return planItemInputSchema.safeParse({
-    label: 'Bottle',
-    category: 'other',
-    volumeMl: decimal(size),
-    abvPercent: 1,
-    plannedQuantity: decimal(quantity),
-    isQuickLog: true,
-  });
+export function materializeBottlePlan(quantity: string, size: string, bottleVolume = 2000) {
+  return planItemInputSchema
+    .refine((item) => item.volumeMl <= bottleVolume, { message: 'Check the drink size.' })
+    .safeParse({
+      label: 'Bottle',
+      category: 'other',
+      volumeMl: decimal(size),
+      abvPercent: 1,
+      plannedQuantity: decimal(quantity),
+      isQuickLog: true,
+    });
 }
 
 export function nightEvents(
@@ -168,6 +170,9 @@ export function featureError(error: unknown) {
     'This night has ended.',
     'This night is no longer active.',
     'Your plan changed. Close this window and try again.',
+    'Your own plan changed. Close this window and try again.',
+    'This bottle is already shared. Join or adjust it instead.',
+    'This request belongs to another bottle.',
     'Check the drink size.',
     'Choose between 1 and 50 drinks.',
     'That participant is no longer active.',

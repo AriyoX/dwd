@@ -1,5 +1,17 @@
 import type { AlcoholLog, DrinkCategory, PlanItemInput, SharedBottle } from '../types/domain';
 
+// Match the server: keep the current main drink, and never leave a plan without one.
+export function bottleMainChoice(
+  items: readonly (Pick<PlanItemInput, 'label' | 'isQuickLog' | 'sharedBottleId'> & {
+    archivedAt?: string | null;
+  })[],
+  bottleId?: string,
+) {
+  const current = items.find((item) => !item.archivedAt && item.isQuickLog);
+  const required = !current || (bottleId !== undefined && current.sharedBottleId === bottleId);
+  return { required, isMain: required, currentMainLabel: current?.label ?? null };
+}
+
 export function bottlePlanItem(
   bottle: SharedBottle,
   quantity: number,
