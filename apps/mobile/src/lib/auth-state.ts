@@ -92,7 +92,7 @@ export const authHandoff = () => new AuthHandoff(globalThis.localStorage);
 export function authCallbackUrl(next: string, flow: 'signup' | 'recovery' | 'google') {
   // Installed builds register this scheme; email templates append &token_hash.
   const query = new URLSearchParams({ flow, next: safeDestination(next) });
-  return `dwd:///auth/callback?${query.toString()}`;
+  return `dwd://auth/callback?${query.toString()}`;
 }
 
 export function nativeLinkDestination(path: string): string {

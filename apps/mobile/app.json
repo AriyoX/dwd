@@ -7,11 +7,15 @@
     "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "plugins": ["expo-router", "expo-sqlite", "expo-status-bar"],
+    "plugins": ["expo-router", "expo-sqlite", "expo-status-bar", "expo-apple-authentication"],
     "ios": {
       "bundleIdentifier": "com.drinkwithdesire.mobile",
+      "usesAppleSignIn": true,
       "supportsTablet": true,
       "infoPlist": { "CADisableMinimumFrameDurationOnPhone": true }
+    },
+    "android": {
+      "package": "com.drinkwithdesire.mobile"
     }
   }
 }

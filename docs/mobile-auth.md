@@ -26,10 +26,10 @@ Only known native routes are accepted as return destinations. The handoff stays 
 
 Add these exact native redirects to the existing project's Supabase Authentication → URL Configuration allowlist:
 
-- `dwd:///auth/callback`
-- `dwd:///auth/callback?**`
+- `dwd://auth/callback`
+- `dwd://auth/callback?**`
 
-These entries are included in both local and hosted source configuration. They have **not** been applied to the hosted project. Apply the URL entries without replacing unrelated Auth settings. The existing confirmation/recovery templates append the token hash and type to the requested callback, which already includes a query string.
+These entries are included in both local and hosted source configuration. On 2 October the user reported adding these two-slash entries to hosted Supabase after its dashboard rejected the earlier three-slash format. The mobile callback builder now matches those entries exactly. Hosted settings have not been independently queried. Keep unrelated Auth settings and website redirects. The existing confirmation/recovery templates append the token hash and type to the requested callback, which already includes a query string. Incoming older three-slash links still parse for compatibility.
 
 Use a development or installed build for external authentication. Expo Go does not register the app's `dwd` scheme. Google must also be enabled on the existing Supabase project. See [Supabase native deep linking](https://supabase.com/docs/guides/auth/native-mobile-deep-linking) and [Expo authentication browser](https://docs.expo.dev/versions/latest/sdk/webbrowser/).
 
@@ -97,7 +97,7 @@ With an installed Android development/test build and an emulator already running
 ```powershell
 adb shell am start -W -a android.intent.action.VIEW -d 'dwd:///account'
 adb shell am start -W -a android.intent.action.VIEW -d 'dwd:///night/new'
-adb shell am start -W -a android.intent.action.VIEW -d 'dwd:///auth/callback?code=expired'
+adb shell am start -W -a android.intent.action.VIEW -d 'dwd://auth/callback?code=expired'
 
 # Replace this value with a real invitation token for a test night.
 $inviteToken = 'REPLACE_WITH_REAL_INVITE_TOKEN'
@@ -109,3 +109,74 @@ For cold-start checks, use Settings → Apps → Drink with Desire → Force sto
 For UI-only checks in Expo Go, use the Metro URL shown by `npm run mobile`, followed by `/--/account` or `/--/night/new`. Real Google and email callbacks require an installed build registering `dwd` and the hosted redirect allowlist described above; Expo Go is not sufficient. See [Supabase native deep linking](https://supabase.com/docs/guides/auth/native-mobile-deep-linking).
 
 The saved-password/sign-out-failure branch has automated regression coverage. To inspect its UI, use a debugger or network proxy to fail only the sign-out request after a successful password update; retry should show “Sign out and continue” and send no second password update. Simply going offline before submitting tests the password request failure instead.
+
+## Apple sign-in and Google callback correction — 2 October 2026
+
+The previous onboarding/auth work was committed as `cdd981f`. This subsequent feature adds Apple sign-in exclusively on iOS and corrects the native callback format.
+
+### Apple implementation and activation
+
+`apple-button.ios.tsx` uses Expo's official native Apple button, black in light mode and white in dark mode, and checks native availability before rendering. The default `apple-button.tsx` returns nothing on Android/web. Metro source-map inspection confirms the Android bundle contains neither the iOS component nor the Apple authentication library or action helper.
+
+If Apple sign-in is missing on iPhone Expo Go, restart Metro from `apps/mobile` with `npx expo start --go --clear` and scan the new QR code. The iOS component now shows a checking status, then either the Apple button or an availability message with a retry action. Previously, both an unavailable native module and a failed availability check silently hid the control. Apple Developer enrollment and Supabase provider settings do not control whether this button renders. Expo Go includes the native capability; use an up-to-date Expo Go version compatible with this app's SDK. The running Metro server was checked directly and serves the iOS component. The user reported an unavailable result on iPhone Expo Go 57. Development builds now show whether ExpoAppleAuthentication is registered, the execution environment, the exact Expo Go version and the iOS version beneath that message. This diagnostic contains no auth credentials and is excluded from release UI. The installed native implementation returns true; its JavaScript fallback returns false when the native module is absent. A matching SDK major alone does not establish that the native module loaded correctly. The exact phone diagnostic is still needed; no emulator was used.
+
+On 2026-10-02 the user reported `Apple native module: missing`, `Runtime: storeClient; Expo Go: 1017880; iOS: 27.0`. This confirms that `ExpoAppleAuthentication` is not accessible in that phone's running Expo Go session. It does not establish whether the cause is the Expo Go binary or native module registration. No verified upstream issue for this exact build was found. Apple Developer/Supabase configuration cannot supply a missing native module, and a JavaScript reload cannot install native code into Expo Go. Testing in the app's own iOS development build is the next supported route if an Expo Go update does not restore the module. The development build configuration below is already present; actual Apple sign-in on the phone remains unverified.
+
+The iOS adapter requests the name/email scopes, sends a SHA-256 nonce to Apple, verifies the returned request state, and sends the original nonce and identity token to Supabase. Cancellation is recoverable. Apple credentials and nonces are never added to the persisted invite handoff. First-login names are saved as optional metadata and used as editable form defaults; they do not establish adulthood or create a profile. Existing accounts keep their profile. New users must complete the existing name/18+ flow, including users who choose Hide My Email.
+
+Before testing against the hosted project:
+
+1. Apply `supabase/migrations/20261002120508_apple_native_signup.sql` through the project's migration deployment process. It adds Apple to the trusted-provider branch of `private.handle_new_user`; the previous Google-only branch rejected new Apple users. It retains email validation, profile/RLS restrictions, audit behavior and explicit adult attestation. **This migration was tested locally and has not been applied to hosted Supabase.**
+2. In Apple Developer → Certificates, Identifiers & Profiles, enable **Sign in with Apple** for the App ID `com.drinkwithdesire.mobile`.
+3. In Supabase → Authentication → Sign In / Providers → Apple, enable Apple and add `com.drinkwithdesire.mobile` to **Client IDs**. Native-only sign-in does not require a Services ID, web client secret or secret rotation. Keep nonce verification enabled.
+4. Build/install a new iOS binary. `ios.usesAppleSignIn` and the `expo-apple-authentication` plugin are configured; reloading JavaScript alone does not add native entitlements.
+
+Apple can also be tested on a real iPhone in Expo Go with `host.exp.Exponent` in the **test project's** Apple Client IDs. That shared Expo identifier is different from the installed DWD App ID, so installed-build testing is still required. Android has no Apple button or browser fallback. See [Supabase Apple configuration](https://supabase.com/docs/guides/auth/social-login/auth-apple) and [Expo Apple Authentication](https://docs.expo.dev/versions/latest/sdk/apple-authentication/).
+
+### Why Google went to the website
+
+The app previously requested `dwd:///auth/callback`, while the hosted allowlist contained `dwd://auth/callback`. The two strings are different redirect targets. A website sign-in completes the website's session; it cannot complete the mobile app's pending PKCE exchange. Returning manually to Expo Go dismisses the authentication browser without delivering a successful app callback.
+
+The callback builder and both source configs now use **`dwd://auth/callback`**. The Google action refuses to launch OAuth in Expo Go and explains that an installed DWD build is required, instead of leading into a web-only session and then claiming it was cancelled. Email/password sign-in remains available in Expo Go. [Expo explicitly requires a development build for this OAuth workflow](https://docs.expo.dev/guides/authentication/).
+
+Keep these two entries in Supabase's redirect allowlist:
+
+```text
+dwd://auth/callback
+dwd://auth/callback?**
+```
+
+Keep the website's Site URL and existing web redirects. Google Cloud's authorized redirect URI remains the Supabase provider callback (`https://<project-ref>.supabase.co/auth/v1/callback`); the DWD custom URL belongs in Supabase's allowlist, not in Google Cloud.
+
+### Install a development build
+
+`expo-dev-client` and an internal `development` EAS profile are included. Both native bundle/package IDs are `com.drinkwithdesire.mobile`. No cloud build was submitted and no emulator was launched.
+
+From the repository root, for a physical iPhone using EAS (also works when your computer runs Windows):
+
+```powershell
+cd apps/mobile
+npx eas-cli login
+npx eas-cli build --platform ios --profile development
+# After installing the resulting DWD build on the registered iPhone:
+npx expo start --dev-client
+```
+
+Follow the first-build prompts to link/create the Expo project and register the device. EAS device signing requires an Apple Developer membership. Set the public Supabase URL/key in the build environment if EAS needs them; ignored `.env.local` files are not uploaded automatically. The local Metro server already loads the app's `.env.local`.
+
+For Android, use `npx eas-cli build --platform android --profile development` in `apps/mobile`, install its APK, then use the same Metro command. Alternatively, with Android SDK/JDK and a USB-debugging phone already set up, `npx expo run:android --device` builds locally. Open the installed **Drink with Desire** app rather than Expo Go. See [Expo development builds](https://docs.expo.dev/develop/development-builds/introduction/).
+
+Once installed, Google should open provider consent and return directly to DWD. Test cancellation, a cold-start callback, and a pending invitation. On iOS, test Apple first authorization, returning authorization, cancellation, Hide My Email and profile completion. Confirm the Apple button is absent on Android. Hosted redirects, provider credentials, native signing and real authentication remain device/integration checks.
+
+### Focused verification
+
+Passed 52 tests across the three native auth/onboarding files, 26 database assertions across only Apple/Google signup suites, mobile TypeScript, targeted ESLint, and iOS/Android Metro exports. Export source maps confirm iOS-only Apple module inclusion. No unrelated test suites or emulator/device tests were run.
+
+```powershell
+# Repository root
+npm run typecheck --workspace @dwd/mobile
+npx vitest run tests/mobile-auth.test.ts tests/mobile-onboarding.test.ts tests/mobile-apple-auth.test.ts
+npx eslint apps/mobile tests/mobile-auth.test.ts tests/mobile-onboarding.test.ts tests/mobile-apple-auth.test.ts --max-warnings=0
+# Docker required; disposable local test database, no hosted changes
+node scripts/test-database.mjs apple_signup.sql google_signup.sql
+```

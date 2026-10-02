@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { Choice } from '@/components/choice';
 import { Action, PrimaryButton } from '@/components/primary-button';
 import { AuthHeader, LegalLinks } from '@/components/auth-chrome';
 import { GoogleButton } from '@/components/google-button';
+import { AppleButton } from '@/components/apple-button';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingPanel, Notice, Panel, Screen, ScreenHeading } from '@/components/screen';
 import { TextField } from '@/components/text-field';
@@ -75,16 +77,15 @@ function AuthForm({
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   const [passwordSaved, setPasswordSaved] = useState(false);
-  const [name, setName] = useState(() => {
-    const value: unknown =
-      session?.user.user_metadata['display_name'] ?? session?.user.user_metadata['full_name'];
-    return typeof value === 'string' ? value.slice(0, 60) : '';
-  });
+  const [editedName, setName] = useState<string | null>(null);
+  const suggestedName: unknown =
+    session?.user.user_metadata['display_name'] ?? session?.user.user_metadata['full_name'];
+  const name = editedName ?? (typeof suggestedName === 'string' ? suggestedName.slice(0, 60) : '');
   const [adult, setAdult] = useState(false);
   const [code, setCode] = useState('');
-  const [busyAction, setBusyAction] = useState<'email' | 'google' | 'resend' | 'signout' | null>(
-    null,
-  );
+  const [busyAction, setBusyAction] = useState<
+    'email' | 'google' | 'apple' | 'resend' | 'signout' | null
+  >(null);
   const busy = busyAction !== null;
   const [issue, setIssue] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(
@@ -186,10 +187,11 @@ function AuthForm({
       client,
       authCallbackUrl(handoff.read().next, 'google'),
       WebBrowser.openAuthSessionAsync,
+      Constants.executionEnvironment === ExecutionEnvironment.StoreClient,
     );
     if (!mounted.current) return;
     if (destination) router.replace(destination as Href);
-    else setMessage('Google sign-in was cancelled. You can try again or use email.');
+    else setMessage('Google sign-in did not finish in this app. Try again or use email.');
   }
   const confirmation = handoff.read();
   const countdown =
@@ -312,6 +314,17 @@ function AuthForm({
                 disabled={busy}
                 busy={busyAction === 'google'}
                 onPress={() => void run(google, 'google')}
+              />
+              <AppleButton
+                disabled={busy}
+                busy={busyAction === 'apple'}
+                onSignIn={(authenticate) =>
+                  void run(async () => {
+                    const signedIn = await authenticate();
+                    if (mounted.current && !signedIn)
+                      setMessage('Apple sign-in was cancelled. You can try again or use email.');
+                  }, 'apple')
+                }
               />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ flex: 1, height: 0.5, backgroundColor: colors.border }} />

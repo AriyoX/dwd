@@ -13,7 +13,10 @@ export async function googleSignIn(
   client: AuthClient,
   redirectTo: string,
   openBrowser: (url: string, returnUrl: string) => Promise<{ type: string; url?: string }>,
+  isExpoGo = false,
 ): Promise<string | null> {
+  if (isExpoGo)
+    return fail('Google sign-in needs an installed DWD build. Use email to sign in with Expo Go.');
   const { data, error } = await client.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo, skipBrowserRedirect: true },

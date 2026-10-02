@@ -22,7 +22,7 @@ import {
 
 const token = 'a'.repeat(43);
 const destination = `/join?token=${token}`;
-const callback = 'dwd:///auth/callback?flow=signup';
+const callback = 'dwd://auth/callback?flow=signup';
 function store(now = Date.now) {
   const data = new Map<string, string>();
   return new AuthHandoff(
@@ -138,7 +138,7 @@ describe('native account flows', () => {
   it('uses the configured, stable callback scheme for email and Google, with a safe destination', () => {
     for (const flow of ['signup', 'recovery', 'google'] as const) {
       const url = new URL(authCallbackUrl(destination, flow));
-      expect(`${url.protocol}//${url.host}${url.pathname}`).toBe('dwd:///auth/callback');
+      expect(`${url.protocol}//${url.host}${url.pathname}`).toBe('dwd://auth/callback');
       expect(url.searchParams.get('next')).toBe(destination);
       expect(url.searchParams.get('flow')).toBe(flow);
     }
@@ -161,6 +161,14 @@ describe('native account flows', () => {
     expect(browser).toHaveBeenCalledWith('https://auth.example/authorize', redirect);
     expect(result).toContain('/auth/callback?');
     expect(new URL(result ?? '/', 'dwd:///').searchParams.get('next')).toBe(destination);
+  });
+  it('stops Google in Expo Go before creating an OAuth request or opening a browser', async () => {
+    const browser = vi.fn();
+    await expect(googleSignIn(client, callback, browser, true)).rejects.toThrow(
+      'installed DWD build',
+    );
+    expect(auth.signInWithOAuth).not.toHaveBeenCalled();
+    expect(browser).not.toHaveBeenCalled();
   });
   it('treats Google cancellation and dismissal as recoverable without consuming the invite', async () => {
     auth.signInWithOAuth.mockResolvedValue({
