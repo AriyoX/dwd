@@ -56,6 +56,7 @@ export function PrimaryButton({
   onPress,
   disabled = false,
   busy = false,
+  busyLabel = 'Saving',
   variant = 'primary',
   icon,
 }: {
@@ -63,6 +64,7 @@ export function PrimaryButton({
   onPress: () => void;
   disabled?: boolean;
   busy?: boolean;
+  busyLabel?: string;
   variant?: 'primary' | 'secondary' | 'water' | 'quiet' | 'danger';
   icon?: React.ComponentProps<typeof Ionicons>['name'];
 }) {
@@ -79,7 +81,7 @@ export function PrimaryButton({
             : colors.text;
   return (
     <Action
-      label={busy ? `${label}, saving` : label}
+      label={busy ? busyLabel : label}
       disabled={disabled || busy}
       onPress={onPress}
       style={{
@@ -104,7 +106,7 @@ export function PrimaryButton({
       }}
     >
       {busy ? (
-        <ActivityIndicator accessibilityLabel="Saving" color={foreground} />
+        <ActivityIndicator accessibilityLabel={busyLabel} color={foreground} />
       ) : (
         <>
           {icon ? <Ionicons name={icon} size={20} color={foreground} accessible={false} /> : null}

@@ -3,21 +3,21 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Brand } from '@/components/brand';
 import { PrimaryButton } from '@/components/primary-button';
 import { Panel, Screen, ScreenHeading } from '@/components/screen';
-import { TextField } from '@/components/text-field';
+import { authHandoff } from '@/lib/auth-state';
 import { AppearancePicker } from '@/components/appearance-picker';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme, useThemedStyles } from '@/providers/theme-provider';
 import type { ThemeColors, makeTypography } from '@/theme/tokens';
 
 export default function AccountScreen() {
+  const router = useRouter();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
-  const { client, session, status, issue } = useSupabase();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { client, session, status, issue, profileStatus, refreshProfile } = useSupabase();
   const userId = session?.user.id;
   const loadProfile = useCallback(
     async (connection: SupabaseClient<Database>) => {
@@ -35,20 +35,6 @@ export default function AccountScreen() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function signIn() {
-    if (!client) return;
-    setBusy(true);
-    setMessage(null);
-    try {
-      const { error } = await client.auth.signInWithPassword({ email: email.trim(), password });
-      if (error) setMessage('Sign in failed. Check your email and password.');
-    } catch {
-      setMessage('Could not sign in. Check your connection and try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function signOut() {
     if (!client) return;
     setBusy(true);
@@ -56,6 +42,7 @@ export default function AccountScreen() {
     try {
       const { error } = await client.auth.signOut();
       if (error) setMessage('Could not sign out. Try again.');
+      else authHandoff().clear();
     } catch {
       setMessage('Could not sign out. Check your connection and try again.');
     } finally {
@@ -105,6 +92,14 @@ export default function AccountScreen() {
               {message}
             </Text>
           ) : null}
+          {profileStatus === 'error' ? (
+            <>
+              <Text accessibilityRole="alert" style={styles.error}>
+                Could not load your account.
+              </Text>
+              <PrimaryButton label="Retry" variant="secondary" onPress={refreshProfile} />
+            </>
+          ) : null}
           <PrimaryButton
             busy={busy}
             label="Sign out"
@@ -114,34 +109,16 @@ export default function AccountScreen() {
         </Panel>
       ) : (
         <Panel>
-          <TextField
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            label="Email"
-            onChangeText={setEmail}
-            textContentType="emailAddress"
-            value={email}
-          />
-          <TextField
-            autoCapitalize="none"
-            autoCorrect={false}
-            label="Password"
-            onChangeText={setPassword}
-            secureTextEntry
-            textContentType="password"
-            value={password}
-          />
           {issue || message ? (
             <Text accessibilityRole="alert" style={styles.error}>
               {message ?? issue}
             </Text>
           ) : null}
+          <PrimaryButton label="Sign in" onPress={() => router.push('/auth/sign-in')} />
           <PrimaryButton
-            busy={busy}
-            disabled={!email.trim() || !password}
-            label="Sign in"
-            onPress={() => void signIn()}
+            label="Create account"
+            variant="secondary"
+            onPress={() => router.push('/auth/sign-up')}
           />
         </Panel>
       )}
@@ -150,6 +127,18 @@ export default function AccountScreen() {
           Appearance
         </Text>
         <AppearancePicker />
+      </Panel>
+      <Panel>
+        <PrimaryButton
+          label="Terms"
+          variant="quiet"
+          onPress={() => router.push('/legal?document=terms')}
+        />
+        <PrimaryButton
+          label="Privacy"
+          variant="quiet"
+          onPress={() => router.push('/legal?document=privacy')}
+        />
       </Panel>
     </Screen>
   );

@@ -18,16 +18,24 @@ export function Screen({
   contentStyle,
   refreshControl,
   insetTop = true,
+  footer,
 }: {
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   refreshControl?: ScrollViewProps['refreshControl'];
   insetTop?: boolean;
+  footer?: ReactNode;
 }) {
   const { colors } = useTheme();
   return (
     <SafeAreaView
-      edges={insetTop ? ['top', 'left', 'right'] : ['left', 'right']}
+      edges={
+        footer
+          ? ['top', 'bottom', 'left', 'right']
+          : insetTop
+            ? ['top', 'left', 'right']
+            : ['left', 'right']
+      }
       style={{ flex: 1, backgroundColor: colors.background }}
     >
       <ScrollView
@@ -53,6 +61,20 @@ export function Screen({
       >
         {children}
       </ScrollView>
+      {footer ? (
+        <View
+          style={{
+            alignSelf: 'center',
+            width: '100%',
+            maxWidth: 600,
+            paddingHorizontal: 22,
+            paddingTop: 12,
+            paddingBottom: 8,
+          }}
+        >
+          {footer}
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }

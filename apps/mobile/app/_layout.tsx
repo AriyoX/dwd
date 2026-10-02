@@ -9,14 +9,18 @@ import { Text } from 'react-native';
 import { Action } from '@/components/primary-button';
 import { StatusBar } from 'expo-status-bar';
 import { useReducedMotion } from 'react-native-reanimated';
-import { SupabaseProvider } from '@/providers/supabase-provider';
+import { SupabaseProvider, useSupabase } from '@/providers/supabase-provider';
 import { ThemeProvider, useTheme } from '@/providers/theme-provider';
+import { AuthNavigation } from '@/components/auth-navigation';
+import { OnboardingProvider } from '@/providers/onboarding-provider';
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
       <SupabaseProvider>
-        <Navigation />
+        <OnboardingProvider>
+          <Navigation />
+        </OnboardingProvider>
       </SupabaseProvider>
     </ThemeProvider>
   );
@@ -24,6 +28,7 @@ export default function RootLayout() {
 
 function Navigation() {
   const router = useRouter();
+  const { access } = useSupabase();
   const { colors, scheme } = useTheme();
   const reduced = useReducedMotion();
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
@@ -58,6 +63,7 @@ function Navigation() {
       }}
     >
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <AuthNavigation />
       <Stack
         screenOptions={{
           headerTintColor: colors.primary,
@@ -68,13 +74,28 @@ function Navigation() {
           ...(reduced ? { animation: 'fade' } : {}),
         }}
       >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="night/new" options={{ title: 'Start a night' }} />
-        <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
-        <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
-        <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log a drink' }} />
-        <Stack.Screen name="night/[nightId]/plan" options={{ ...sheet, title: 'Your plan' }} />
-        <Stack.Screen name="night/[nightId]/summary" options={{ title: 'Night recap' }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Protected guard={access !== 'ready'}>
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/index" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/confirm" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/complete-profile" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Screen name="auth/callback" options={{ title: 'Confirm account' }} />
+        <Stack.Screen name="legal" options={{ title: 'DWD' }} />
+        <Stack.Protected guard={access === 'ready'}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="night/new" options={{ title: 'Start a night' }} />
+          <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
+          <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
+          <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log a drink' }} />
+          <Stack.Screen name="night/[nightId]/plan" options={{ ...sheet, title: 'Your plan' }} />
+          <Stack.Screen name="night/[nightId]/summary" options={{ title: 'Night recap' }} />
+        </Stack.Protected>
       </Stack>
     </NavigationThemeProvider>
   );

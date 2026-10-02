@@ -45,3 +45,9 @@ The emulator disconnected before the final compact-duration screen check and bef
 The parity table is a source-level comparison, not a complete end-to-end audit. iOS sheet feel, VoiceOver, largest Dynamic Type, Reduce Transparency, haptic timing and release-build performance still need real-device QA.
 
 For each Sol task, require: native light/dark layouts, loading/error/empty states, permission and account-switching boundaries, relevant idempotency/revision checks, and a focused test. Avoid replacing the UI primitives or expanding the backend unless the feature actually needs it.
+
+## Feature implementation progress
+
+1 October 2026: the first P1 task now has native signup/adult confirmation, confirmation/code/resend, password recovery/reset, Google browser authentication, complete-profile routing and a persisted invitation destination. See [Native authentication and onboarding](mobile-auth.md) for the implementation, focused tests and remaining hosted/device integration. The table above records the original review; the other feature gaps remain follow-up work.
+
+The subsequent onboarding pass adds an illustrated first-launch introduction, persistent completion/skip, distinct auth pages and Google branding. All product routes are now guarded until session restoration and profile completion succeed; recovery sessions stay in the password-reset flow. Native links preserve their destination before protected navigation redirects them. The focused test suite includes the actual product route inventory.
