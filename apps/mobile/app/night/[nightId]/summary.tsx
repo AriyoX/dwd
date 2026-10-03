@@ -15,6 +15,7 @@ import {
 import { useNight } from '@/hooks/use-night';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { PendingLogs } from '@/components/pending-logs';
 
 export default function SummaryScreen() {
   const { nightId } = useLocalSearchParams<{ nightId: string }>();
@@ -34,6 +35,11 @@ export default function SummaryScreen() {
         />
       }
     >
+      <PendingLogs
+        key={`${nightId}:${snapshot?.currentUserId}`}
+        nightId={nightId}
+        snapshot={snapshot}
+      />
       {status !== 'signed-in' ? (
         <Notice message="Sign in to view this recap." />
       ) : issue && !snapshot ? (

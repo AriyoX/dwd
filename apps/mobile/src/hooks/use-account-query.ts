@@ -4,16 +4,24 @@ import { useFocusEffect } from 'expo-router';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
 import { useSupabase } from '@/providers/supabase-provider';
+import {
+  clearOfflineCache,
+  isConnectionFailure,
+  readOfflineCache,
+  writeOfflineCache,
+} from '@/lib/offline-cache';
 
 // Focus, foreground, and pull-to-refresh share one request path. Stale responses never win.
 export function useAccountQuery<T>(
   load: (client: SupabaseClient<Database>) => Promise<T>,
   scope = '',
+  cache = false,
 ) {
   const { client, session, status } = useSupabase();
   const [data, setData] = useState<{ owner: string; scope: string; value: T } | null>(null);
   const [loading, setLoading] = useState(false);
   const [issue, setIssue] = useState<string | null>(null);
+  const [cached, setCached] = useState(false);
   const focused = useRef(false);
   const version = useRef(0);
   const owner = session?.user.id;
@@ -24,16 +32,34 @@ export function useAccountQuery<T>(
     try {
       const value = await load(client);
       if (focused.current && request === version.current) {
+        if (cache) writeOfflineCache(globalThis.localStorage, owner, scope, value);
         setData({ owner, scope, value });
+        setCached(false);
         setIssue(null);
       }
-    } catch {
-      if (focused.current && request === version.current)
-        setIssue('Could not refresh. Check your connection and retry.');
+    } catch (error) {
+      if (focused.current && request === version.current) {
+        const connectionFailure = isConnectionFailure(error);
+        const saved =
+          cache && connectionFailure
+            ? (readOfflineCache(globalThis.localStorage, owner, scope) as T | null)
+            : null;
+        if (saved !== null) {
+          setData({ owner, scope, value: saved });
+          setCached(true);
+          setIssue('Showing saved activity. New entries will sync when connected.');
+        } else {
+          if (cache && !connectionFailure) {
+            clearOfflineCache(globalThis.localStorage, owner, scope);
+            setData(null);
+          }
+          setIssue('Could not refresh. Check your connection and retry.');
+        }
+      }
     } finally {
       if (focused.current && request === version.current) setLoading(false);
     }
-  }, [client, owner, status, load, scope]);
+  }, [client, owner, status, load, scope, cache]);
   useFocusEffect(
     useCallback(() => {
       focused.current = true;
@@ -54,6 +80,7 @@ export function useAccountQuery<T>(
     data: data && data.owner === owner && data.scope === scope ? data.value : null,
     loading,
     issue,
+    cached,
     refresh,
   };
 }

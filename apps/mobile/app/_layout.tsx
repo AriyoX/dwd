@@ -13,14 +13,17 @@ import { SupabaseProvider, useSupabase } from '@/providers/supabase-provider';
 import { ThemeProvider, useTheme } from '@/providers/theme-provider';
 import { AuthNavigation } from '@/components/auth-navigation';
 import { OnboardingProvider } from '@/providers/onboarding-provider';
+import { OfflineProvider } from '@/providers/offline-provider';
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
       <SupabaseProvider>
-        <OnboardingProvider>
-          <Navigation />
-        </OnboardingProvider>
+        <OfflineProvider>
+          <OnboardingProvider>
+            <Navigation />
+          </OnboardingProvider>
+        </OfflineProvider>
       </SupabaseProvider>
     </ThemeProvider>
   );

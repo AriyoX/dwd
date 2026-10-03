@@ -50,7 +50,7 @@ The shared-bottle follow-up requires `supabase/migrations/20261002181638_shared_
 
 An installed-build/device pass is still required. No device was connected for this implementation pass. Test light/dark rendering, largest Dynamic Type, VoiceOver/TalkBack, keyboard reachability, sheet interruption/dismissal and haptic timing. With test accounts, verify guest consent/add/edit/remove, check-in receipt/read/cooldown, reminder pause expiry, restricted bottle access, plan conflicts, last partial servings, undo/remaining volume, leaving/putting away and sign-out during a pending request. Do not place emergency calls as part of QA.
 
-Persistent offline logging remains the next independent feature.
+Persistent offline logging for ordinary drinks and chasers is now implemented; see [Native offline logging](mobile-offline-logging.md). Shared-bottle pours retain their online inventory check.
 
 ## UX verification — 3 October 2026
 

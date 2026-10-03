@@ -12,6 +12,7 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
 import { getSupabaseClient } from '@/lib/supabase';
 import { accountAccess, type AccessState } from '@/lib/auth-routing';
+import { resolveProfileRead } from '@/lib/offline-cache';
 
 export type AuthStatus =
   'loading' | 'unconfigured' | 'signed-in' | 'signed-out' | 'error' | 'onboarding';
@@ -68,6 +69,14 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!client || !owner) return;
     let current = true;
+    const settle = (found: boolean, error: unknown) => {
+      if (current)
+        setProfile({
+          owner,
+          version: profileVersion,
+          status: resolveProfileRead(globalThis.localStorage, owner, found, error),
+        });
+    };
     void client
       .from('profiles')
       .select('id')
@@ -75,15 +84,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       .maybeSingle()
       .then(
         ({ data, error }) => {
-          if (current)
-            setProfile({
-              owner,
-              version: profileVersion,
-              status: error ? 'error' : data ? 'complete' : 'incomplete',
-            });
+          settle(Boolean(data), error);
         },
-        () => {
-          if (current) setProfile({ owner, version: profileVersion, status: 'error' });
+        (error: unknown) => {
+          settle(false, error);
         },
       );
     return () => {

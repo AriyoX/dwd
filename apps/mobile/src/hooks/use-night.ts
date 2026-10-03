@@ -6,17 +6,22 @@ import { REALTIME_SUBSCRIBE_STATES, type SupabaseClient } from '@supabase/supaba
 import type { Database } from '@dwd/core';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useAccountQuery } from './use-account-query';
+import { useOffline } from '@/providers/offline-provider';
 
 export function useNight(nightId: string, recap = false) {
   const { client, session } = useSupabase();
+  const { activityVersion, retry } = useOffline();
   const accessToken = session?.access_token;
   const load = useCallback(
     (connection: SupabaseClient<Database>) =>
       recap ? getFinishedNightSummary(connection, nightId) : getNightSnapshot(connection, nightId),
     [nightId, recap],
   );
-  const query = useAccountQuery(load, `${nightId}:${recap}`);
+  const query = useAccountQuery(load, `${nightId}:${recap}`, true);
   const refresh = query.refresh;
+  useEffect(() => {
+    if (activityVersion > 0) void refresh();
+  }, [activityVersion, refresh]);
   const [connected, setConnected] = useState(false);
   const memberIds =
     query.data?.members
@@ -73,7 +78,10 @@ export function useNight(nightId: string, recap = false) {
             channel.subscribe((state) => {
               if (!active) return;
               setConnected(state === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED);
-              if (state === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) invalidate();
+              if (state === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+                invalidate();
+                void retry();
+              }
             });
         })
         .catch(() => {
@@ -86,7 +94,7 @@ export function useNight(nightId: string, recap = false) {
         clearInterval(reconcile);
         void client.removeChannel(channel);
       };
-    }, [client, accessToken, nightId, memberIds, recap, refresh]),
+    }, [client, accessToken, nightId, memberIds, recap, refresh, retry]),
   );
   const now = useNow();
   return { ...query, snapshot: query.data, connected, now };

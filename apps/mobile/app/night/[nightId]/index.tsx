@@ -39,6 +39,7 @@ import { hashInvite, newInviteToken } from '@/lib/invites';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { availableBottles, nightAccess } from '@/lib/night-features';
+import { PendingLogs } from '@/components/pending-logs';
 
 export default function NightScreen() {
   const { nightId, memberId } = useLocalSearchParams<{ nightId: string; memberId?: string }>();
@@ -151,6 +152,11 @@ export default function NightScreen() {
     >
       <Stack.Screen
         options={{ title: snapshot?.night.status === 'ended' ? 'Night ended' : 'Tonight' }}
+      />
+      <PendingLogs
+        key={`${nightId}:${snapshot?.currentUserId}`}
+        nightId={nightId}
+        snapshot={snapshot}
       />
       {status !== 'signed-in' ? (
         <Panel>

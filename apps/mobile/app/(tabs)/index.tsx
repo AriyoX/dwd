@@ -16,12 +16,18 @@ import {
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
+import { PendingLogs } from '@/components/pending-logs';
 
 export default function TonightScreen() {
   const router = useRouter();
   const { status } = useSupabase();
   const { colors, typography } = useTheme();
-  const { data: nights, loading, issue, refresh } = useAccountQuery(getActiveNights);
+  const {
+    data: nights,
+    loading,
+    issue,
+    refresh,
+  } = useAccountQuery(getActiveNights, 'active-nights', true);
   return (
     <Screen
       refreshControl={
@@ -48,6 +54,7 @@ export default function TonightScreen() {
         </Text>
       </View>
       <ScreenHeading title="Tonight" />
+      <PendingLogs />
       {status === 'signed-in' ? (
         <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>
