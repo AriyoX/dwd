@@ -103,6 +103,26 @@ export function NightPeople({
                 />
               ) : null}
               {access.canManage ? (
+                <PrimaryButton
+                  label={`Log for ${member.displayName}`}
+                  icon="add-outline"
+                  variant="secondary"
+                  disabled={disabled}
+                  onPress={() =>
+                    router.push({
+                      pathname: `/night/${snapshot.night.id}/log`,
+                      params: { memberId: member.id },
+                    })
+                  }
+                />
+              ) : null}
+              {checkIns.feedbackMemberId === member.id && (checkIns.issue || checkIns.notice) ? (
+                <Notice
+                  error={Boolean(checkIns.issue)}
+                  message={checkIns.issue ?? checkIns.notice ?? ''}
+                />
+              ) : null}
+              {access.canManage ? (
                 <Action
                   label={`Manage ${member.displayName}`}
                   expanded={expanded === member.id}
@@ -124,13 +144,13 @@ export function NightPeople({
               {access.canManage && expanded === member.id ? (
                 <>
                   <PrimaryButton
-                    label={`Log for ${member.displayName}`}
-                    icon="add-outline"
-                    variant="secondary"
+                    label="Shared bottles"
+                    icon="wine-outline"
+                    variant="quiet"
                     disabled={disabled}
                     onPress={() =>
                       router.push({
-                        pathname: `/night/${snapshot.night.id}/log`,
+                        pathname: `/night/${snapshot.night.id}/bottles`,
                         params: { memberId: member.id },
                       })
                     }
@@ -185,12 +205,8 @@ export function NightPeople({
           onPress={() => router.push(`/night/${snapshot.night.id}/guest`)}
         />
       ) : null}
-      {action.issue || checkIns.issue ? (
-        <Notice error message={action.issue ?? checkIns.issue ?? ''} />
-      ) : null}
-      {action.notice || checkIns.notice ? (
-        <Notice message={action.notice ?? checkIns.notice ?? ''} />
-      ) : null}
+      {action.issue ? <Notice error message={action.issue} /> : null}
+      {action.notice ? <Notice message={action.notice} /> : null}
     </View>
   );
 }

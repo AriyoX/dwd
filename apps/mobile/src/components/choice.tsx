@@ -9,12 +9,14 @@ export function Choice({
   selected,
   onPress,
   disabled = false,
+  compact = false,
 }: {
   label: string;
   detail?: string;
   selected: boolean;
   onPress: () => void;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const { colors } = useTheme();
   return (
@@ -25,8 +27,8 @@ export function Choice({
       onPress={onPress}
       style={{
         minHeight: 52,
-        padding: 16,
-        gap: 12,
+        padding: compact ? 10 : 16,
+        gap: compact ? 6 : 12,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
@@ -43,7 +45,7 @@ export function Choice({
       </View>
       <Ionicons
         name={selected ? 'checkmark-circle' : 'ellipse-outline'}
-        size={22}
+        size={compact ? 18 : 22}
         color={selected ? colors.primary : colors.muted}
         accessible={false}
       />

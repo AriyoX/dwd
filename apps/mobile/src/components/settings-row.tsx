@@ -1,4 +1,4 @@
-import { Switch, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 import { useTheme } from '@/providers/theme-provider';
 
 export function SettingsRow({
@@ -14,15 +14,34 @@ export function SettingsRow({
 }) {
   const { colors, typography } = useTheme();
   return (
-    <View style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+    <Pressable
+      accessible
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value, disabled }}
+      disabled={disabled}
+      onPress={() => onChange(!value)}
+      style={({ pressed }) => ({
+        minHeight: 48,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        opacity: disabled ? 0.6 : pressed ? 0.8 : 1,
+      })}
+    >
       <Text style={[typography.body, { flex: 1, color: colors.text }]}>{label}</Text>
-      <Switch
-        accessibilityLabel={label}
-        value={value}
-        onValueChange={onChange}
-        disabled={disabled}
-        trackColor={{ true: colors.primary }}
-      />
-    </View>
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Switch
+          accessible={false}
+          value={value}
+          disabled={disabled}
+          trackColor={{ true: colors.primary }}
+        />
+      </View>
+    </Pressable>
   );
 }

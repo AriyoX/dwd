@@ -20,6 +20,7 @@ import {
 } from '@dwd/data';
 import {
   availableBottles,
+  addedManagedGuest,
   bottleLogIssue,
   featureError,
   materializeBottle,
@@ -105,6 +106,23 @@ function rpcClient(result: unknown = snapshot()) {
 }
 
 describe('native managed guests and group permissions', () => {
+  it('recovers the added guest after realtime has already delivered a lost creation response', () => {
+    const before = snapshot();
+    const previousIds = before.members.map((person) => person.id);
+    const next = snapshot();
+    const guest = { ...member(4, true), displayName: 'Jo' };
+    next.members.push(guest);
+    expect(addedManagedGuest(next, previousIds, ' Jo ')).toBe(guest);
+    expect(
+      addedManagedGuest(
+        next,
+        next.members.map((person) => person.id),
+        'Jo',
+      ),
+    ).toBeUndefined();
+    next.members.push({ ...guest, id: id(5) });
+    expect(addedManagedGuest(next, previousIds, 'Jo')).toBeUndefined();
+  });
   it('allows the active host to manage their guests, while account users keep ownership of their plans and logs', () => {
     const night = snapshot();
     expect(nightAccess(night).canAddGuest).toBe(true);
@@ -263,6 +281,22 @@ describe('native shared bottle plans and logging', () => {
       p_request_key: id(50),
       p_make_main: false,
     });
+  });
+  it('allows an explicit last partial pour without changing the personal serving size', () => {
+    const night = snapshot();
+    take(night.sharedBottles ?? [], 0).remainingMl = 20;
+    const customDrink = {
+      sharedBottleId: id(30),
+      label: 'Wine',
+      category: 'wine' as const,
+      volumeMl: 20,
+      abvPercent: 12,
+    };
+    expect(bottleLogIssue(night, id(1), { customDrink })).toBeNull();
+    expect(
+      bottleLogIssue(night, id(1), { customDrink: { ...customDrink, volumeMl: 150 } }),
+    ).toContain('20 ml');
+    expect(bottleLogIssue(night, id(3), { customDrink })).toContain('no longer available');
   });
   it('surfaces the server boundary when leaving a planned bottle and uses normal activity undo to restore volume', async () => {
     const { client, rpc } = rpcClient();

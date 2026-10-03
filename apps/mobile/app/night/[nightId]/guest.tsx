@@ -10,7 +10,7 @@ import { SettingsRow } from '@/components/settings-row';
 import { TextField } from '@/components/text-field';
 import { useNight } from '@/hooks/use-night';
 import { useNightAction } from '@/hooks/use-night-action';
-import { materializeGuest, nightAccess } from '@/lib/night-features';
+import { addedManagedGuest, materializeGuest, nightAccess } from '@/lib/night-features';
 import { useSupabase } from '@/providers/supabase-provider';
 
 export default function GuestScreen() {
@@ -52,7 +52,13 @@ function GuestForm({
   const [mode, setMode] = useState<PlanSetupMode>('unselected');
   const [consent, setConsent] = useState(false);
   const [issue, setIssue] = useState<string | null>(null);
+  const [submittedOnce, setSubmittedOnce] = useState(false);
   const key = useRef(Crypto.randomUUID());
+  const submitted = useRef<{
+    previousIds: string[];
+    displayName: string;
+    planItems: PlanItemInput[];
+  } | null>(null);
   const action = useNightAction(refresh);
   async function save() {
     if (!client || !consent || !nightAccess(snapshot).canAddGuest) return;
@@ -62,22 +68,24 @@ function GuestForm({
       return;
     }
     setIssue(null);
+    submitted.current ??= {
+      previousIds: snapshot.members.map((member) => member.id),
+      ...parsed.data,
+    };
+    const request = submitted.current;
+    setSubmittedOnce(true);
     await action.run(
       () =>
         addManagedGuest(
           client,
           snapshot.night.id,
-          parsed.data.displayName,
-          parsed.data.planItems,
+          request.displayName,
+          request.planItems,
           key.current,
         ),
       undefined,
       (next) => {
-        const added = next.members.find(
-          (m) =>
-            m.managedByUserId === next.currentUserId &&
-            !snapshot.members.some((old) => old.id === m.id),
-        );
+        const added = addedManagedGuest(next, request.previousIds, request.displayName);
         router.dismissTo({
           pathname: `/night/${snapshot.night.id}`,
           params: added ? { memberId: added.id } : {},
@@ -92,13 +100,13 @@ function GuestForm({
         label="Display name"
         maxLength={60}
         value={name}
-        editable={!action.busy}
+        editable={!action.busy && !submittedOnce}
         onChangeText={setName}
       />
       <SettingsRow
         label="They agreed to be tracked"
         value={consent}
-        disabled={action.busy}
+        disabled={action.busy || submittedOnce}
         onChange={setConsent}
       />
       <PlanEditor
@@ -106,11 +114,11 @@ function GuestForm({
         onChange={setItems}
         mode={mode}
         onModeChange={setMode}
-        disabled={action.busy}
+        disabled={action.busy || submittedOnce}
       />
       {issue || action.issue ? <Notice error message={issue ?? action.issue ?? ''} /> : null}
       <PrimaryButton
-        label="Add person"
+        label={action.issue ? 'Retry adding person' : 'Add person'}
         icon="person-add-outline"
         busy={action.busy}
         disabled={

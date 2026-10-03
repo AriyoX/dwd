@@ -84,6 +84,23 @@ export function materializeGuest(name: string, mode: PlanSetupMode, items: PlanI
       };
 }
 
+// Compare against the first submission, not a realtime snapshot that may already contain the guest.
+export function addedManagedGuest(
+  snapshot: NightSnapshot,
+  previousIds: readonly string[],
+  name: string,
+) {
+  const candidates = snapshot.members.filter(
+    (member) =>
+      member.memberType === 'guest' &&
+      member.leftAt === null &&
+      member.managedByUserId === snapshot.currentUserId &&
+      member.displayName === name.trim() &&
+      !previousIds.includes(member.id),
+  );
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
 export interface BottleDraft {
   id: string;
   label: string;
@@ -176,6 +193,7 @@ export function featureError(error: unknown) {
     'Check the drink size.',
     'Choose between 1 and 50 drinks.',
     'That participant is no longer active.',
+    'This night already has the maximum managed guests.',
     'You already sent a check-in. Try again in a moment.',
     'You manage this guest. Check in with them directly on this device.',
   ];

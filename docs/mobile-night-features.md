@@ -51,3 +51,20 @@ The shared-bottle follow-up requires `supabase/migrations/20261002181638_shared_
 An installed-build/device pass is still required. No device was connected for this implementation pass. Test light/dark rendering, largest Dynamic Type, VoiceOver/TalkBack, keyboard reachability, sheet interruption/dismissal and haptic timing. With test accounts, verify guest consent/add/edit/remove, check-in receipt/read/cooldown, reminder pause expiry, restricted bottle access, plan conflicts, last partial servings, undo/remaining volume, leaving/putting away and sign-out during a pending request. Do not place emergency calls as part of QA.
 
 Persistent offline logging remains the next independent feature.
+
+## UX verification — 3 October 2026
+
+- Bottle creation now uses compact category choices, a quantity stepper and expandable bottle measurements. The measurements remain visible in the summary, and validation opens the fields. Returning to the shelf resets scrolling and confirms whose plans were updated.
+- Web and native bottle shelves can log the last partial pour directly, with its exact volume in the button. Personal serving sizes and planned quantities stay unchanged; undo restores the poured volume.
+- The native participant picker scrolls horizontally. Managed guests have a direct log button and a shared-bottle shortcut under Manage.
+- Check-in results appear beside the recipient. Marking a reminder read only shows a spinner on that reminder. Settings switches can be tapped anywhere in their row.
+- Emergency call buttons precede the warning-sign list. Emergency numbers and guidance are unchanged; no emergency calls were made during QA.
+- Guest creation retains its submitted details and original participant list for retries. A realtime refresh no longer makes a successfully created guest disappear from the post-save selection. Ambiguous matches return to the night without selecting the wrong guest.
+
+Verification: 306 unit tests, all 349 database assertions, workspace type checks, targeted lint, and iOS/Android Metro/Hermes exports passed. Nine browser scenarios passed across desktop Chromium, mobile Chromium and mobile WebKit, including guest/host main-drink choices, reload persistence, last partial pours and undo. Browser captures are under `.tmp/ui-review/bottle-last-pour-*.png`; native bundles are under `.tmp/feature-review-native/`.
+
+Repository-wide lint still reports environment-variable typing errors in unchanged web files and scripts; the feature files pass targeted lint. No device was connected, so native rendering, large text, screen readers, keyboard reachability and switch touch behavior still require a device pass.
+
+A read-only hosted migration check confirmed that `20261002181638_shared_bottle_creator_plan` is absent. It was applied to the local browser-test backend for this review only. The hosted backend must receive that existing migration before the latest sharing flow can work there.
+
+Deployment follow-up: at the user's request, `20261002181638_shared_bottle_creator_plan` was subsequently pushed to the hosted project. The migration history, updated function signature, creator-plan update and execution permissions were verified; no migrations remain pending.

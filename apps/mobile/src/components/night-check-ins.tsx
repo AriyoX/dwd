@@ -18,11 +18,13 @@ export function useCheckIns(snapshot: NightSnapshot, refresh: () => Promise<void
   const keys = useRef(new RetryKeys(Crypto.randomUUID));
   const inFlight = useRef(false);
   const [sendingMemberId, setSendingMemberId] = useState<string | null>(null);
+  const [feedbackMemberId, setFeedbackMemberId] = useState<string | null>(null);
   async function send(memberId: string) {
     const { member, canCheckIn } = nightAccess(snapshot, memberId);
     if (!client || !member || !canCheckIn || inFlight.current) return;
     inFlight.current = true;
     setSendingMemberId(memberId);
+    setFeedbackMemberId(memberId);
     const scope = `${snapshot.currentUserId}:${snapshot.night.id}:${memberId}`;
     await action.run(
       async () => {
@@ -44,7 +46,7 @@ export function useCheckIns(snapshot: NightSnapshot, refresh: () => Promise<void
     inFlight.current = false;
     setSendingMemberId(null);
   }
-  return { ...action, sendingMemberId, send };
+  return { ...action, sendingMemberId, feedbackMemberId, send };
 }
 
 export function NightCheckIns({ snapshot, now }: { snapshot: NightSnapshot; now: number }) {
@@ -53,6 +55,7 @@ export function NightCheckIns({ snapshot, now }: { snapshot: NightSnapshot; now:
   const query = useAccountQuery(getMyNotificationEvents, `check-ins:${snapshot.night.id}`);
   const refresh = query.refresh;
   const action = useNightAction(query.refresh);
+  const [readingId, setReadingId] = useState<string | null>(null);
   useFocusEffect(
     useCallback(() => {
       const timer = setInterval(() => void refresh(), 15_000);
@@ -78,8 +81,11 @@ export function NightCheckIns({ snapshot, now }: { snapshot: NightSnapshot; now:
           <PrimaryButton
             label="Mark read"
             variant="quiet"
-            busy={action.busy}
+            busy={action.busy && readingId === event.id}
+            busyLabel="Marking read"
+            disabled={action.busy}
             onPress={() => {
+              setReadingId(event.id);
               if (client) void action.run(() => acknowledgeNotification(client, event.id));
             }}
           />

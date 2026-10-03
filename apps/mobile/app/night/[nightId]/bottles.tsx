@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { RefreshControl, Text, View } from 'react-native';
+import { Keyboard, RefreshControl, Text, View, type ScrollView } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -21,6 +21,7 @@ import {
   softDeleteActivity,
 } from '@dwd/data';
 import { Choice } from '@/components/choice';
+import { DrinkQuantity } from '@/components/drink-quantity';
 import { Action, PrimaryButton } from '@/components/primary-button';
 import { LoadingPanel, Notice, Panel, RetryPanel, Screen } from '@/components/screen';
 import { SettingsRow } from '@/components/settings-row';
@@ -43,9 +44,11 @@ export default function BottlesScreen() {
   const { nightId, memberId } = useLocalSearchParams<{ nightId: string; memberId?: string }>();
   const { colors } = useTheme();
   const { snapshot, issue, refresh, loading } = useNight(nightId);
+  const scrollRef = useRef<ScrollView>(null);
   const access = snapshot ? nightAccess(snapshot, memberId ?? snapshot.currentMemberId) : null;
   return (
     <Screen
+      scrollRef={scrollRef}
       insetTop={false}
       refreshControl={
         <RefreshControl
@@ -70,6 +73,10 @@ export default function BottlesScreen() {
           snapshot={snapshot}
           member={access.member}
           refresh={refresh}
+          onNavigate={() => {
+            Keyboard.dismiss();
+            scrollRef.current?.scrollTo({ y: 0, animated: false });
+          }}
         />
       )}
       {snapshot && issue ? <RetryPanel issue={issue} retry={() => void refresh()} /> : null}
@@ -81,10 +88,12 @@ function BottleShelf({
   snapshot,
   member,
   refresh,
+  onNavigate,
 }: {
   snapshot: NightSnapshot;
   member: MemberSnapshot;
   refresh: () => Promise<void>;
+  onNavigate: () => void;
 }) {
   const { client } = useSupabase();
   const router = useRouter();
@@ -92,7 +101,18 @@ function BottleShelf({
   const now = useNow();
   const action = useNightAction(refresh);
   const logging = useLogging(() => void refresh(), snapshot);
-  const [page, setPage] = useState<'shelf' | 'create' | 'plan'>('shelf');
+  const [page, changePage] = useState<'shelf' | 'create' | 'plan'>('shelf');
+  const [formBusy, setFormBusy] = useState(false);
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  function setPage(next: typeof page) {
+    setSavedNotice(null);
+    changePage(next);
+    onNavigate();
+  }
+  function saved(message: string) {
+    setPage('shelf');
+    setSavedNotice(message);
+  }
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const bottles = availableBottles(snapshot, member.id);
@@ -142,11 +162,19 @@ function BottleShelf({
   return (
     <>
       <Text style={typography.body}>For {member.displayName}</Text>
+      {savedNotice ? <Notice message={savedNotice} /> : null}
+      {action.issue || logging.issue ? (
+        <Notice error message={action.issue ?? logging.issue ?? ''} />
+      ) : null}
+      {action.notice || logging.notice ? (
+        <Notice message={action.notice ?? logging.notice ?? ''} />
+      ) : null}
       {page !== 'shelf' ? (
         <PrimaryButton
           label="All bottles"
           icon="chevron-back"
           variant="quiet"
+          disabled={formBusy}
           onPress={() => setPage('shelf')}
         />
       ) : null}
@@ -156,7 +184,14 @@ function BottleShelf({
           snapshot={snapshot}
           member={member}
           refresh={refresh}
-          onSaved={() => setPage('shelf')}
+          onBusy={setFormBusy}
+          onSaved={() =>
+            saved(
+              member.id === snapshot.currentMemberId
+                ? 'Bottle added to your plan.'
+                : `Bottle added to your plan and ${member.displayName}’s plan.`,
+            )
+          }
         />
       ) : page === 'plan' && selected ? (
         <BottlePlan
@@ -164,7 +199,8 @@ function BottleShelf({
           bottle={selected}
           member={member}
           refresh={refresh}
-          onSaved={() => setPage('shelf')}
+          onBusy={setFormBusy}
+          onSaved={() => saved('Bottle plan saved.')}
           onFullPlan={fullPlan}
         />
       ) : page === 'plan' ? (
@@ -274,20 +310,32 @@ function BottleShelf({
                     bottle.remainingMl < 1
                       ? 'Bottle empty'
                       : tracking
-                        ? `Log ${word}`
+                        ? size > bottle.remainingMl
+                          ? `Log remaining ${bottle.remainingMl} ml`
+                          : `Log ${word}`
                         : 'Join bottle'
                   }
                   busy={logging.busy}
-                  disabled={
-                    action.busy ||
-                    bottle.remainingMl < 1 ||
-                    Boolean(tracking && size > bottle.remainingMl)
-                  }
+                  disabled={action.busy || bottle.remainingMl < 1}
                   onPress={() => {
                     if (!tracking) {
                       setSelectedId(bottle.id);
                       setPage('plan');
-                    } else void logging.log(member.id, { planItemId: planned.id });
+                    } else
+                      void logging.log(
+                        member.id,
+                        size > bottle.remainingMl
+                          ? {
+                              customDrink: {
+                                sharedBottleId: bottle.id,
+                                label: bottle.label,
+                                category: bottle.category,
+                                volumeMl: bottle.remainingMl,
+                                abvPercent: bottle.abvPercent,
+                              },
+                            }
+                          : { planItemId: planned.id },
+                      );
                   }}
                 />
                 {tracking ? (
@@ -302,7 +350,9 @@ function BottleShelf({
                   />
                 ) : null}
                 {tracking && bottle.remainingMl > 0 && size > bottle.remainingMl ? (
-                  <Notice message="Less than one drink is left. Adjust the size to log it." />
+                  <Notice
+                    message={`The last ${bottle.remainingMl} ml will count as part of a drink.`}
+                  />
                 ) : null}
                 {canUndo ? (
                   <PrimaryButton
@@ -389,12 +439,6 @@ function BottleShelf({
           ) : null}
         </>
       )}
-      {action.issue || logging.issue ? (
-        <Notice error message={action.issue ?? logging.issue ?? ''} />
-      ) : null}
-      {action.notice || logging.notice ? (
-        <Notice message={action.notice ?? logging.notice ?? ''} />
-      ) : null}
     </>
   );
 }
@@ -404,14 +448,17 @@ function CreateBottle({
   member,
   refresh,
   onSaved,
+  onBusy,
 }: {
   snapshot: NightSnapshot;
   member: MemberSnapshot;
   refresh: () => Promise<void>;
   onSaved: () => void;
+  onBusy: (busy: boolean) => void;
 }) {
   const { client } = useSupabase();
-  const { typography } = useTheme();
+  const { colors, typography } = useTheme();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [draft, setDraft] = useState<BottleDraft>(() => ({
     id: Crypto.randomUUID(),
     label: '',
@@ -433,11 +480,16 @@ function CreateBottle({
   const [requestKey] = useState(Crypto.randomUUID);
   const [issue, setIssue] = useState<string | null>(null);
   const action = useNightAction(refresh);
+  useEffect(() => {
+    onBusy(action.busy);
+    return () => onBusy(false);
+  }, [action.busy, onBusy]);
   const update = (patch: Partial<BottleDraft>) => setDraft((old) => ({ ...old, ...patch }));
   async function save() {
     if (!client || !nightAccess(snapshot, member.id).canLog) return;
     const parsed = materializeBottle(draft, member.id, snapshot.currentMemberId);
     if (!parsed.success) {
+      setDetailsOpen(true);
       setIssue(parsed.error.issues[0]?.message ?? 'Check the bottle details.');
       return;
     }
@@ -473,59 +525,90 @@ function CreateBottle({
       <Text accessibilityRole="header" style={typography.sectionTitle}>
         What’s in the bottle?
       </Text>
-      {(['spirit', 'wine', 'beer', 'cocktail', 'other'] as const).map((category) => (
-        <Choice
-          key={category}
-          label={
-            category === 'spirit'
-              ? 'Spirit / shots'
-              : category.charAt(0).toUpperCase() + category.slice(1)
-          }
-          selected={draft.category === category}
-          disabled={action.busy}
-          onPress={() =>
-            update({
-              category,
-              ...(category === 'wine'
-                ? { abvPercent: '12', pourMl: '150' }
-                : category === 'spirit'
-                  ? { abvPercent: '40', pourMl: '30' }
-                  : category === 'beer'
-                    ? { abvPercent: '5', pourMl: '330' }
-                    : { abvPercent: '' }),
-            })
-          }
-        />
-      ))}
-      <TextField
-        label="Bottle size (ml)"
-        keyboardType="decimal-pad"
-        value={draft.volumeMl}
-        editable={!action.busy}
-        onChangeText={(volumeMl) => update({ volumeMl })}
-      />
-      <TextField
-        label="Alcohol strength (%)"
-        keyboardType="decimal-pad"
-        value={draft.abvPercent}
-        editable={!action.busy}
-        onChangeText={(abvPercent) => update({ abvPercent })}
-      />
-      <TextField
-        label="Drink size (ml)"
-        keyboardType="decimal-pad"
-        value={draft.pourMl}
-        editable={!action.busy}
-        onChangeText={(pourMl) => update({ pourMl })}
-      />
-      <TextField
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {(['spirit', 'wine', 'beer', 'cocktail', 'other'] as const).map((category) => (
+          <View key={category} style={{ flexGrow: 1, flexBasis: '30%' }}>
+            <Choice
+              compact
+              label={
+                category === 'spirit'
+                  ? 'Spirit'
+                  : category.charAt(0).toUpperCase() + category.slice(1)
+              }
+              selected={draft.category === category}
+              disabled={action.busy}
+              onPress={() => {
+                if (category === 'cocktail' || category === 'other') setDetailsOpen(true);
+                update({
+                  category,
+                  ...(category === 'wine'
+                    ? { abvPercent: '12', pourMl: '150' }
+                    : category === 'spirit'
+                      ? { abvPercent: '40', pourMl: '30' }
+                      : category === 'beer'
+                        ? { abvPercent: '5', pourMl: '330' }
+                        : { abvPercent: '' }),
+                });
+              }}
+            />
+          </View>
+        ))}
+      </View>
+      <DrinkQuantity
         label={`Planned ${bottleDrinkWord(draft.category)}s${member.id !== snapshot.currentMemberId ? ' per person' : ''}`}
-        keyboardType="number-pad"
         value={draft.defaultQuantity}
-        editable={!action.busy}
-        onChangeText={(defaultQuantity) => update({ defaultQuantity })}
+        disabled={action.busy}
+        onChange={(defaultQuantity) => update({ defaultQuantity })}
       />
-      <Notice message="Check the bottle’s label. For mixed drinks, count only the alcohol, without the mixer." />
+      <View style={{ gap: 16 }}>
+        <Action
+          label="Bottle details"
+          expanded={detailsOpen}
+          disabled={action.busy}
+          onPress={() => setDetailsOpen(!detailsOpen)}
+          style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+        >
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={typography.sectionTitle}>Bottle details</Text>
+            <Text style={typography.body}>
+              {draft.volumeMl || '—'} ml · {draft.abvPercent || '—'}% · {draft.pourMl || '—'} ml per{' '}
+              {bottleDrinkWord(draft.category)}
+            </Text>
+          </View>
+          <Ionicons
+            name={detailsOpen ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={colors.primary}
+            accessible={false}
+          />
+        </Action>
+        {detailsOpen ? (
+          <>
+            <TextField
+              label="Bottle size (ml)"
+              keyboardType="decimal-pad"
+              value={draft.volumeMl}
+              editable={!action.busy}
+              onChangeText={(volumeMl) => update({ volumeMl })}
+            />
+            <TextField
+              label="Alcohol strength (%)"
+              keyboardType="decimal-pad"
+              value={draft.abvPercent}
+              editable={!action.busy}
+              onChangeText={(abvPercent) => update({ abvPercent })}
+            />
+            <TextField
+              label="Drink size (ml)"
+              keyboardType="decimal-pad"
+              value={draft.pourMl}
+              editable={!action.busy}
+              onChangeText={(pourMl) => update({ pourMl })}
+            />
+          </>
+        ) : null}
+        <Notice message="Check the bottle’s label. For mixed drinks, count only the alcohol, without the mixer." />
+      </View>
       <Text accessibilityRole="header" style={typography.sectionTitle}>
         Who can join?
       </Text>
@@ -606,12 +689,14 @@ function BottlePlan({
   refresh,
   onSaved,
   onFullPlan,
+  onBusy,
 }: {
   bottle: SharedBottle;
   member: MemberSnapshot;
   refresh: () => Promise<void>;
   onSaved: () => void;
   onFullPlan: () => void;
+  onBusy: (busy: boolean) => void;
 }) {
   const { client } = useSupabase();
   const { typography } = useTheme();
@@ -626,6 +711,10 @@ function BottlePlan({
   const [requestKey] = useState(Crypto.randomUUID);
   const [issue, setIssue] = useState<string | null>(null);
   const action = useNightAction(refresh);
+  useEffect(() => {
+    onBusy(action.busy);
+    return () => onBusy(false);
+  }, [action.busy, onBusy]);
   async function save() {
     if (!client) return;
     const parsed = materializeBottlePlan(quantity, size, bottle.volumeMl);
@@ -658,12 +747,11 @@ function BottlePlan({
       <Text style={typography.body}>
         {bottle.remainingMl} ml left · {bottle.abvPercent}% ABV
       </Text>
-      <TextField
+      <DrinkQuantity
         label={`Planned ${bottleDrinkWord(bottle.category)}s`}
         value={quantity}
-        keyboardType="number-pad"
-        editable={!action.busy}
-        onChangeText={setQuantity}
+        disabled={action.busy}
+        onChange={setQuantity}
       />
       <TextField
         label="Drink size (ml)"

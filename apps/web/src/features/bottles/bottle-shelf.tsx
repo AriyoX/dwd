@@ -65,7 +65,7 @@ export function BottleShelf({
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const selected = bottles.find((bottle) => bottle.id === selectedId);
+  const selected = bottles.find((bottle) => bottle.id === selectedId && !bottle.closedAt);
   const active = bottles.filter((bottle) => !bottle.closedAt);
   const disabled = busy || logging || !online;
 
@@ -151,7 +151,9 @@ export function BottleShelf({
             </div>
           )}
           {active.map((bottle) => {
-            const planned = member.planItems.find((item) => item.sharedBottleId === bottle.id);
+            const planned = member.planItems.find(
+              (item) => !item.archivedAt && item.sharedBottleId === bottle.id,
+            );
             const joined = bottle.joinedMemberIds.includes(member.id) && planned;
             const word = bottleDrinkWord(bottle.category);
             const size = planned?.volumeMl ?? bottle.pourMl;
@@ -199,11 +201,7 @@ export function BottleShelf({
                 <div className="bottle-actions">
                   <Button
                     type="button"
-                    disabled={
-                      disabled ||
-                      bottle.remainingMl < 1 ||
-                      Boolean(joined && bottle.remainingMl < size)
-                    }
+                    disabled={disabled || bottle.remainingMl < 1}
                     onClick={() => {
                       if (!joined) {
                         setSelectedId(bottle.id);
@@ -214,7 +212,7 @@ export function BottleShelf({
                         sharedBottleId: bottle.id,
                         label: bottle.label,
                         category: bottle.category,
-                        volumeMl: size,
+                        volumeMl: Math.min(size, bottle.remainingMl),
                         abvPercent: bottle.abvPercent,
                       });
                     }}
@@ -222,7 +220,9 @@ export function BottleShelf({
                     {bottle.remainingMl < 1
                       ? 'Bottle empty'
                       : joined
-                        ? `Log ${word}`
+                        ? bottle.remainingMl < size
+                          ? `Log remaining ${bottle.remainingMl} ml`
+                          : `Log ${word}`
                         : 'Join bottle'}
                   </Button>
                   {joined && (
@@ -241,7 +241,7 @@ export function BottleShelf({
                 </div>
                 {joined && bottle.remainingMl > 0 && bottle.remainingMl < size && (
                   <p className="small muted">
-                    Less than one {word} left. Adjust the size to log it.
+                    The last {bottle.remainingMl} ml will count as part of a {word}.
                   </p>
                 )}
                 {progress > 0 && (
@@ -336,6 +336,11 @@ export function BottleShelf({
           onTracking={onTracking}
           onFullPlan={onFullPlan}
         />
+      )}
+      {(page === 'plan' || page === 'close') && !selected && (
+        <p className="warning-box" role="status">
+          This bottle is no longer available. Return to All bottles to choose another.
+        </p>
       )}
       {page === 'close' && selected && (
         <div className="stack">
@@ -705,7 +710,9 @@ export function BottleProgress({
   bottle: SharedBottle;
   member: MemberSnapshot;
 }) {
-  const plan = member.planItems.find((item) => item.sharedBottleId === bottle.id);
+  const plan = member.planItems.find(
+    (item) => !item.archivedAt && item.sharedBottleId === bottle.id,
+  );
   if (!plan) return null;
   const progress = bottlePlanProgress(bottle.id, member.drinkLogs, plan.volumeMl);
   return (

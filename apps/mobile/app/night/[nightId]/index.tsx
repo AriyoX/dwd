@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { RefreshControl, Share, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Share, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   calculatePlanTotal,
@@ -192,15 +192,23 @@ export default function NightScreen() {
                   <Text accessibilityRole="header" style={typography.sectionTitle}>
                     Logging for
                   </Text>
-                  {manageable.map((m) => (
-                    <Choice
-                      key={m.id}
-                      label={m.displayName}
-                      selected={m.id === member?.id}
-                      disabled={busy || logging.busy}
-                      onPress={() => setSelection({ destination: memberId, memberId: m.id })}
-                    />
-                  ))}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, padding: 4 }}
+                  >
+                    {manageable.map((m) => (
+                      <View key={m.id} style={{ minWidth: 120, maxWidth: 220 }}>
+                        <Choice
+                          compact
+                          label={m.displayName}
+                          selected={m.id === member?.id}
+                          disabled={busy || logging.busy}
+                          onPress={() => setSelection({ destination: memberId, memberId: m.id })}
+                        />
+                      </View>
+                    ))}
+                  </ScrollView>
                 </View>
               ) : null}
               {member ? (

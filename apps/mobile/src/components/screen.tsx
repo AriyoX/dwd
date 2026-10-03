@@ -7,7 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/providers/theme-provider';
 import { radii } from '@/theme/tokens';
@@ -19,12 +19,14 @@ export function Screen({
   refreshControl,
   insetTop = true,
   footer,
+  scrollRef,
 }: {
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   refreshControl?: ScrollViewProps['refreshControl'];
   insetTop?: boolean;
   footer?: ReactNode;
+  scrollRef?: Ref<ScrollView>;
 }) {
   const { colors } = useTheme();
   return (
@@ -39,6 +41,7 @@ export function Screen({
       style={{ flex: 1, backgroundColor: colors.background }}
     >
       <ScrollView
+        ref={scrollRef}
         automaticallyAdjustKeyboardInsets
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[

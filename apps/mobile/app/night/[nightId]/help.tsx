@@ -26,15 +26,6 @@ export default function HelpScreen() {
         <Text accessibilityRole="header" style={typography.sectionTitle}>
           Someone needs help
         </Text>
-        <Text style={typography.body}>
-          Stay with the person. Seek emergency help immediately if you notice any of these signs.
-        </Text>
-        {EMERGENCY_SIGNS.map((sign) => (
-          <View key={sign} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-            <Ionicons name="warning-outline" size={19} color={colors.danger} accessible={false} />
-            <Text style={[typography.body, { flex: 1, color: colors.text }]}>{sign}</Text>
-          </View>
-        ))}
         <Text style={typography.body}>Uganda emergency numbers</Text>
         {EMERGENCY_NUMBERS_UGANDA.map((number) => (
           <PrimaryButton
@@ -46,8 +37,19 @@ export default function HelpScreen() {
           />
         ))}
         <Notice message="Outside Uganda, call your local emergency number. A DWD check-in does not call emergency services." />
+        {issue ? <Notice error message={issue} /> : null}
       </Panel>
-      {issue ? <Notice error message={issue} /> : null}
+      <Panel>
+        <Text style={typography.body}>
+          Stay with the person. Seek emergency help immediately if you notice any of these signs.
+        </Text>
+        {EMERGENCY_SIGNS.map((sign) => (
+          <View key={sign} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+            <Ionicons name="warning-outline" size={19} color={colors.danger} accessible={false} />
+            <Text style={[typography.body, { flex: 1, color: colors.text }]}>{sign}</Text>
+          </View>
+        ))}
+      </Panel>
       <Text style={typography.body}>DWD cannot determine sobriety or driving safety.</Text>
       <PrimaryButton
         label="Emergency number source"

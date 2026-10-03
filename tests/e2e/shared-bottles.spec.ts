@@ -31,6 +31,61 @@ async function login(page: Page, user: Awaited<ReturnType<typeof account>>) {
   await expect(page.getByRole('link', { name: /Start a night/ })).toBeVisible();
 }
 
+test('the last partial pour can be logged and undone without editing the plan', async ({
+  page,
+}, info) => {
+  test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local test backend required.');
+  const host = await account('Ari');
+  const created = await host.client.rpc('start_night_out', {
+    p_creation_key: randomUUID(),
+    p_title: 'Last pour',
+    p_ends_at: new Date(Date.now() + 3 * 3600000).toISOString(),
+    p_timezone: 'UTC',
+    p_host_plan: [],
+    p_guests: [],
+  });
+  if (created.error) throw created.error;
+  const nightId = (created.data as { nightId: string }).nightId;
+  await login(page, host);
+  await page.goto(`/night/${nightId}`);
+  await page.locator('.bottle-launcher').click();
+  const form = page.getByRole('dialog', { name: 'Share a bottle', exact: true });
+  await form.getByLabel('Bottle name').fill('Mini gin');
+  await form.getByLabel('Your shots from this bottle').fill('2');
+  await form.locator('summary').filter({ hasText: 'Bottle details' }).click();
+  await form.getByLabel('Bottle size (ml)').fill('50');
+  await form.getByRole('button', { name: 'Share & start tracking', exact: true }).click();
+  await expect(form).toHaveCount(0);
+  await page.locator('.bottle-launcher').click();
+  const shelf = page.getByRole('dialog', { name: 'Shared bottles', exact: true });
+  await shelf.getByRole('button', { name: 'Log shot', exact: true }).click();
+  const remainder = shelf.getByRole('button', { name: 'Log remaining 20 ml', exact: true });
+  await expect(remainder).toBeEnabled();
+  await shelf.screenshot({
+    path: `.tmp/ui-review/bottle-last-pour-${info.project.name}.png`,
+    animations: 'disabled',
+  });
+  await remainder.click();
+  await expect(shelf.getByRole('button', { name: 'Bottle empty', exact: true })).toBeDisabled();
+  await expect(shelf.getByText('0 ml left', { exact: true })).toBeVisible();
+  await expect(shelf.getByRole('progressbar')).toHaveAttribute(
+    'aria-valuetext',
+    '1.7 of 2 shots logged',
+  );
+  await shelf.getByRole('button', { name: 'Undo last drink', exact: true }).click();
+  await expect(remainder).toBeEnabled();
+  await expect(shelf.getByText('20 ml left', { exact: true })).toBeVisible();
+  const latest = await host.client.rpc('get_night_snapshot', { p_night_id: nightId });
+  if (latest.error) throw latest.error;
+  const snapshot = latest.data as unknown as NightSnapshot;
+  const member = snapshot.members.find((person) => person.id === snapshot.currentMemberId);
+  expect(member?.planItems[0]?.volumeMl).toBe(30);
+  expect(member?.planItems[0]?.plannedQuantity).toBe(2);
+  expect(member?.drinkLogs.filter((log) => !log.deletedAt).map((log) => log.volumeMl)).toEqual([
+    30,
+  ]);
+});
+
 test('sharing while tracking a new guest adds both plans and asks about each main drink', async ({
   page,
 }, info) => {
