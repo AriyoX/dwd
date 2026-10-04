@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { PendingDrinkLog } from '@dwd/contracts';
+import { withRequestTimeout } from './request-timeout';
 import {
   calculateEthanolGrams,
   calculatePlanTotal,
@@ -115,8 +116,8 @@ export class NativeLogOutbox {
     public readonly store: NativePendingLogStore,
     private readonly sender: {
       current: () => boolean;
-      send: (record: NativePendingLog) => Promise<SendResult>;
-      delete: (id: string, kind: 'alcohol' | 'water') => Promise<void>;
+      send: (record: NativePendingLog, signal?: AbortSignal) => Promise<SendResult>;
+      delete: (id: string, kind: 'alcohol' | 'water', signal?: AbortSignal) => Promise<void>;
     },
     private readonly changed: (synced: boolean) => void = () => undefined,
   ) {}
@@ -162,7 +163,7 @@ export class NativeLogOutbox {
       this.store.update(key, { status: 'syncing', attempted: true });
       this.changed(false);
       if (!this.current()) return 'inactive';
-      const result = await this.sender.send(record);
+      const result = await withRequestTimeout((signal) => this.sender.send(record, signal));
       if (!this.current()) return 'inactive';
       if (result.status === 'created' || result.status === 'duplicate') {
         try {
@@ -223,6 +224,10 @@ export class NativeLogOutbox {
     const records = this.store
       .getAll()
       .sort((a, b) => Date.parse(a.createdLocallyAt) - Date.parse(b.createdLocallyAt));
+    // A successful read must clear a prior storage issue even if every entry is
+    // waiting for review (or the queue is empty), so no send will publish state.
+    if (!this.current()) return;
+    this.changed(false);
     for (const record of records) {
       if (!this.current()) return;
       if (record.status === 'needs_confirmation' || record.status === 'permanent_failure') continue;
@@ -261,10 +266,12 @@ export class NativeLogOutbox {
         record.status !== 'needs_confirmation' &&
         record.status !== 'permanent_failure'
       ) {
-        const result = await this.sender.send(record);
+        const result = await withRequestTimeout((signal) => this.sender.send(record, signal));
         if (!this.current()) return;
         if (result.status === 'created' || result.status === 'duplicate') {
-          await this.sender.delete(result.log.id, record.kind);
+          await withRequestTimeout((signal) =>
+            this.sender.delete(result.log.id, record.kind, signal),
+          );
           if (!this.current()) return;
         } else if (result.status === 'temporarily_failed') {
           throw new Error('Reconnect to check whether this entry saved before removing it.');

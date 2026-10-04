@@ -20,13 +20,14 @@ import { PendingLogs } from '@/components/pending-logs';
 
 export default function TonightScreen() {
   const router = useRouter();
-  const { status } = useSupabase();
+  const { status, session } = useSupabase();
   const { colors, typography } = useTheme();
   const {
     data: nights,
     loading,
     issue,
     refresh,
+    cached,
   } = useAccountQuery(getActiveNights, 'active-nights', true);
   return (
     <Screen
@@ -54,13 +55,19 @@ export default function TonightScreen() {
         </Text>
       </View>
       <ScreenHeading title="Tonight" />
-      <PendingLogs />
+      <PendingLogs key={session?.user.id} />
       {status === 'signed-in' ? (
         <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>
             Active nights
           </Text>
-          {issue ? <RetryPanel issue={issue} retry={() => void refresh()} /> : null}
+          {issue ? (
+            cached ? (
+              <Notice message={issue} />
+            ) : (
+              <RetryPanel issue={issue} retry={() => void refresh()} />
+            )
+          ) : null}
           {!nights && loading ? (
             <LoadingPanel />
           ) : nights?.length === 0 ? (

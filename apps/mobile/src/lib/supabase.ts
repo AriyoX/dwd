@@ -2,6 +2,7 @@ import 'expo-sqlite/localStorage/install';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
+import { nativeSessionKey, readOfflineSession } from './offline-session';
 
 let client: SupabaseClient<Database> | null | undefined;
 
@@ -26,6 +27,7 @@ export function getSupabaseClient(): SupabaseClient<Database> | null {
 
   client = createClient<Database>(url, publishableKey, {
     auth: {
+      storageKey: nativeSessionKey(url),
       storage: globalThis.localStorage,
       autoRefreshToken: true,
       persistSession: true,
@@ -35,4 +37,9 @@ export function getSupabaseClient(): SupabaseClient<Database> | null {
   });
 
   return client;
+}
+
+export function restoreOfflineSession(error: unknown) {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  return url ? readOfflineSession(globalThis.localStorage, nativeSessionKey(url), error) : null;
 }

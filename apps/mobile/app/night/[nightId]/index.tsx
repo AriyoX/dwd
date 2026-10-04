@@ -46,7 +46,7 @@ export default function NightScreen() {
   const router = useRouter();
   const { client, status } = useSupabase();
   const { colors, typography } = useTheme();
-  const { snapshot, issue, refresh, connected, now, loading } = useNight(nightId);
+  const { snapshot, issue, refresh, connected, now, loading, cached } = useNight(nightId);
   const logging = useLogging(() => {
     void refresh();
   }, snapshot);
@@ -182,7 +182,11 @@ export default function NightScreen() {
               : `Planned end · ${new Date(snapshot.night.endsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: snapshot.night.timezone })}`}
           </Text>
           {issue ? (
-            <RetryPanel issue={issue} retry={() => void refresh()} />
+            cached ? (
+              <Notice message={issue} />
+            ) : (
+              <RetryPanel issue={issue} retry={() => void refresh()} />
+            )
           ) : !connected && snapshot.night.status === 'active' ? (
             <Notice message="Reconnecting to live updates" />
           ) : null}

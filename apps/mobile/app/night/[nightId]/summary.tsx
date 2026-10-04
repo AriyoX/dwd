@@ -22,7 +22,7 @@ export default function SummaryScreen() {
   const router = useRouter();
   const { status } = useSupabase();
   const { colors, typography } = useTheme();
-  const { snapshot, issue, refresh, loading } = useNight(nightId, true);
+  const { snapshot, issue, refresh, loading, cached } = useNight(nightId, true);
   const member = snapshot?.members.find((m) => m.id === snapshot.currentMemberId);
   return (
     <Screen
@@ -91,7 +91,13 @@ export default function SummaryScreen() {
               ))}
             </Panel>
           ) : null}
-          {issue ? <RetryPanel issue={issue} retry={() => void refresh()} /> : null}
+          {issue ? (
+            cached ? (
+              <Notice message={issue} />
+            ) : (
+              <RetryPanel issue={issue} retry={() => void refresh()} />
+            )
+          ) : null}
           <PrimaryButton
             label="Back to history"
             variant="secondary"

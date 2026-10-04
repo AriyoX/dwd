@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { confirmationMessage, type NightSnapshot } from '@dwd/core';
 import { useOffline } from '@/providers/offline-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { pendingForSnapshot, type NativePendingLog } from '@/lib/offline-logging';
 import { confirmAction } from '@/lib/confirm';
-import { PrimaryButton } from './primary-button';
+import { Action, PrimaryButton } from './primary-button';
 import { Notice, Panel } from './screen';
 
 export function PendingLogs({
@@ -19,14 +20,15 @@ export function PendingLogs({
   const { outbox, records, issue, retry } = useOffline();
   const { colors, typography } = useTheme();
   const router = useRouter();
-  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<{ key: string; remove: boolean } | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const visible = snapshot
     ? pendingForSnapshot(snapshot, records)
     : records.filter((record) => !nightId || record.nightId === nightId);
   async function act(record: NativePendingLog, remove: boolean) {
-    if (!outbox || busyKey) return;
-    setBusyKey(record.idempotencyKey);
+    if (!outbox || busyAction) return;
+    setBusyAction({ key: record.idempotencyKey, remove });
     setMessage(null);
     try {
       if (remove) {
@@ -63,15 +65,55 @@ export function PendingLogs({
             : 'Could not change this entry. Reconnect and retry.',
         );
     } finally {
-      if (outbox.current()) setBusyKey(null);
+      if (outbox.current()) setBusyAction(null);
     }
   }
   if (!visible.length && !issue && !message) return null;
   return (
     <View style={{ gap: 12 }}>
-      <Text accessibilityRole="header" style={typography.sectionTitle}>
-        Entries waiting to sync
-      </Text>
+      {visible.length ? (
+        <Action
+          label={`${visible.length} pending ${visible.length === 1 ? 'entry' : 'entries'}`}
+          expanded={expanded}
+          onPress={() => setExpanded((value) => !value)}
+          style={{
+            padding: 16,
+            borderRadius: 14,
+            backgroundColor: colors.surfaceSoft,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <Ionicons
+            name="cloud-upload-outline"
+            size={22}
+            color={colors.primary}
+            accessible={false}
+          />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
+              {visible.length} pending {visible.length === 1 ? 'entry' : 'entries'}
+            </Text>
+            <Notice
+              message={
+                visible.some(
+                  (record) =>
+                    record.status === 'needs_confirmation' || record.status === 'permanent_failure',
+                )
+                  ? 'Some entries need your attention'
+                  : 'Saved on this device · Syncs while the app is open'
+              }
+            />
+          </View>
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.muted}
+            accessible={false}
+          />
+        </Action>
+      ) : null}
       {issue ? (
         <>
           <Notice error message={issue} />
@@ -79,68 +121,78 @@ export function PendingLogs({
         </>
       ) : null}
       {message ? <Notice message={message} error /> : null}
-      {snapshot?.night.status === 'ended' && visible.length ? (
+      {expanded && snapshot?.night.status === 'ended' && visible.length ? (
         <Notice message="Reconnect within 24 hours of the night ending to save entries made before it ended." />
       ) : null}
-      {visible.map((record) => (
-        <Panel key={record.idempotencyKey}>
-          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
-            {record.memberDisplayName} ·{' '}
-            {record.kind === 'water'
-              ? 'Chaser'
-              : (record.planItemLabel ?? record.drinkSnapshot?.label ?? 'Drink')}
-          </Text>
-          <Text style={typography.body}>
-            {new Date(record.consumedAt).toLocaleString([], {
-              ...(snapshot ? { timeZone: snapshot.night.timezone } : {}),
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-          </Text>
-          {record.drinkSnapshot ? (
-            <Text style={typography.body}>
-              {record.drinkSnapshot.volumeMl} ml · {record.drinkSnapshot.abvPercent}% ABV
+      {expanded &&
+        visible.map((record) => (
+          <Panel key={record.idempotencyKey}>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
+              {record.memberDisplayName} ·{' '}
+              {record.kind === 'water'
+                ? 'Chaser'
+                : (record.planItemLabel ?? record.drinkSnapshot?.label ?? 'Drink')}
             </Text>
-          ) : null}
-          <Notice
-            error={record.status === 'permanent_failure'}
-            message={
-              record.status === 'needs_confirmation'
-                ? 'Review needed'
-                : record.status === 'permanent_failure'
-                  ? 'Could not save'
-                  : record.status === 'syncing'
-                    ? 'Syncing'
-                    : 'Saved on this device'
-            }
-          />
-          {record.lastError ? <Notice message={record.lastError} /> : null}
-          {record.status !== 'permanent_failure' ? (
-            <PrimaryButton
-              label={record.status === 'needs_confirmation' ? 'Review warning' : 'Retry sync'}
-              variant="secondary"
-              busy={busyKey === record.idempotencyKey}
-              disabled={Boolean(busyKey) || record.status === 'syncing'}
-              onPress={() => void act(record, false)}
+            <Text style={typography.body}>
+              {new Date(record.consumedAt).toLocaleString([], {
+                ...(snapshot ? { timeZone: snapshot.night.timezone } : {}),
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </Text>
+            {record.drinkSnapshot ? (
+              <Text style={typography.body}>
+                {record.drinkSnapshot.volumeMl} ml · {record.drinkSnapshot.abvPercent}% ABV
+              </Text>
+            ) : null}
+            <Notice
+              error={record.status === 'permanent_failure'}
+              message={
+                record.status === 'needs_confirmation'
+                  ? 'Review needed'
+                  : record.status === 'permanent_failure'
+                    ? 'Could not save'
+                    : record.status === 'syncing'
+                      ? 'Syncing…'
+                      : 'Waiting to sync'
+              }
             />
-          ) : null}
-          <PrimaryButton
-            label="Remove entry"
-            variant="quiet"
-            disabled={Boolean(busyKey) || record.status === 'syncing'}
-            onPress={() => void act(record, true)}
-          />
-          {!nightId ? (
+            {record.lastError &&
+            record.lastError !== 'Saved on this device. Will retry when connected.' ? (
+              <Notice message={record.lastError} />
+            ) : null}
+            {record.status !== 'permanent_failure' ? (
+              <PrimaryButton
+                label={record.status === 'needs_confirmation' ? 'Review warning' : 'Retry sync'}
+                variant="secondary"
+                busy={
+                  (busyAction?.key === record.idempotencyKey && !busyAction.remove) ||
+                  record.status === 'syncing'
+                }
+                busyLabel={record.status === 'needs_confirmation' ? 'Reviewing warning' : 'Syncing'}
+                disabled={Boolean(busyAction)}
+                onPress={() => void act(record, false)}
+              />
+            ) : null}
             <PrimaryButton
-              label="Open night"
+              label="Remove entry"
               variant="quiet"
-              onPress={() => router.push(`/night/${record.nightId}`)}
+              busy={busyAction?.key === record.idempotencyKey && busyAction.remove}
+              busyLabel="Removing entry"
+              disabled={Boolean(busyAction) || record.status === 'syncing'}
+              onPress={() => void act(record, true)}
             />
-          ) : null}
-        </Panel>
-      ))}
+            {!nightId ? (
+              <PrimaryButton
+                label="Open night"
+                variant="quiet"
+                onPress={() => router.push(`/night/${record.nightId}`)}
+              />
+            ) : null}
+          </Panel>
+        ))}
     </View>
   );
 }

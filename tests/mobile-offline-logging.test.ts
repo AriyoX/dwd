@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database, DrinkLogResult, NightSnapshot } from '@dwd/core';
 import {
@@ -9,6 +9,7 @@ import {
   type NativePendingLog,
 } from '../apps/mobile/src/lib/offline-logging';
 import { nativeLogSender } from '../apps/mobile/src/lib/offline-logging-api';
+import { readOfflineSession, nativeSessionKey } from '../apps/mobile/src/lib/offline-session';
 import {
   clearOfflineCache,
   isConnectionFailure,
@@ -145,6 +146,78 @@ function deferred<T>() {
 }
 
 describe('native durable outbox', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('aborts a stalled Supabase request and retains its durable identity for retry', async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    let signal: AbortSignal | null | undefined;
+    const fetch = vi.fn<typeof globalThis.fetch>((_input, init) => {
+      signal = init?.signal;
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(new Error('Aborted')), { once: true });
+      });
+    });
+    const client = createClient<Database>('https://offline-test.supabase.co', 'test-key', {
+      accessToken: () => Promise.resolve('actor-token'),
+      global: { fetch },
+    });
+    const outbox = new NativeLogOutbox(
+      f.store,
+      nativeLogSender(client, () => true),
+    );
+    outbox.enqueue(record());
+    const replay = outbox.retryAll();
+    await vi.advanceTimersByTimeAsync(10_001);
+    await replay;
+    expect(signal?.aborted).toBe(true);
+    expect(f.store.getAll()).toMatchObject([
+      { idempotencyKey: id(10), consumedAt: time, status: 'failed' },
+    ]);
+    fetch.mockResolvedValue(
+      new Response(JSON.stringify(accepted(record(), 'duplicate')), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    await outbox.retryAll();
+    expect(f.store.getAll()).toEqual([]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('releases a stalled replay and reconciles a late accepted response with the same key', async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    f.outbox.enqueue(record());
+    const request = deferred<ReturnType<typeof accepted>>();
+    f.sender.send.mockReturnValueOnce(request.promise);
+    const replay = f.outbox.retryAll();
+    await vi.advanceTimersByTimeAsync(10_001);
+    await replay;
+    expect(f.store.getAll()).toMatchObject([{ status: 'failed', attempted: true }]);
+    request.resolve(accepted(record()));
+    await Promise.resolve();
+    expect(f.store.getAll()).toHaveLength(1);
+    f.sender.send.mockResolvedValueOnce(accepted(record(), 'duplicate'));
+    await f.outbox.retryAll();
+    expect(f.store.getAll()).toEqual([]);
+    expect(f.sender.send.mock.calls.map(([entry]) => entry.idempotencyKey)).toEqual([
+      id(10),
+      id(10),
+    ]);
+  });
+
+  it('keeps an ambiguous entry if a removal check stalls', async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    f.store.save({ ...record(), attempted: true, status: 'failed' });
+    f.sender.send.mockReturnValueOnce(new Promise(() => undefined));
+    const removal = expect(f.outbox.remove(id(10))).rejects.toThrow('Connection timed out');
+    await vi.advanceTimersByTimeAsync(10_001);
+    await removal;
+    expect(f.store.getAll()).toHaveLength(1);
+    expect(f.sender.delete).not.toHaveBeenCalled();
+  });
   it('survives a restart for planned drinks, chasers and custom drinks without changing their IDs or time', async () => {
     const f = fixture();
     const records = [record(), record(11, 'water'), record(12, { customDrink: drink })];
@@ -361,7 +434,7 @@ describe('native durable outbox', () => {
     await f.outbox.syncOne(id(10));
     f.sender.send.mockResolvedValueOnce(accepted(water, 'duplicate'));
     await f.outbox.remove(id(10));
-    expect(f.sender.delete).toHaveBeenCalledWith(id(50), 'water');
+    expect(f.sender.delete).toHaveBeenCalledWith(id(50), 'water', expect.any(AbortSignal));
     expect(f.store.getAll()).toEqual([]);
   });
 
@@ -398,6 +471,7 @@ describe('offline warnings and reconciliation', () => {
     await f.outbox.confirm(id(12));
     expect(f.sender.send).toHaveBeenCalledWith(
       expect.objectContaining({ acknowledgePlanExceeded: true }),
+      expect.any(AbortSignal),
     );
   });
 
@@ -515,6 +589,81 @@ describe('native outbox API boundary', () => {
 });
 
 describe('offline cache boundaries', () => {
+  it('recovers an expired session that the real Supabase SDK preserves after a retryable refresh failure', async () => {
+    vi.useFakeTimers();
+    try {
+      const storage = device();
+      const session = {
+        access_token: 'expired',
+        refresh_token: 'refresh',
+        expires_in: 3600,
+        expires_at: 1,
+        token_type: 'bearer',
+        user: {
+          id: owner,
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: time,
+        },
+      };
+      const key = nativeSessionKey('https://offline-auth.supabase.co');
+      storage.setItem(key, JSON.stringify(session));
+      const client = createClient('https://offline-auth.supabase.co', 'test-key', {
+        auth: {
+          storage,
+          storageKey: key,
+          autoRefreshToken: false,
+          persistSession: true,
+          detectSessionInUrl: false,
+        },
+        global: {
+          fetch: () =>
+            Promise.resolve(
+              new Response(JSON.stringify({ message: 'Service unavailable' }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            ),
+        },
+      });
+      const request = client.auth.getSession();
+      await vi.advanceTimersByTimeAsync(31_000);
+      const result = await request;
+      expect(result.data.session).toBeNull();
+      expect(result.error?.name).toBe('AuthRetryableFetchError');
+      expect(readOfflineSession(storage, key, result.error)).toEqual(session);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('restores the SDK session only for transport failures and never resurrects signed-out storage', () => {
+    const storage = device();
+    const key = nativeSessionKey('https://test-project.supabase.co');
+    expect(key).toBe('sb-test-project-auth-token');
+    const session = {
+      access_token: 'expired',
+      refresh_token: 'refresh',
+      expires_in: 3600,
+      token_type: 'bearer',
+      user: {
+        id: owner,
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: time,
+      },
+      expires_at: 1,
+    };
+    storage.setItem(key, JSON.stringify(session));
+    expect(readOfflineSession(storage, key, new Error('Network request failed'))).toEqual(session);
+    expect(readOfflineSession(storage, key, { message: 'Invalid token', status: 401 })).toBeNull();
+    expect(readOfflineSession(storage, key, null)).toBeNull();
+    storage.removeItem(key);
+    expect(readOfflineSession(storage, key, new Error('Network request failed'))).toBeNull();
+    storage.setItem(key, '{corrupt');
+    expect(readOfflineSession(storage, key, new Error('Network request failed'))).toBeNull();
+  });
   it('allows offline profile restoration only for a previously verified actor and invalidates explicit denial', () => {
     const storage = device();
     const offline = new Error('Network request failed');

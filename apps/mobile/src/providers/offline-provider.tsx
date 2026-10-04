@@ -77,7 +77,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     setBundle({ owner, outbox });
     publish(false);
     // Invalidate synchronously at the auth event, before React renders the next account.
-    const subscription = client.auth.onAuthStateChange((_event, nextSession) => {
+    const subscription = client.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'INITIAL_SESSION') return;
       currentSession.current = nextSession;
       if (nextSession?.user.id !== owner) {
         active = false;

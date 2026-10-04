@@ -10,7 +10,8 @@ import {
 } from 'react';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, restoreOfflineSession } from '@/lib/supabase';
+import { withRequestTimeout } from '@/lib/request-timeout';
 import { accountAccess, type AccessState } from '@/lib/auth-routing';
 import { resolveProfileRead } from '@/lib/offline-cache';
 
@@ -77,19 +78,16 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
           status: resolveProfileRead(globalThis.localStorage, owner, found, error),
         });
     };
-    void client
-      .from('profiles')
-      .select('id')
-      .eq('id', owner)
-      .maybeSingle()
-      .then(
-        ({ data, error }) => {
-          settle(Boolean(data), error);
-        },
-        (error: unknown) => {
-          settle(false, error);
-        },
-      );
+    void withRequestTimeout((signal) =>
+      client.from('profiles').select('id').eq('id', owner).abortSignal(signal).maybeSingle(),
+    ).then(
+      ({ data, error }) => {
+        settle(Boolean(data), error);
+      },
+      (error: unknown) => {
+        settle(false, error);
+      },
+    );
     return () => {
       current = false;
     };
@@ -102,6 +100,9 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     let authVersion = 0;
     const authSubscription = client.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return;
+      // getSession below handles initial transport errors explicitly. INITIAL_SESSION
+      // can contain null when a persisted, expired session cannot refresh offline.
+      if (event === 'INITIAL_SESSION') return;
       authVersion++;
       setSession(nextSession);
       setStatus(nextSession ? 'signed-in' : 'signed-out');
@@ -122,22 +123,19 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     else void client.auth.stopAutoRefresh();
 
     const initialVersion = authVersion;
-    void client.auth
-      .getSession()
+    const restore = (nextSession: Session | null, error: unknown) => {
+      if (!mounted || authVersion !== initialVersion) return;
+      const restored = nextSession ?? restoreOfflineSession(error);
+      setSession(restored);
+      if (!restored) markRecovery(null);
+      setStatus(restored ? 'signed-in' : error ? 'error' : 'signed-out');
+      setIssue(error && !restored ? 'Could not restore your session. Sign in again.' : null);
+    };
+    void withRequestTimeout(() => client.auth.getSession())
       .then(({ data, error }) => {
-        if (!mounted || authVersion !== initialVersion) return;
-        setSession(data.session);
-        if (!data.session) markRecovery(null);
-        setStatus(error ? 'error' : data.session ? 'signed-in' : 'signed-out');
-        setIssue(error ? 'Could not restore your session. Sign in again.' : null);
+        restore(data.session, error);
       })
-      .catch(() => {
-        if (!mounted || authVersion !== initialVersion) return;
-        setSession(null);
-        markRecovery(null);
-        setStatus('error');
-        setIssue('Could not restore your session. Sign in again.');
-      });
+      .catch((error: unknown) => restore(null, error));
 
     return () => {
       mounted = false;

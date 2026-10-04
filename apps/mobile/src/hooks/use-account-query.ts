@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
 import { useSupabase } from '@/providers/supabase-provider';
+import { withRequestTimeout } from '@/lib/request-timeout';
 import {
   clearOfflineCache,
   isConnectionFailure,
@@ -30,7 +31,11 @@ export function useAccountQuery<T>(
     const request = ++version.current;
     setLoading(true);
     try {
-      const value = await load(client);
+      const value = await withRequestTimeout((signal) => {
+        const scoped = Object.create(client) as SupabaseClient<Database>;
+        scoped.rpc = (fn, args, options) => client.rpc(fn, args, options).abortSignal(signal);
+        return load(scoped);
+      });
       if (focused.current && request === version.current) {
         if (cache) writeOfflineCache(globalThis.localStorage, owner, scope, value);
         setData({ owner, scope, value });

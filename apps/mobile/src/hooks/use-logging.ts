@@ -139,7 +139,7 @@ export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null)
           bottleAttempt.current?.fingerprint === JSON.stringify([owner, targetMemberId, choice])
             ? 'Shared bottles need a connection. Retry to check and save the same pour.'
             : durable
-              ? 'Entry kept on this device. Review it in Entries waiting to sync.'
+              ? 'Entry kept on this device. Open Pending entries to review it.'
               : 'Could not save on this device. Free some storage and try again.',
         );
       return false;
