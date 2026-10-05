@@ -94,6 +94,7 @@ function Navigation() {
         <Stack.Screen name="auth/callback" options={{ title: 'Confirm account' }} />
         <Stack.Screen name="legal" options={{ title: 'DWD' }} />
         <Stack.Protected guard={access === 'ready'}>
+          <Stack.Screen name="tour" options={{ title: 'Practice tour' }} />
           <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
           <Stack.Screen name="profile" options={{ ...sheet, title: 'Edit profile' }} />
           <Stack.Screen name="support" options={{ title: 'Support & feedback' }} />
@@ -143,6 +144,7 @@ function Navigation() {
             }}
           />
           <Stack.Screen name="night/[nightId]/summary" options={{ title: 'Night recap' }} />
+          <Stack.Screen name="night/[nightId]/photos" options={{ title: 'Photo memories' }} />
         </Stack.Protected>
       </Stack>
     </NavigationThemeProvider>

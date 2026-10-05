@@ -14,11 +14,13 @@ export function clearDeletedAccountData(
     pushPreferenceKey(owner),
     pushRegistrationKey(owner),
     `dwd.mobile.pending-logs.v1:${owner}`,
+    `dwd.mobile.tour.v1:${owner}`,
   ]);
   const prefixes = [
     `dwd.mobile.cache.v1:${owner}:`,
     `dwd.mobile.invite.v1:${owner}:`,
     `dwd.mobile.planned-end.v1:${owner}:`,
+    `dwd.mobile.photo-task.v1:${owner}:`,
   ];
   const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i));
   for (const key of keys)

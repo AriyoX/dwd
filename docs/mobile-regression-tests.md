@@ -11,6 +11,7 @@ Updated 5 October 2026. Aim: repeatable release confidence without asking an age
 - `native_notifications.sql` (29 isolated PostgreSQL assertions).
 - Native/browser notification worker tests (15 cases).
 - Hosted migration/RLS/grant checks and a real scheduled worker HTTP 200 with an empty native queue.
+- Follow-up: 14 memories/tour tests, 16 onboarding/route tests, the 17 P2 tests and an Android Metro export. The new photo modules still need a rebuilt native binary.
 
 Physical devices, the new Maestro flow, signed binaries, lint and the complete suites were **not** run in this review. Previous implementation-pass results are historical, not evidence for a newly signed release.
 
@@ -22,7 +23,7 @@ Quick changed-feature checks:
 
 ```powershell
 npm run typecheck --workspace @dwd/mobile
-npx vitest run tests/mobile-p2-features.test.ts
+npx vitest run tests/mobile-p2-features.test.ts tests/mobile-onboarding.test.ts tests/mobile-memories-tour.test.ts
 npm run test:mobile
 node scripts/test-database.mjs native_notifications.sql
 deno test --config supabase/functions/dispatch-notifications/deno.json supabase/functions/dispatch-notifications/handler_test.ts supabase/functions/dispatch-notifications/native_test.ts
@@ -82,6 +83,16 @@ Use accounts A (host), B (member), C (unrelated), a consenting managed guest, a 
 | R1  | Install testing APK, stop Metro, launch/restart; upgrade with queued logs                                       | Starts independently; durable entries survive compatible upgrade                                                      | Maestro smoke plus upgrade flow                                 |
 
 Notification checks must include Android and iOS; an Android emulator pass does not establish APNs behavior. Test denied permission and account switching before considering delivery complete.
+
+### Memories, detailed recaps and practice tour
+
+- **M1 — upload recovery:** choose an image, force-stop before upload, reopen and upload. Drop the response after Storage upload and again after registration; retry the saved task. Assert one object/row with the original ID. Check the two-photo quota, unsupported images and preparation errors. Run with staging fixtures and the proxy described below.
+- **M2 — privacy and removal:** A uploads, B views, C is denied. B has no delete control and cannot delete through the API. A deletes from web; mobile refresh removes the photo. Fail Storage deletion: keep the row and offer retry. Switch accounts during preparation/upload; never show the old account's task or signed URLs. Schedule deletion on a disposable account and verify only its local photo files are cleared.
+- **M3 — viewer:** open, close, previous/next, rotation, failed/expired URL, light/dark, large text and screen reader. On iOS check pinch zoom. Check limited/denied photo access and JPEG conversion on installed Android and iOS builds. No camera/microphone permission should be requested.
+- **R2 — detailed recap:** use a fixture with an extended end, actual end, after-end and catch-up entries, removed logs, archived plans and a managed guest. Compare displayed quantities/grams with the shared calculations and web recap. A personal-scope recap must not expose other members.
+- **T1 — practice isolation:** exercise all nine steps, exceed the sample plan, cancel/confirm, undo a bottle serving, skip, restart and replay from Account. No real night/log/invitation/check-in/photo/permission/call mutation may occur. Progress belongs to the signed-in account on that device; sample entries reset on remount. Verify this with network/DB assertions alongside a Maestro UI flow.
+
+The 14 focused tests cover protocol/reducer boundaries; M1–M3, R2 and T1 installed-device journeys are still manual until their Maestro and staging fixture flows are added.
 
 ## Automate progressively
 

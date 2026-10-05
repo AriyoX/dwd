@@ -13,6 +13,14 @@
       "expo-status-bar",
       "expo-apple-authentication",
       "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose photos to share with people from your night.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "ios": {

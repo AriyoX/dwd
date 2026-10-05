@@ -17,6 +17,7 @@ import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { PendingLogs } from '@/components/pending-logs';
+import { TourEntry } from '@/components/tour-entry';
 
 export default function TonightScreen() {
   const router = useRouter();
@@ -56,6 +57,7 @@ export default function TonightScreen() {
       </View>
       <ScreenHeading title="Tonight" />
       <PendingLogs key={session?.user.id} />
+      {session ? <TourEntry key={session.user.id} owner={session.user.id} /> : null}
       {status === 'signed-in' ? (
         <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>

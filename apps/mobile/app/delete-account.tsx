@@ -16,6 +16,7 @@ import { useAccountQuery } from '@/hooks/use-account-query';
 import { actorClient } from '@/lib/actor-client';
 import { authHandoff } from '@/lib/auth-state';
 import { clearDeletedAccountData } from '@/lib/account-cleanup';
+import { clearAccountPhotoFiles } from '@/lib/photo-files';
 import { confirmAction } from '@/lib/confirm';
 import { withRequestTimeout } from '@/lib/request-timeout';
 import { useSupabase } from '@/providers/supabase-provider';
@@ -58,6 +59,8 @@ function Deletion() {
     // Scheduling is already complete. A failed logout must offer logout retry only.
     await notifications.deactivate();
     if (!active()) return;
+    // This account's confirmed deletion includes unfinished local photo copies.
+    clearAccountPhotoFiles(session.user.id);
     const { error } = await client.auth.signOut({ scope: 'global' });
     if (error) throw error;
     offline.outbox?.dispose();
@@ -118,7 +121,7 @@ function Deletion() {
     <Screen insetTop={false}>
       <ScreenHeading title="Delete your account" />
       <Notice message="Your account and uploaded photos will be deleted after 30 days. Signing in before deletion starts cancels it." />
-      <Notice message="Shared nights retain anonymous records. Nights you host will be closed. Unfinished setups and messages on this device will be removed." />
+      <Notice message="Shared nights retain anonymous records. Nights you host will be closed. Unfinished setups, messages and photo uploads on this device will be removed." />
       {query.loading ? <LoadingPanel /> : null}
       {query.issue ? (
         <RetryPanel issue={query.issue} retry={() => void query.refresh()} />

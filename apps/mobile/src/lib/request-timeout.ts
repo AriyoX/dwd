@@ -2,6 +2,7 @@
 // A timed-out write may still reach the server; retries must retain its original key.
 export async function withRequestTimeout<T>(
   request: (signal: AbortSignal) => PromiseLike<T>,
+  timeoutMs = 10_000,
 ): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const controller = new AbortController();
@@ -12,7 +13,7 @@ export async function withRequestTimeout<T>(
         timer = setTimeout(() => {
           reject(new Error('Connection timed out.'));
           controller.abort();
-        }, 10_000);
+        }, timeoutMs);
       }),
     ]);
   } finally {

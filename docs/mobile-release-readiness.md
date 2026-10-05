@@ -23,7 +23,7 @@ Run **all EAS commands from `apps/mobile`**. The resolved native configuration i
 | Setting                      | Native app                             |
 | ---------------------------- | -------------------------------------- |
 | EAS project                  | `dd1a6538-e07e-47b2-baed-7d6d9f6c009b` |
-| Android package / iOS bundle | `com.dwd.app`           |
+| Android package / iOS bundle | `com.dwd.app`                          |
 | Slug                         | `drink-with-desire`                    |
 | Callback scheme              | `dwd`                                  |
 
@@ -41,7 +41,7 @@ In the native EAS project, configure **preview** for testing and **production** 
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Matching public client key; never service-role/secret                                               |
 | `EXPO_PUBLIC_SITE_URL`                 | Your deployed HTTPS website origin, currently `https://dwdug.vercel.app`                            |
 | `EXPO_PUBLIC_EAS_PROJECT_ID`           | Native EAS UUID above, or omit to use the checked-in UUID; do not use the root project's UUID       |
-| `GOOGLE_SERVICES_JSON`                 | EAS **file** variable containing Firebase's `google-services.json` for `com.dwd.app` |
+| `GOOGLE_SERVICES_JSON`                 | EAS **file** variable containing Firebase's `google-services.json` for `com.dwd.app`                |
 | `DWD_APPLE_TEAM_ID`                    | Your Apple Developer team ID for iOS signing/universal links                                        |
 
 The local resolved config currently has **no Firebase file configured**. Create/register the Android app in Firebase using the exact package, download its client JSON, and upload it as that EAS file variable. Separately upload an **FCM V1 service-account key** through `npx eas-cli credentials --platform android`; that private key is server-side EAS credentials and must not be included in the mobile app. Configure APNs credentials through EAS for iOS. See [Expo FCM setup](https://docs.expo.dev/push-notifications/fcm-credentials/) and [EAS environment variables](https://docs.expo.dev/eas/environment-variables/).
@@ -91,14 +91,16 @@ iOS internal testing uses `npx eas-cli build --platform ios --profile testing` a
 
 Keep the additive migration during any app rollback; use forward migrations for fixes. Do not drop native RPCs while an installed build can still call them. If delivery misbehaves, disabling the shared notification scheduler also stops browser push, so account for both channels.
 
-## Remaining web parity
+## Web parity update
 
-This is a source comparison, not acceptance of every shared behavior.
+The three gaps from the source comparison now have native implementations. This is not physical-device acceptance of every shared behavior.
 
-| Area                 | What web has that native still lacks                                                                                                                               | References                                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Photo memories       | Add/upload, preview/error/size-limit states, gallery/viewer and owner-only removal                                                                                 | `apps/web/src/features/photos`; no corresponding native collection/picker                                                               |
-| Guided practice tour | Isolated sample nights/logs, contextual walkthrough, skip/replay and completion persistence                                                                        | `apps/web/src/features/tour`; native onboarding is introductory slides, not the interactive tour                                        |
-| Recap detail         | Started/original planned finish/extended finish/actual finish timeline; per-person drink breakdown, ethanol/plan amounts, after-end count and catch-up annotations | Web `features/nights/summary-screen.tsx`; native `app/night/[nightId]/summary.tsx` currently has own timeline/activity and group counts |
+| Area                 | Native implementation                                                                                                             | References                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Photo memories       | System photo picker, JPEG resize, durable upload recovery, two-photo quota, gallery/viewer and owner-only deletion                | `apps/mobile/app/night/[nightId]/photos.tsx`; shared Storage/RPC authorization                 |
+| Guided practice tour | Nine isolated sample steps, warning/undo and bottle practice, skip/replay and account-scoped progress                             | `apps/mobile/app/tour.tsx`; completion is local to each device, not synced with the web tour   |
+| Recap detail         | Original/current/actual end timeline, per-person drink breakdown, alcohol/plan amounts, after-end counts and catch-up annotations | `apps/mobile/src/components/recap-details.tsx`; preserves server-supplied personal/group scope |
+
+No new migration is needed for these additions. Rebuild the native binary for the new photo modules. Focused tests cover account isolation, Storage/RPC token pinning, lost upload responses, deletion and isolated practice state. The Android export passed; photo permissions, native file handling, accessibility and layouts still require installed-build acceptance. Signed URLs are renewed while the gallery is visible and are not persisted for offline viewing.
 
 The five P2 areas and earlier auth/offline/help/guest/bottle work have native implementations. Credentials, real-device QA and HTTPS links are integration gaps, not missing screens. Live Activities/widgets remain separate native roadmap work, not web parity requirements.

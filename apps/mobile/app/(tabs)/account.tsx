@@ -130,6 +130,13 @@ export default function AccountScreen() {
       <Panel>
         {session ? (
           <NavigationRow
+            label="Replay practice tour"
+            icon="compass-outline"
+            onPress={() => router.push('/tour?replay=1')}
+          />
+        ) : null}
+        {session ? (
+          <NavigationRow
             label="Notifications"
             icon="notifications-outline"
             onPress={() => router.push('/notifications')}

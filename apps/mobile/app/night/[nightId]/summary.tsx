@@ -1,8 +1,8 @@
-import { RefreshControl, Text, View } from 'react-native';
+import { RefreshControl, Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { NightActivity } from '@/components/night-activity';
-import { NightMetrics } from '@/components/night-metrics';
-import { NightArtwork } from '@/components/night-artwork';
+import { RecapMembers, RecapTimeline } from '@/components/recap-details';
+import { NavigationRow } from '@/components/navigation-row';
 import { PrimaryButton } from '@/components/primary-button';
 import {
   LoadingPanel,
@@ -61,35 +61,16 @@ export default function SummaryScreen() {
           {member ? (
             <>
               <Panel>
-                <NightArtwork compact />
-                <Text accessibilityRole="header" style={typography.sectionTitle}>
-                  Your recap
-                </Text>
-                <NightMetrics
-                  drinks={member.drinkLogs.filter((log) => !log.deletedAt).length}
-                  water={member.waterLogs.filter((log) => !log.deletedAt).length}
+                <NavigationRow
+                  label="Photo memories"
+                  icon="images-outline"
+                  onPress={() => router.push(`/night/${nightId}/photos`)}
                 />
               </Panel>
+              <RecapTimeline snapshot={snapshot} />
+              <RecapMembers snapshot={snapshot} />
               <NightActivity member={member} timezone={snapshot.night.timezone} />
             </>
-          ) : null}
-          {snapshot.historyScope !== 'personal' ? (
-            <Panel>
-              <Text accessibilityRole="header" style={typography.sectionTitle}>
-                People
-              </Text>
-              {snapshot.members.map((m) => (
-                <View key={m.id} style={{ gap: 4 }}>
-                  <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
-                    {m.displayName}
-                  </Text>
-                  <Text style={typography.body}>
-                    {m.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
-                    {m.waterLogs.filter((log) => !log.deletedAt).length} chasers
-                  </Text>
-                </View>
-              ))}
-            </Panel>
           ) : null}
           {issue ? (
             cached ? (
