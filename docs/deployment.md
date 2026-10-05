@@ -212,6 +212,8 @@ For subsequent environments, run `npm run test:db`, review RLS and migration SQL
 
 ## Native notifications and invitation links, October 5
 
+**Hosted verification update:** `20261004070828_native_push_notifications.sql` was applied to `kdplbebaotvgcvjggacz`, and `dispatch-notifications` was redeployed as version 3. The scheduled worker returned HTTP 200 with native dispatch enabled and no registered native devices. Both notification and deletion schedulers are active. Follow [mobile release readiness](mobile-release-readiness.md) for credentials/builds and [regression tests](mobile-regression-tests.md) for device acceptance. The following paragraphs describe the original rollout requirements.
+
 The native implementation adds Expo delivery alongside browser push. Apply `20261004070828_native_push_notifications.sql` before releasing the mobile build, then redeploy `dispatch-notifications`; retain the existing shared secret and minute scheduler. Native registrations bind a device token to a live GoTrue session, and delivery rechecks preferences, membership, pause and account deletion. Native lock-screen copy is generic, with details read through the authenticated inbox. Optional `DWD_EXPO_ACCESS_TOKEN` belongs only in Edge Function secrets when Expo project access-token security is enabled. Browser VAPID setup remains independent.
 
 The mobile binary requires a configured EAS project UUID and APNs/FCM credentials. Website `/join/*` association requires `DWD_APPLE_TEAM_ID` and `DWD_ANDROID_SHA256_FINGERPRINTS` matching the installed binary's signing identity. The association endpoints return 404 until configured. Native plugin and entitlement changes require rebuilding the binary, plus a website deployment for the new routes.

@@ -420,6 +420,7 @@ function Setup({ owner }: { owner: string }) {
             label={draft.attempt ? 'Retry start request' : 'Start night'}
             icon="moon-outline"
             busy={busy}
+            busyLabel="Starting night"
             disabled={Boolean(storageIssue)}
             onPress={() => void start()}
           />

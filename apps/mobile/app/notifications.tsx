@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Linking, RefreshControl, Text, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { useNotifications } from '@/providers/notifications-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { actorClient } from '@/lib/actor-client';
 import { notificationRoute } from '@/lib/native-notifications';
+import { withRequestTimeout } from '@/lib/request-timeout';
 
 export default function NotificationsScreen() {
   const push = useNotifications();
@@ -21,6 +22,8 @@ export default function NotificationsScreen() {
   const { client, session } = useSupabase();
   const { colors, typography } = useTheme();
   const router = useRouter();
+  const [settingsIssue, setSettingsIssue] = useState<string | null>(null);
+  const unread = query.data?.filter((event) => !event.acknowledgedAt).length ?? 0;
   const refresh = query.refresh;
   useEffect(() => {
     if (push.version) void refresh();
@@ -63,14 +66,30 @@ export default function NotificationsScreen() {
             label="Turn off on this device"
             variant="quiet"
             busy={push.busy}
+            busyLabel="Turning off"
             onPress={() => void push.disable()}
           />
         ) : push.state === 'denied' ? (
-          <PrimaryButton
-            label="Open Settings"
-            variant="secondary"
-            onPress={() => void Linking.openSettings().catch(() => undefined)}
-          />
+          <>
+            <Notice message="Allow notifications for DWD in Settings, then return here." />
+            <PrimaryButton
+              label="Open Settings"
+              variant="secondary"
+              onPress={() => {
+                setSettingsIssue(null);
+                void Linking.openSettings().catch(() =>
+                  setSettingsIssue('Open your phone settings and choose DWD > Notifications.'),
+                );
+              }}
+            />
+            <PrimaryButton
+              label="Turn off on this device"
+              variant="quiet"
+              busy={push.busy}
+              busyLabel="Turning off"
+              onPress={() => void push.disable()}
+            />
+          </>
         ) : (
           <>
             <Notice message="Get reminders and check-ins when DWD is closed. Personal details stay in your inbox." />
@@ -80,6 +99,7 @@ export default function NotificationsScreen() {
               }
               icon="notifications-outline"
               busy={push.busy}
+              busyLabel="Connecting"
               onPress={() => void push.enable()}
             />
             {push.state === 'unavailable' ? (
@@ -93,15 +113,33 @@ export default function NotificationsScreen() {
           </>
         )}
         {push.issue ? <Notice error message={push.issue} /> : null}
+        {settingsIssue ? <Notice error message={settingsIssue} /> : null}
         <NavigationRow
           label="Reminder preferences"
           icon="options-outline"
           onPress={() => router.push('/reminders')}
         />
       </Panel>
-      <Text accessibilityRole="header" style={typography.sectionTitle}>
-        Inbox
-      </Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+        <Text accessibilityRole="header" style={typography.sectionTitle}>
+          Inbox
+        </Text>
+        {unread > 0 ? (
+          <Text
+            style={{
+              color: colors.primary,
+              backgroundColor: colors.primarySoft,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: '600',
+            }}
+          >
+            {unread} unread
+          </Text>
+        ) : null}
+      </View>
       {!query.data ? (
         query.issue ? (
           <RetryPanel issue={query.issue} retry={() => void query.refresh()} />
@@ -130,12 +168,17 @@ export default function NotificationsScreen() {
                 disabled={action.busy}
                 onPress={() => {
                   if (!client || !session) return;
-                  void action.run(
-                    () =>
-                      acknowledgeNotification(actorClient(client, session.access_token), event.id),
-                    undefined,
-                    () => router.push(notificationRoute(event) as Href),
-                  );
+                  // Viewing an event must not depend on a successful write.
+                  router.push(notificationRoute(event) as Href);
+                  if (!event.acknowledgedAt)
+                    void action.run(() =>
+                      withRequestTimeout((signal) =>
+                        acknowledgeNotification(
+                          actorClient(client, session.access_token, signal),
+                          event.id,
+                        ),
+                      ),
+                    );
                 }}
                 style={{ gap: 6 }}
               >
@@ -154,6 +197,7 @@ export default function NotificationsScreen() {
                     style={{
                       ...typography.body,
                       flex: 1,
+                      color: colors.text,
                       fontWeight: event.acknowledgedAt ? '400' : '600',
                     }}
                   >

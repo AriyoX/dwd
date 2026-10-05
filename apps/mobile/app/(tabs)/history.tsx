@@ -7,7 +7,7 @@ import { getFinishedNights } from '@dwd/data';
 import { Brand } from '@/components/brand';
 import { NightArtwork } from '@/components/night-artwork';
 import { PrimaryButton } from '@/components/primary-button';
-import { Panel, Screen, ScreenHeading } from '@/components/screen';
+import { Panel, RetryPanel, Screen, ScreenHeading } from '@/components/screen';
 import { useSupabase } from '@/providers/supabase-provider';
 import { radii, type ThemeColors, type makeTypography } from '@/theme/tokens';
 import { useTheme, useThemedStyles } from '@/providers/theme-provider';
@@ -49,7 +49,7 @@ export default function HistoryScreen() {
         <Panel>
           <Text style={styles.body}>Account connection unavailable.</Text>
         </Panel>
-      ) : status === 'loading' || loading ? (
+      ) : status === 'loading' || (!data && loading) ? (
         <Panel style={styles.loadingPanel}>
           <ActivityIndicator color={colors.primary} />
           <Text style={styles.body}>Loading night history</Text>
@@ -59,7 +59,7 @@ export default function HistoryScreen() {
           <Text style={styles.body}>Sign in to see completed nights.</Text>
           <PrimaryButton label="Sign in" onPress={() => router.push('/account')} />
         </Panel>
-      ) : issue ? (
+      ) : issue && !data ? (
         <Panel>
           <Text accessibilityRole="alert" style={styles.body}>
             {issue}
@@ -80,12 +80,14 @@ export default function HistoryScreen() {
           ))}
         </View>
       )}
-      {status === 'signed-in' && !loading && !issue && (page > 0 || hasMore) ? (
+      {data && issue ? <RetryPanel issue={issue} retry={() => void refresh()} /> : null}
+      {status === 'signed-in' && data && (page > 0 || hasMore) ? (
         <View style={styles.pagination}>
           {page > 0 ? (
             <PrimaryButton
               label="Newer nights"
               variant="secondary"
+              disabled={loading}
               onPress={() => setPage((value) => value - 1)}
             />
           ) : null}
@@ -93,6 +95,7 @@ export default function HistoryScreen() {
             <PrimaryButton
               label="Older nights"
               variant="secondary"
+              disabled={loading}
               onPress={() => setPage((value) => value + 1)}
             />
           ) : null}

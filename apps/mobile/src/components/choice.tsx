@@ -21,7 +21,7 @@ export function Choice({
   const { colors } = useTheme();
   return (
     <Action
-      label={label}
+      label={detail ? `${label}. ${detail}` : label}
       selected={selected}
       disabled={disabled}
       onPress={onPress}

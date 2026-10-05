@@ -89,6 +89,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             setState('unavailable');
             return;
           }
+          // Keep the explicit opt-in even if the OS denies permission. Returning
+          // from Settings can then finish registration without another prompt.
+          if (requestPermission)
+            globalThis.localStorage.setItem(pushPreferenceKey(actor), 'enabled');
           if (
             !requestPermission &&
             globalThis.localStorage.getItem(pushPreferenceKey(actor)) !== 'enabled'
@@ -127,8 +131,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             }
             return;
           }
-          if (requestPermission)
-            globalThis.localStorage.setItem(pushPreferenceKey(actor), 'enabled');
           const configured: unknown = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
           const projectId = pushProjectId(
             Constants.expoConfig?.extra,

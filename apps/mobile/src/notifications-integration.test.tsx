@@ -196,6 +196,33 @@ describe('native permission and token lifecycle', () => {
     expect(runtime.register).not.toHaveBeenCalled();
     expect(state.state).toBe('off');
   });
+  it('finishes explicit opt-in after permission is granted in Settings without prompting again', async () => {
+    runtime.permission = { granted: false, canAskAgain: true };
+    runtime.request.mockResolvedValue({ granted: false, canAskAgain: false });
+    await mount();
+    await update(() => state.enable());
+    expect(state.state).toBe('denied');
+    expect(globalThis.localStorage.getItem(pushPreferenceKey(owner))).toBe('enabled');
+    runtime.permission = { granted: true, canAskAgain: false };
+    await update(() => {
+      for (const listener of runtime.foreground) listener('active');
+    });
+    expect(state.state).toBe('ready');
+    expect(runtime.request).toHaveBeenCalledOnce();
+    expect(runtime.register).toHaveBeenCalledOnce();
+  });
+  it('does not register after withdrawing opt-in while OS permission is denied', async () => {
+    runtime.permission = { granted: false, canAskAgain: false };
+    await mount();
+    await update(() => state.enable());
+    await update(() => state.disable());
+    runtime.permission = { granted: true, canAskAgain: false };
+    await update(() => {
+      for (const listener of runtime.foreground) listener('active');
+    });
+    expect(state.state).toBe('off');
+    expect(runtime.register).not.toHaveBeenCalled();
+  });
   it('reconciles permission revocation when returning to the foreground', async () => {
     globalThis.localStorage.setItem(pushPreferenceKey(owner), 'enabled');
     await mount();

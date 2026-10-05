@@ -282,7 +282,7 @@ describe('notifications and invitations', () => {
     expect(appleAppAssociation('ABCDEFGHIJ')?.applinks.details[0]?.paths).toEqual(['/join/*']);
     expect(androidAppAssociation('invalid')).toBeNull();
     expect(androidAppAssociation(Array(32).fill('AB').join(':'))?.[0]?.target.package_name).toBe(
-      'com.drinkwithdesire.mobile',
+      'com.dwd.app',
     );
   });
 });

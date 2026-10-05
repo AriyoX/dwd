@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
 import { useSupabase } from '@/providers/supabase-provider';
 import { withRequestTimeout } from '@/lib/request-timeout';
+import { actorClient } from '@/lib/actor-client';
 import {
   clearOfflineCache,
   isConnectionFailure,
@@ -26,16 +27,15 @@ export function useAccountQuery<T>(
   const focused = useRef(false);
   const version = useRef(0);
   const owner = session?.user.id;
+  const accessToken = session?.access_token;
   const refresh = useCallback(async () => {
-    if (!client || !owner || status !== 'signed-in') return;
+    if (!client || !owner || !accessToken || status !== 'signed-in') return;
     const request = ++version.current;
     setLoading(true);
     try {
-      const value = await withRequestTimeout((signal) => {
-        const scoped = Object.create(client) as SupabaseClient<Database>;
-        scoped.rpc = (fn, args, options) => client.rpc(fn, args, options).abortSignal(signal);
-        return load(scoped);
-      });
+      const value = await withRequestTimeout((signal) =>
+        load(actorClient(client, accessToken, signal)),
+      );
       if (focused.current && request === version.current) {
         if (cache) writeOfflineCache(globalThis.localStorage, owner, scope, value);
         setData({ owner, scope, value });
@@ -64,7 +64,7 @@ export function useAccountQuery<T>(
     } finally {
       if (focused.current && request === version.current) setLoading(false);
     }
-  }, [client, owner, status, load, scope, cache]);
+  }, [client, owner, accessToken, status, load, scope, cache]);
   useFocusEffect(
     useCallback(() => {
       focused.current = true;

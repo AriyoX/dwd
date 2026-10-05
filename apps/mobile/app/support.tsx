@@ -119,7 +119,7 @@ function Support({ owner }: { owner: string }) {
       if (mounted.current) setBusy(false);
     }
   }
-  const locked = busy || Boolean(draft.attempt);
+  const locked = !ready || storageBlocked || busy || Boolean(draft.attempt);
   return (
     <Screen
       insetTop={false}
@@ -177,6 +177,7 @@ function Support({ owner }: { owner: string }) {
         label={draft.attempt ? 'Retry message' : 'Send message'}
         icon="send-outline"
         busy={busy}
+        busyLabel="Sending"
         disabled={!ready || storageBlocked || draft.message.trim().length < 10}
         onPress={() => void send()}
       />

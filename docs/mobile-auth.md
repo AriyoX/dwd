@@ -126,9 +126,9 @@ The iOS adapter requests the name/email scopes, sends a SHA-256 nonce to Apple, 
 
 Before testing against the hosted project:
 
-1. Apply `supabase/migrations/20261002120508_apple_native_signup.sql` through the project's migration deployment process. It adds Apple to the trusted-provider branch of `private.handle_new_user`; the previous Google-only branch rejected new Apple users. It retains email validation, profile/RLS restrictions, audit behavior and explicit adult attestation. **This migration was tested locally and has not been applied to hosted Supabase.**
-2. In Apple Developer → Certificates, Identifiers & Profiles, enable **Sign in with Apple** for the App ID `com.drinkwithdesire.mobile`.
-3. In Supabase → Authentication → Sign In / Providers → Apple, enable Apple and add `com.drinkwithdesire.mobile` to **Client IDs**. Native-only sign-in does not require a Services ID, web client secret or secret rotation. Keep nonce verification enabled.
+1. `supabase/migrations/20261002120508_apple_native_signup.sql` is present in hosted DWD migration history, verified 5 October 2026. It adds Apple to the trusted-provider branch of `private.handle_new_user`; the previous Google-only branch rejected new Apple users. It retains email validation, profile/RLS restrictions, audit behavior and explicit adult attestation. Provider configuration and installed-device sign-in remain separate checks.
+2. In Apple Developer → Certificates, Identifiers & Profiles, enable **Sign in with Apple** for the App ID `com.dwd.app`.
+3. In Supabase → Authentication → Sign In / Providers → Apple, enable Apple and add `com.dwd.app` to **Client IDs**. Native-only sign-in does not require a Services ID, web client secret or secret rotation. Keep nonce verification enabled.
 4. Build/install a new iOS binary. `ios.usesAppleSignIn` and the `expo-apple-authentication` plugin are configured; reloading JavaScript alone does not add native entitlements.
 
 Apple can also be tested on a real iPhone in Expo Go with `host.exp.Exponent` in the **test project's** Apple Client IDs. That shared Expo identifier is different from the installed DWD App ID, so installed-build testing is still required. Android has no Apple button or browser fallback. See [Supabase Apple configuration](https://supabase.com/docs/guides/auth/social-login/auth-apple) and [Expo Apple Authentication](https://docs.expo.dev/versions/latest/sdk/apple-authentication/).
@@ -150,7 +150,7 @@ Keep the website's Site URL and existing web redirects. Google Cloud's authorize
 
 ### Install a development build
 
-`expo-dev-client` and an internal `development` EAS profile are included. Both native bundle/package IDs are `com.drinkwithdesire.mobile`. No cloud build was submitted and no emulator was launched.
+`expo-dev-client` and an internal `development` EAS profile are included. Both native bundle/package IDs are `com.dwd.app`. No cloud build was submitted and no emulator was launched.
 
 From the repository root, for a physical iPhone using EAS (also works when your computer runs Windows):
 

@@ -1,0 +1,24 @@
+# Android starter flow. Sign in with a QA account before running.
+# Opens screens only; does not enable push, send messages, or submit mutations.
+appId: com.dwd.app
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: false
+- openLink: 'dwd://'
+- tapOn: 'Account'
+- assertVisible: 'Your account'
+- scrollUntilVisible:
+    element: 'Notifications'
+    direction: DOWN
+- tapOn: 'Notifications'
+- assertVisible: 'Device notifications'
+- scrollUntilVisible:
+    element: 'Inbox'
+    direction: DOWN
+- assertVisible: 'Inbox'
+- back
+- tapOn: 'History'
+- assertVisible: 'Night history'
+- tapOn: 'Tonight'

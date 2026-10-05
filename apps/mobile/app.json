@@ -16,7 +16,7 @@
       "@react-native-community/datetimepicker"
     ],
     "ios": {
-      "bundleIdentifier": "com.drinkwithdesire.mobile",
+      "bundleIdentifier": "com.dwd.app",
       "usesAppleSignIn": true,
       "supportsTablet": true,
       "infoPlist": {
@@ -24,7 +24,7 @@
       }
     },
     "android": {
-      "package": "com.drinkwithdesire.mobile"
+      "package": "com.dwd.app"
     },
     "extra": {
       "router": {},

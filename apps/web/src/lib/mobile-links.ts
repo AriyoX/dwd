@@ -1,4 +1,4 @@
-const PACKAGE = 'com.drinkwithdesire.mobile';
+const PACKAGE = 'com.dwd.app';
 export function appleAppAssociation(team: string | undefined) {
   if (!team || !/^[A-Z0-9]{10}$/.test(team)) return null;
   return { applinks: { apps: [], details: [{ appID: `${team}.${PACKAGE}`, paths: ['/join/*'] }] } };

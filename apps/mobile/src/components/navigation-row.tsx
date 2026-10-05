@@ -43,7 +43,9 @@ export function NavigationRow({
         <Ionicons name={icon} size={20} color={colors.primary} accessible={false} />
       </View>
       <View style={{ flex: 1, gap: 4 }}>
-        <Text style={typography.body}>{label}</Text>
+        <Text style={{ ...typography.body, color: colors.text, fontSize: 16, fontWeight: '500' }}>
+          {label}
+        </Text>
         {detail ? <Text style={{ color: colors.muted, fontSize: 14 }}>{detail}</Text> : null}
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.muted} accessible={false} />

@@ -106,6 +106,7 @@ export default function AccountScreen() {
           ) : null}
           <PrimaryButton
             busy={busy}
+            busyLabel="Signing out"
             label="Sign out"
             variant="quiet"
             onPress={() => void signOut()}

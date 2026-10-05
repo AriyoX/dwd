@@ -10,6 +10,7 @@ export function Action({
   onPress,
   label,
   disabled = false,
+  busy = false,
   selected,
   expanded,
   style,
@@ -18,6 +19,7 @@ export function Action({
   onPress: () => void;
   label: string;
   disabled?: boolean;
+  busy?: boolean;
   selected?: boolean;
   expanded?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -30,6 +32,7 @@ export function Action({
       accessibilityLabel={label}
       accessibilityState={{
         disabled,
+        busy,
         ...(selected === undefined ? {} : { selected }),
         ...(expanded === undefined ? {} : { expanded }),
       }}
@@ -89,6 +92,7 @@ export function PrimaryButton({
     <Action
       label={busy ? busyLabel : label}
       disabled={disabled || busy}
+      busy={busy}
       onPress={onPress}
       style={{
         minHeight: 52,
@@ -112,7 +116,12 @@ export function PrimaryButton({
       }}
     >
       {busy ? (
-        <ActivityIndicator accessibilityLabel={busyLabel} color={foreground} />
+        <>
+          <ActivityIndicator color={foreground} accessible={false} />
+          <Text style={{ color: foreground, fontSize: 16, fontWeight: '600', flexShrink: 1 }}>
+            {busyLabel}
+          </Text>
+        </>
       ) : (
         <>
           {icon ? <Ionicons name={icon} size={20} color={foreground} accessible={false} /> : null}

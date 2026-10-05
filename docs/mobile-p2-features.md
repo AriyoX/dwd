@@ -1,5 +1,7 @@
 # Native notifications and remaining P2 flows
 
+**Release update, 5 October 2026:** the native migration is now hosted and `dispatch-notifications` version 3 is deployed; its minute scheduler returned HTTP 200. See [current release readiness](mobile-release-readiness.md) and [regression tests](mobile-regression-tests.md) for fixes, standalone testing builds, credentials and remaining acceptance checks. The implementation/deployment statements below record the earlier pass.
+
 Implemented 4–5 October 2026 against [the mobile UI and parity review](mobile-ui-and-parity-review.md). Previous offline/session changes were committed first as `7a4ea0d`. This is native implementation work; no hosted migration, worker deployment, support submission or account deletion was performed.
 
 ## Native notifications
@@ -51,7 +53,7 @@ Controls retain spoken labels, selected/disabled states, at least 48-point press
 
 1. Apply `supabase/migrations/20261004070828_native_push_notifications.sql` before releasing this mobile build. It adds session-bound device registration/delivery RPCs and recoverable starts. Review the migration and use the existing deployment dry-run workflow. New mobile start and registration requests require these RPCs.
 2. Redeploy `dispatch-notifications` after applying the migration. Keep the existing `DWD_PUSH_DISPATCH_SECRET` and minute scheduler/Vault configuration described in [deployment.md](deployment.md). Native dispatch uses Expo rather than VAPID; browser credentials remain necessary for browser delivery. If Expo project access-token security is enabled, configure `DWD_EXPO_ACCESS_TOKEN` as an Edge Function secret only.
-3. Set `EXPO_PUBLIC_EAS_PROJECT_ID` to the app's EAS project UUID. Configure valid APNs/FCM credentials for the matching `com.drinkwithdesire.mobile` signing identities, and build/install the app with the new notifications and date-picker plugins. Native dependency/plugin changes require rebuilding the binary; an OTA JavaScript update is insufficient. Expo Go is not a native push test environment.
+3. Set `EXPO_PUBLIC_EAS_PROJECT_ID` to the app's EAS project UUID. Configure valid APNs/FCM credentials for the matching `com.dwd.app` signing identities, and build/install the app with the new notifications and date-picker plugins. Native dependency/plugin changes require rebuilding the binary; an OTA JavaScript update is insufficient. Expo Go is not a native push test environment.
 4. Set the mobile `EXPO_PUBLIC_SITE_URL` to the production HTTPS origin. Set `DWD_APPLE_TEAM_ID` in the mobile build and website runtime, and `DWD_ANDROID_SHA256_FINGERPRINTS` in the website runtime to comma-separated SHA-256 signing certificate fingerprints. Rebuild the app and deploy the website association routes on that exact origin. Without valid identifiers, the routes return 404. Include the actual Play signing certificate for a Play-distributed app; development signing can differ.
 5. Verify `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` over HTTPS, then test an external `/join/{token}` link with the app installed, absent, signed out and cold-starting. Links must preserve the invitation through authentication.
 

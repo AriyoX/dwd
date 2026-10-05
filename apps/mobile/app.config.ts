@@ -6,6 +6,9 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
   const rawTeam: unknown = process.env['DWD_APPLE_TEAM_ID'];
   const projectId = typeof rawProject === 'string' ? rawProject : undefined;
   const team = typeof rawTeam === 'string' ? rawTeam : undefined;
+  // EAS file environment variable: Firebase's client configuration, not the
+  // FCM service-account private key (that belongs in EAS credentials).
+  const googleServicesFile = process.env['GOOGLE_SERVICES_JSON'];
   const rawExtra: unknown = config.extra;
   const extra =
     rawExtra && typeof rawExtra === 'object' ? (rawExtra as Record<string, unknown>) : {};
@@ -21,6 +24,7 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
     },
     android: {
       ...config.android,
+      ...(googleServicesFile ? { googleServicesFile } : {}),
       ...(site.protocol === 'https:'
         ? {
             intentFilters: [

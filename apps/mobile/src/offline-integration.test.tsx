@@ -95,7 +95,7 @@ let root: ReactTestRenderer;
 let auth: ReturnType<typeof useSupabase>;
 let queue: ReturnType<typeof useOffline>;
 let query: ReturnType<typeof useAccountQuery<string[]>>;
-const load = vi.fn<() => Promise<string[]>>();
+const load = vi.fn<(client: SupabaseClient<Database>) => Promise<string[]>>();
 const authListeners = new Set<(event: AuthChangeEvent, session: Session | null) => void>();
 function emit(event: AuthChangeEvent, session: Session | null) {
   for (const listener of authListeners) listener(event, session);
@@ -179,6 +179,34 @@ afterEach(async () => {
 });
 
 describe('native offline provider and screen integration', () => {
+  it('keeps a delayed read bound to its original account after an account switch', async () => {
+    const authorization = vi.fn();
+    const request = Object.assign(Promise.resolve({ data: [], error: null }), {
+      setHeader: (name: string, value: string) => {
+        authorization(name, value);
+        return request;
+      },
+      abortSignal: () => request,
+    });
+    runtime.client!.rpc = vi.fn(() => request) as unknown as SupabaseClient<Database>['rpc'];
+    await mount();
+    const originalConnection = load.mock.calls.at(-1)![0];
+    profile.mockResolvedValue({ data: { id: 'another-account' }, error: null });
+    load.mockResolvedValue(['another account night']);
+    await update(() =>
+      emit('SIGNED_IN', {
+        ...expiredSession,
+        access_token: 'another-token',
+        user: { ...expiredSession.user, id: '00000000-0000-4000-8000-000000000099' },
+      }),
+    );
+    await originalConnection.rpc('get_active_nights');
+    expect(authorization).toHaveBeenLastCalledWith('Authorization', 'Bearer expired-token');
+    expect(query.data).toEqual(['another account night']);
+    expect(localStorage.getItem(`dwd.mobile.cache.v1:${owner}:active-nights`)).toContain(
+      'cached night',
+    );
+  });
   it('reopens cached activity and the original queue after an expired token cannot refresh offline', async () => {
     await mount();
     expect(auth.access).toBe('ready');
