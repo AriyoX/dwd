@@ -1,4 +1,5 @@
 export * from './alerts/alerts';
+export * from './account/account';
 export * from './bottles/bottles';
 export * from './drink-logs/drink-logs';
 export * from './invites/invites';

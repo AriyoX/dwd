@@ -21,7 +21,7 @@ export default function PlanScreen() {
   const { snapshot, issue, refresh } = useNight(nightId);
   const access = snapshot ? nightAccess(snapshot, memberId ?? snapshot.currentMemberId) : null;
   return (
-    <Screen insetTop={false}>
+    <Screen insetTop={false} sheetTitle="Your plan">
       <Stack.Screen
         options={{
           title:

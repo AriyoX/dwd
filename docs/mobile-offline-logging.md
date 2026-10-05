@@ -53,6 +53,8 @@ Use disposable test accounts and a test night.
 
 ## Next P2 work
 
+Completed 5 October 2026: the five areas below now have native implementations. See [Native notifications and remaining P2 flows](mobile-p2-features.md) for behavior, tests and remaining hosted/build/device integration. The list records the order used for this implementation.
+
 Shared bottles are implemented. The proposed remaining order is:
 
 1. **Native notifications:** permission flow, device-token lifecycle, delivery, inbox/read state and navigation to the correct night. Existing reminder preferences and check-ins are already available.

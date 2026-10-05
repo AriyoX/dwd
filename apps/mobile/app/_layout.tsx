@@ -14,6 +14,7 @@ import { ThemeProvider, useTheme } from '@/providers/theme-provider';
 import { AuthNavigation } from '@/components/auth-navigation';
 import { OnboardingProvider } from '@/providers/onboarding-provider';
 import { OfflineProvider } from '@/providers/offline-provider';
+import { NotificationsProvider } from '@/providers/notifications-provider';
 
 export default function RootLayout() {
   return (
@@ -21,7 +22,9 @@ export default function RootLayout() {
       <SupabaseProvider>
         <OfflineProvider>
           <OnboardingProvider>
-            <Navigation />
+            <NotificationsProvider>
+              <Navigation />
+            </NotificationsProvider>
           </OnboardingProvider>
         </OfflineProvider>
       </SupabaseProvider>
@@ -91,11 +94,28 @@ function Navigation() {
         <Stack.Screen name="auth/callback" options={{ title: 'Confirm account' }} />
         <Stack.Screen name="legal" options={{ title: 'DWD' }} />
         <Stack.Protected guard={access === 'ready'}>
+          <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+          <Stack.Screen name="profile" options={{ ...sheet, title: 'Edit profile' }} />
+          <Stack.Screen name="support" options={{ title: 'Support & feedback' }} />
+          <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
+          <Stack.Screen name="reminders" options={{ ...sheet, title: 'Reminders' }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="night/new" options={{ title: 'Start a night' }} />
           <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
           <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
           <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log a drink' }} />
+          <Stack.Screen
+            name="night/[nightId]/catch-up"
+            options={{ ...sheet, title: 'Add missed entries' }}
+          />
+          <Stack.Screen
+            name="night/[nightId]/planned-end"
+            options={{ ...sheet, title: 'Night check-in' }}
+          />
+          <Stack.Screen
+            name="night/[nightId]/invite"
+            options={{ ...sheet, title: 'Invite people' }}
+          />
           <Stack.Screen name="night/[nightId]/plan" options={{ ...sheet, title: 'Your plan' }} />
           <Stack.Screen name="night/[nightId]/guest" options={{ ...sheet, title: 'Add person' }} />
           <Stack.Screen

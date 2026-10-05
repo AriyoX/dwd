@@ -61,7 +61,7 @@ export default function LogScreen() {
     await logging.log(target.id, { customDrink: parsed.data });
   }
   return (
-    <Screen insetTop={false}>
+    <Screen insetTop={false} sheetTitle="Log a drink">
       {loadIssue && !snapshot ? (
         <RetryPanel issue={loadIssue} retry={() => void refresh()} />
       ) : !snapshot ? (

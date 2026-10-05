@@ -14,6 +14,7 @@
   "include": [
     "apps/**/*.ts",
     "apps/**/*.tsx",
+    "apps/web/src/app/.well-known/**/*.ts",
     "apps/**/*.mjs",
     "packages/**/*.ts",
     "scripts/**/*.mjs",

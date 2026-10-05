@@ -7,11 +7,25 @@ export const RESEND_COOLDOWN = 60_000;
 
 export function safeDestination(value: unknown): string {
   if (typeof value !== 'string') return '/';
-  if (['/', '/night/new', '/account', '/history', '/join'].includes(value)) return value;
+  if (
+    [
+      '/',
+      '/night/new',
+      '/account',
+      '/history',
+      '/join',
+      '/notifications',
+      '/reminders',
+      '/profile',
+      '/support',
+      '/delete-account',
+    ].includes(value)
+  )
+    return value;
   const invite = value.match(/^\/join\?token=([A-Za-z0-9_-]+)$/)?.[1];
   if (invite && inviteTokenSchema.safeParse(invite).success) return value;
   if (
-    /^\/night\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/(?:plan|summary|log|guest|bottles|reminders|help))?(?:\?memberId=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(
+    /^\/night\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/(?:plan|summary|log|guest|bottles|reminders|help|catch-up|planned-end|invite))?(?:\?memberId=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(
       value,
     )
   )

@@ -19,7 +19,7 @@ export default function HelpScreen() {
     }
   }
   return (
-    <Screen insetTop={false}>
+    <Screen insetTop={false} sheetTitle="Get help">
       <Stack.Screen options={{ title: 'Get help' }} />
       <Panel>
         <Ionicons name="medical-outline" size={32} color={colors.danger} accessible={false} />

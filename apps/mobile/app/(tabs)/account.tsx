@@ -12,6 +12,8 @@ import { AppearancePicker } from '@/components/appearance-picker';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme, useThemedStyles } from '@/providers/theme-provider';
 import type { ThemeColors, makeTypography } from '@/theme/tokens';
+import { NavigationRow } from '@/components/navigation-row';
+import { useNotifications } from '@/providers/notifications-provider';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -19,6 +21,7 @@ export default function AccountScreen() {
   const styles = useThemedStyles(createStyles);
   const { client, session, status, issue, profileStatus, refreshProfile } = useSupabase();
   const userId = session?.user.id;
+  const notifications = useNotifications();
   const loadProfile = useCallback(
     async (connection: SupabaseClient<Database>) => {
       const { data, error } = await connection
@@ -40,6 +43,7 @@ export default function AccountScreen() {
     setBusy(true);
     setMessage(null);
     try {
+      await notifications.deactivate();
       const { error } = await client.auth.signOut();
       if (error) setMessage('Could not sign out. Try again.');
       else authHandoff().clear();
@@ -123,6 +127,27 @@ export default function AccountScreen() {
         </Panel>
       )}
       <Panel>
+        {session ? (
+          <NavigationRow
+            label="Notifications"
+            icon="notifications-outline"
+            onPress={() => router.push('/notifications')}
+          />
+        ) : null}
+        {session ? (
+          <NavigationRow
+            label="Edit profile"
+            icon="person-outline"
+            onPress={() => router.push('/profile')}
+          />
+        ) : null}
+        {session ? (
+          <NavigationRow
+            label="Support & feedback"
+            icon="chatbubble-outline"
+            onPress={() => router.push('/support')}
+          />
+        ) : null}
         <Text accessibilityRole="header" style={styles.panelTitle}>
           Appearance
         </Text>
@@ -139,6 +164,13 @@ export default function AccountScreen() {
           variant="quiet"
           onPress={() => router.push('/legal?document=privacy')}
         />
+        {session ? (
+          <NavigationRow
+            label="Delete account"
+            icon="trash-outline"
+            onPress={() => router.push('/delete-account')}
+          />
+        ) : null}
       </Panel>
     </Screen>
   );

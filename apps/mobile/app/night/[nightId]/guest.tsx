@@ -17,7 +17,7 @@ export default function GuestScreen() {
   const { nightId } = useLocalSearchParams<{ nightId: string }>();
   const { snapshot, issue, refresh } = useNight(nightId);
   return (
-    <Screen insetTop={false}>
+    <Screen insetTop={false} sheetTitle="Add person">
       <Stack.Screen options={{ title: 'Add person' }} />
       {!snapshot ? (
         issue ? (

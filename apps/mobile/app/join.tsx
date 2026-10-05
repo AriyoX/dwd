@@ -96,7 +96,7 @@ function JoinForm({ linkedToken }: { linkedToken: string | undefined }) {
     }
   }
   return (
-    <Screen insetTop={false}>
+    <Screen insetTop={false} sheetTitle="Join a night">
       <Panel>
         <TextField
           label="Invite link or code"

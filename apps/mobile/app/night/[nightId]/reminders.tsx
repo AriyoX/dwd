@@ -15,12 +15,14 @@ import { useNightAction } from '@/hooks/use-night-action';
 import { useNow } from '@/hooks/use-night';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { useRouter } from 'expo-router';
 
 export default function RemindersScreen() {
   const { session } = useSupabase();
+  const router = useRouter();
   const query = useAccountQuery(getNotificationPreferences);
   return (
-    <Screen insetTop={false}>
+    <Screen insetTop={false} sheetTitle="Reminders">
       <Stack.Screen options={{ title: 'Reminders' }} />
       {!query.data ? (
         query.issue ? (
@@ -31,6 +33,12 @@ export default function RemindersScreen() {
       ) : (
         <ReminderControls key={session?.user.id} initial={query.data} refresh={query.refresh} />
       )}
+      <PrimaryButton
+        label="Device notifications & inbox"
+        icon="notifications-outline"
+        variant="quiet"
+        onPress={() => router.push('/notifications')}
+      />
     </Screen>
   );
 }
@@ -131,7 +139,6 @@ function ReminderControls({
           onChange={(plannedEndEnabled) => save({ plannedEndEnabled })}
         />
       </Panel>
-      <Notice message="Reminders appear while you have DWD open. Notifications outside the app aren’t available yet." />
       {action.issue ? <Notice error message={action.issue} /> : null}
       {action.notice ? <Notice message={action.notice} /> : null}
     </>

@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/providers/theme-provider';
 import { radii } from '@/theme/tokens';
 import { PrimaryButton } from './primary-button';
+import { SheetHeading } from './sheet-heading';
 
 export function Screen({
   children,
@@ -20,6 +21,7 @@ export function Screen({
   insetTop = true,
   footer,
   scrollRef,
+  sheetTitle,
 }: {
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
@@ -27,6 +29,7 @@ export function Screen({
   insetTop?: boolean;
   footer?: ReactNode;
   scrollRef?: Ref<ScrollView>;
+  sheetTitle?: string;
 }) {
   const { colors } = useTheme();
   return (
@@ -40,9 +43,11 @@ export function Screen({
       }
       style={{ flex: 1, backgroundColor: colors.background }}
     >
+      {sheetTitle ? <SheetHeading title={sheetTitle} /> : null}
       <ScrollView
         ref={scrollRef}
         automaticallyAdjustKeyboardInsets
+        nestedScrollEnabled
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           {

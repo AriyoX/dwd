@@ -210,6 +210,14 @@ The service worker does not cache authenticated responses. Its payload contains 
 
 For subsequent environments, run `npm run test:db`, review RLS and migration SQL, apply the migrations with a dry run, deploy the app and function, configure push secrets, and activate the scheduler. Verify the in-app flows and real-device delivery separately. The September 15 release below completes hosted database and worker setup for localhost testing.
 
+## Native notifications and invitation links, October 5
+
+The native implementation adds Expo delivery alongside browser push. Apply `20261004070828_native_push_notifications.sql` before releasing the mobile build, then redeploy `dispatch-notifications`; retain the existing shared secret and minute scheduler. Native registrations bind a device token to a live GoTrue session, and delivery rechecks preferences, membership, pause and account deletion. Native lock-screen copy is generic, with details read through the authenticated inbox. Optional `DWD_EXPO_ACCESS_TOKEN` belongs only in Edge Function secrets when Expo project access-token security is enabled. Browser VAPID setup remains independent.
+
+The mobile binary requires a configured EAS project UUID and APNs/FCM credentials. Website `/join/*` association requires `DWD_APPLE_TEAM_ID` and `DWD_ANDROID_SHA256_FINGERPRINTS` matching the installed binary's signing identity. The association endpoints return 404 until configured. Native plugin and entitlement changes require rebuilding the binary, plus a website deployment for the new routes.
+
+This pass does not activate hosted native delivery or signing associations. Follow [Native notifications and remaining P2 flows](mobile-p2-features.md#build-and-server-integration) for the integration order and installed-device checklist. Ticket/receipt success is distinct from observing a notification on a phone.
+
 ## Verification corrections, September 8 and 14
 
 Apply `20260908065428_dwd_verification_fixes.sql` after the handoff migration and before deploying the corrected app and dispatch function. This migration fixes plan-reached logging with reminders enabled, scopes foreground reminder generation to the authenticated account, suppresses obsolete end reminders, and adds worker leases and attempt-aware acknowledgements. The worker and database must be released together: completion now includes `p_attempt`.

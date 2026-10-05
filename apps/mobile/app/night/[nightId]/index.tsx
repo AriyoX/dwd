@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
-import { RefreshControl, ScrollView, Share, Text, View } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   calculatePlanTotal,
   determinePlanStatus,
@@ -10,14 +10,7 @@ import {
   canUserLeaveNight,
   bottlePlanProgress,
 } from '@dwd/core';
-import {
-  createNightInvite,
-  endNight,
-  extendNight,
-  leaveNight,
-  softDeleteActivity,
-  visibleAlerts,
-} from '@dwd/data';
+import { endNight, extendNight, leaveNight, softDeleteActivity, visibleAlerts } from '@dwd/data';
 import { Choice } from '@/components/choice';
 import { NightMetrics } from '@/components/night-metrics';
 import { NightPeople } from '@/components/night-people';
@@ -35,7 +28,7 @@ import {
 import { useNight } from '@/hooks/use-night';
 import { useLogging } from '@/hooks/use-logging';
 import { confirmAction } from '@/lib/confirm';
-import { hashInvite, newInviteToken } from '@/lib/invites';
+import { plannedEndKey } from '@/lib/catch-up';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { availableBottles, nightAccess } from '@/lib/night-features';
@@ -57,7 +50,31 @@ export default function NightScreen() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inFlight = useRef(false);
-  const invite = useRef<{ token: string; expiresAt: string } | null>(null);
+  const dismissedEnd = useRef<string | null>(null);
+  const endAt = snapshot?.night.endsAt;
+  const owner = snapshot?.currentUserId;
+  const nightStatus = snapshot?.night.status;
+  useFocusEffect(
+    useCallback(() => {
+      if (!endAt || !owner || nightStatus !== 'active' || Date.parse(endAt) > now) return;
+      const key = plannedEndKey(owner, nightId);
+      let dismissed = dismissedEnd.current === `${owner}:${endAt}`;
+      try {
+        dismissed ||= globalThis.localStorage.getItem(key) === endAt;
+      } catch {
+        /* Retain an in-memory dismissal. */
+      }
+      if (!dismissed) {
+        dismissedEnd.current = `${owner}:${endAt}`;
+        try {
+          globalThis.localStorage.setItem(key, endAt);
+        } catch {
+          /* The in-memory dismissal still prevents a loop. */
+        }
+        router.push(`/night/${nightId}/planned-end`);
+      }
+    }, [endAt, owner, nightStatus, nightId, now, router]),
+  );
   const actor = snapshot?.members.find((m) => m.id === snapshot.currentMemberId) ?? null;
   const manageable =
     snapshot?.members.filter((target) =>
@@ -120,24 +137,6 @@ export default function NightScreen() {
       await endNight(client, nightId);
       router.replace(`/night/${nightId}/summary`);
     }, 'Night ended.');
-  }
-  async function shareInvite() {
-    if (!client) return;
-    await mutate(async () => {
-      invite.current ??= {
-        token: await newInviteToken(),
-        expiresAt: new Date(Date.now() + 24 * 3_600_000).toISOString(),
-      };
-      await createNightInvite(client, {
-        nightId,
-        tokenHash: await hashInvite(invite.current.token),
-        expiresAt: invite.current.expiresAt,
-        maxUses: null,
-      });
-      await Share.share({
-        message: `Join ${snapshot?.night.title ?? 'my night'} on DWD. Invite code: ${invite.current.token}`,
-      });
-    }, '');
   }
   return (
     <Screen
@@ -315,6 +314,18 @@ export default function NightScreen() {
                         busy={logging.busy}
                         onPress={() => void logging.log(member.id, 'water')}
                       />
+                      <PrimaryButton
+                        label="Add missed entries"
+                        icon="time-outline"
+                        variant="quiet"
+                        disabled={busy || logging.busy}
+                        onPress={() =>
+                          router.push({
+                            pathname: `/night/${nightId}/catch-up`,
+                            params: { memberId: member.id },
+                          })
+                        }
+                      />
                       {logging.issue || logging.notice ? (
                         <Notice
                           message={logging.issue || logging.notice || ''}
@@ -358,7 +369,12 @@ export default function NightScreen() {
                 onPress={() => router.push(`/night/${nightId}/reminders`)}
               />
               {Date.parse(snapshot.night.endsAt) <= now ? (
-                <Notice message="The planned end time has passed." />
+                <PrimaryButton
+                  label="Night check-in"
+                  icon="time-outline"
+                  variant="secondary"
+                  onPress={() => router.push(`/night/${nightId}/planned-end`)}
+                />
               ) : null}
               {visibleAlerts(snapshot)
                 .filter((alert) => !alert.expiresAt || Date.parse(alert.expiresAt) > now)
@@ -406,12 +422,12 @@ export default function NightScreen() {
                 Host controls
               </Text>
               <PrimaryButton
-                label="Share invite code"
+                label="Invitation link"
                 icon="share-outline"
                 variant="secondary"
                 busy={busy}
                 disabled={logging.busy}
-                onPress={() => void shareInvite()}
+                onPress={() => router.push(`/night/${nightId}/invite`)}
               />
               <PrimaryButton
                 label="Extend by 30 minutes"

@@ -7,6 +7,29 @@ import type {
 } from '@dwd/core';
 import { unwrapRpc } from '../shared/rpc';
 
+export async function registerNativePush(
+  client: SupabaseClient<Database>,
+  installationId: string,
+  token: string,
+  platform: string,
+): Promise<void> {
+  const { data, error } = await client.rpc('register_native_push', {
+    p_installation_id: installationId,
+    p_token: token,
+    p_platform: platform,
+  });
+  unwrapRpc(data, error);
+}
+export async function removeNativePush(
+  client: SupabaseClient<Database>,
+  installationId: string,
+): Promise<void> {
+  const { data, error } = await client.rpc('remove_native_push', {
+    p_installation_id: installationId,
+  });
+  unwrapRpc(data, error);
+}
+
 export async function getNotificationPreferences(
   client: SupabaseClient<Database>,
 ): Promise<NotificationPreferences> {

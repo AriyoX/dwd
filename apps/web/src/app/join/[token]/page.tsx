@@ -87,6 +87,9 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
             ) : (
               <JoinInvitation token={token} />
             )}
+            <a className="button button-secondary" href={`dwd://join/${encodeURIComponent(token)}`}>
+              Open in DWD app
+            </a>
           </Card>
         )}
       </div>

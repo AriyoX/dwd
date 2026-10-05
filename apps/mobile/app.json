@@ -7,15 +7,30 @@
     "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "plugins": ["expo-router", "expo-sqlite", "expo-status-bar", "expo-apple-authentication"],
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-status-bar",
+      "expo-apple-authentication",
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
+    ],
     "ios": {
       "bundleIdentifier": "com.drinkwithdesire.mobile",
       "usesAppleSignIn": true,
       "supportsTablet": true,
-      "infoPlist": { "CADisableMinimumFrameDurationOnPhone": true }
+      "infoPlist": {
+        "CADisableMinimumFrameDurationOnPhone": true
+      }
     },
     "android": {
       "package": "com.drinkwithdesire.mobile"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dd1a6538-e07e-47b2-baed-7d6d9f6c009b"
+      }
     }
   }
 }

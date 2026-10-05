@@ -1175,6 +1175,22 @@ export type Database = {
     };
     Functions: {
       acknowledge_check_in: { Args: { p_request_id: string }; Returns: Json };
+      start_night_out_recoverable: {
+        Args: {
+          p_creation_key: string;
+          p_title: string;
+          p_ends_at: string;
+          p_timezone: string;
+          p_host_plan: Json;
+          p_guests?: Json;
+        };
+        Returns: Json;
+      };
+      register_native_push: {
+        Args: { p_installation_id: string; p_token: string; p_platform: string };
+        Returns: Json;
+      };
+      remove_native_push: { Args: { p_installation_id: string }; Returns: Json };
       acknowledge_notification: {
         Args: { p_notification_id: string };
         Returns: Json;

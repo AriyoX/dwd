@@ -18,6 +18,7 @@ export function TextField({
   maxLength,
   editable = true,
   autoComplete,
+  multiline = false,
 }: {
   label: string;
   value: string;
@@ -30,6 +31,7 @@ export function TextField({
   maxLength?: number;
   editable?: boolean;
   autoComplete?: TextInputProps['autoComplete'];
+  multiline?: boolean;
 }) {
   const { colors, scheme } = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -48,12 +50,14 @@ export function TextField({
           keyboardType={keyboardType}
           keyboardAppearance={scheme}
           maxLength={maxLength}
+          multiline={multiline}
+          textAlignVertical={multiline ? 'top' : 'center'}
           onChangeText={onChangeText}
           onBlur={() => setFocused(false)}
           onFocus={() => setFocused(true)}
           secureTextEntry={secureTextEntry && !revealed}
           selectionColor={colors.primary}
-          style={styles.input}
+          style={[styles.input, multiline ? { minHeight: 140 } : null]}
           textContentType={textContentType}
           value={value}
         />

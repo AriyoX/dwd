@@ -51,6 +51,18 @@ export async function revokeNightInvite(
   unwrapRpc<{ revoked: boolean }>(data, error);
 }
 
+export async function revokeNightInviteOnce(
+  client: SupabaseClient<Database>,
+  nightId: string,
+  requestKey: string,
+): Promise<void> {
+  const { data, error } = await client.rpc('revoke_night_invite_once', {
+    p_night_id: nightId,
+    p_request_key: requestKey,
+  });
+  unwrapRpc(data, error);
+}
+
 export async function getInvitePreview(
   client: SupabaseClient<Database>,
   tokenHash: string,

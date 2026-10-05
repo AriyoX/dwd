@@ -48,6 +48,7 @@ export default function BottlesScreen() {
   const access = snapshot ? nightAccess(snapshot, memberId ?? snapshot.currentMemberId) : null;
   return (
     <Screen
+      sheetTitle="Shared bottles"
       scrollRef={scrollRef}
       insetTop={false}
       refreshControl={
