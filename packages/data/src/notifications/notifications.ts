@@ -5,6 +5,8 @@ import type {
   NotificationEvent,
   NotificationPreferences,
   PreplotPreferences,
+  CountryCode,
+  CalendarRegion,
 } from '@dwd/core';
 import { DataAccessError, unwrapRpc } from '../shared/rpc';
 
@@ -41,6 +43,17 @@ export async function updatePreplotPreferences(
   const { data, error } = await client.rpc('update_preplot_preferences', {
     p_enabled: preferences.enabled,
     p_sunday_enabled: preferences.sundayEnabled,
+  });
+  return unwrapRpc<PreplotPreferences>(data, error);
+}
+export async function updatePreplotCountry(
+  client: SupabaseClient<Database>,
+  countryCode: CountryCode,
+  calendarRegion: CalendarRegion,
+): Promise<PreplotPreferences> {
+  const { data, error } = await client.rpc('update_preplot_country', {
+    p_country_code: countryCode,
+    p_calendar_region: calendarRegion,
   });
   return unwrapRpc<PreplotPreferences>(data, error);
 }

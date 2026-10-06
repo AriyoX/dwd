@@ -2,18 +2,32 @@ import { useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { EMERGENCY_NUMBERS_UGANDA, EMERGENCY_SIGNS } from '@dwd/core';
+import {
+  countryProfile,
+  emergencyDialUri,
+  EMERGENCY_SIGNS,
+  readHelpCountry,
+  saveHelpCountry,
+  type CountryCode,
+} from '@dwd/core';
 import { PrimaryButton } from '@/components/primary-button';
 import { Notice, Panel, Screen } from '@/components/screen';
 import { useTheme } from '@/providers/theme-provider';
+import { CountryChoice } from '@/components/country-choice';
 
 export default function HelpScreen() {
   const { colors, typography } = useTheme();
   const [issue, setIssue] = useState<string | null>(null);
+  const [country, setCountry] = useState<CountryCode | null>(() =>
+    readHelpCountry(globalThis.localStorage),
+  );
+  const profile = countryProfile(country);
   async function call(number: string) {
+    const uri = emergencyDialUri(country, number);
+    if (!uri) return;
     setIssue(null);
     try {
-      await Linking.openURL(`tel:${number}`);
+      await Linking.openURL(uri);
     } catch {
       setIssue(`Could not open the phone. Dial ${number} directly.`);
     }
@@ -26,17 +40,37 @@ export default function HelpScreen() {
         <Text accessibilityRole="header" style={typography.sectionTitle}>
           Someone needs help
         </Text>
-        <Text style={typography.body}>Uganda emergency numbers</Text>
-        {EMERGENCY_NUMBERS_UGANDA.map((number) => (
+        <CountryChoice
+          label="Current country"
+          value={country}
+          onChange={(code) => {
+            setCountry(code);
+            setIssue(
+              saveHelpCountry(globalThis.localStorage, code)
+                ? null
+                : 'Country could not be saved. Choose it again next time.',
+            );
+          }}
+        />
+        {profile?.emergency.map(({ number, service }) => (
           <PrimaryButton
             key={number}
-            label={`Call ${number}`}
+            label={`Call ${number} · ${service}`}
             icon="call-outline"
             variant="danger"
             onPress={() => void call(number)}
           />
         ))}
-        <Notice message="Outside Uganda, call your local emergency number. A DWD check-in does not call emergency services." />
+        <Notice message="Confirm your current country before calling. A DWD check-in does not call emergency services." />
+        <PrimaryButton
+          label="My country isn't listed"
+          variant="quiet"
+          onPress={() => {
+            setCountry(null);
+            saveHelpCountry(globalThis.localStorage, null);
+            setIssue('Use your local emergency number or ask someone nearby for help.');
+          }}
+        />
         {issue ? <Notice error message={issue} /> : null}
       </Panel>
       <Panel>
@@ -51,18 +85,22 @@ export default function HelpScreen() {
         ))}
       </Panel>
       <Text style={typography.body}>DWD cannot determine sobriety or driving safety.</Text>
-      <PrimaryButton
-        label="Emergency number source"
-        variant="quiet"
-        onPress={() => {
-          void Linking.openURL(
-            'https://upf.go.ug/public-safety-crime-response-and-security-operations-update/',
-          ).catch(() => setIssue('Could not open the source.'));
-        }}
-      />
-      <Text style={{ color: colors.muted, fontSize: 12 }}>
-        Numbers verified 2 October 2026 · Uganda Police Force
-      </Text>
+      {profile ? (
+        <PrimaryButton
+          label="Emergency number source"
+          variant="quiet"
+          onPress={() => {
+            void Linking.openURL(profile.emergencySource).catch(() =>
+              setIssue('Could not open the source.'),
+            );
+          }}
+        />
+      ) : null}
+      {profile ? (
+        <Text style={{ color: colors.muted, fontSize: 12 }}>
+          Numbers verified {profile.reviewedAt} · {profile.emergencyAuthority}
+        </Text>
+      ) : null}
     </Screen>
   );
 }

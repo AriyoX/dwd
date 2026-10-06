@@ -9,8 +9,15 @@ import {
   sendCheckIn,
   setReminderPause,
   updateNotificationPreferences,
+  updatePreplotCountry,
 } from '@dwd/data';
-import type { CheckInResult, NotificationPreferences } from '@dwd/core';
+import {
+  isCountryCode,
+  isCalendarRegion,
+  type CheckInResult,
+  type NotificationPreferences,
+  type PreplotPreferences,
+} from '@dwd/core';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 const preferencesSchema = z.object({
@@ -41,6 +48,30 @@ async function authenticatedClient() {
   const { data, error } = await client.auth.getClaims();
   if (error !== null || data?.claims.sub === undefined) throw new Error('Authentication required.');
   return client;
+}
+
+export async function updatePreplotCountryAction(
+  input: unknown,
+): Promise<{ ok: true; data: PreplotPreferences } | { ok: false; error: string }> {
+  const parsed = z.object({ countryCode: z.string(), calendarRegion: z.string() }).safeParse(input);
+  if (
+    !parsed.success ||
+    !isCountryCode(parsed.data.countryCode) ||
+    !isCalendarRegion(parsed.data.countryCode, parsed.data.calendarRegion)
+  )
+    return { ok: false, error: 'Choose a supported country and calendar.' };
+  try {
+    return {
+      ok: true,
+      data: await updatePreplotCountry(
+        await authenticatedClient(),
+        parsed.data.countryCode,
+        parsed.data.calendarRegion,
+      ),
+    };
+  } catch {
+    return { ok: false, error: 'Country could not be saved. Retry.' };
+  }
 }
 
 export async function updateNotificationPreferencesAction(

@@ -1191,6 +1191,10 @@ export type Database = {
         Returns: Json;
       };
       get_preplot_preferences: { Args: never; Returns: Json };
+      update_preplot_country: {
+        Args: { p_country_code: string; p_calendar_region?: string };
+        Returns: Json;
+      };
       update_preplot_preferences: {
         Args: { p_enabled: boolean; p_sunday_enabled: boolean };
         Returns: Json;

@@ -13,6 +13,7 @@ import { useNightAction } from '@/hooks/use-night-action';
 import { actorClient } from '@/lib/actor-client';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { CampaignCountrySettings } from '@/components/campaign-country-settings';
 
 export default function ProfileScreen() {
   const { session } = useSupabase();
@@ -24,6 +25,7 @@ export default function ProfileScreen() {
   const query = useAccountQuery(load);
   return (
     <Screen insetTop={false} sheetTitle="Edit profile">
+      <CampaignCountrySettings key={session?.user.id} />
       {query.data ? (
         <ProfileForm
           key={session?.user.id}

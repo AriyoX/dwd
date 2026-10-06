@@ -18,6 +18,7 @@ import { useNow } from '@/hooks/use-night';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useRouter } from 'expo-router';
+import { CampaignCountrySettings } from '@/components/campaign-country-settings';
 
 export default function RemindersScreen() {
   const { session } = useSupabase();
@@ -27,6 +28,7 @@ export default function RemindersScreen() {
     <Screen insetTop={false} sheetTitle="Reminders">
       <Stack.Screen options={{ title: 'Reminders' }} />
       <PreplotControls key={session?.user.id} />
+      <CampaignCountrySettings key={`country:${session?.user.id}`} />
       {!query.data ? (
         query.issue ? (
           <RetryPanel issue={query.issue} retry={() => void query.refresh()} />

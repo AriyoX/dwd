@@ -20,9 +20,9 @@ select extensions.is((select count(*) from private.preplot_windows('2027-03-07')
 select extensions.is((select count(*) from private.preplot_windows('2027-03-08')),0::bigint,'estimated Eid quiet period can suppress a fixed holiday');
 select extensions.is((select count(*) from private.preplot_windows('2030-12-31')),2::bigint,'New Year eve keeps two future opportunities');
 select extensions.ok(not has_table_privilege('authenticated','private.preplot_annual_holidays','SELECT'),'clients cannot read or alter the annual calendar');
-insert into private.preplot_holidays values('2027-01-08','special_observance','suppress','','','https://example.test/official');
+insert into private.preplot_holidays(day,campaign,mode,title,body,source_url) values('2027-01-08','special_observance','suppress','','','https://example.test/official');
 select extensions.is((select count(*) from private.preplot_windows('2027-01-08')),0::bigint,'dated official override suppresses an ordinary future Friday');
-insert into private.preplot_holidays values('2027-03-12','eid_al_fitr','suppress','','','https://example.test/official');
+insert into private.preplot_holidays(day,campaign,mode,title,body,source_url) values('2027-03-12','eid_al_fitr','suppress','','','https://example.test/official');
 select extensions.is((select campaign from private.preplot_windows('2027-03-08')),'womens_day_holiday','confirmed Eid replaces its estimate instead of leaving stale suppression');
 select * from extensions.finish();
 rollback;

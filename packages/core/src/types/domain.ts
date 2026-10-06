@@ -1,3 +1,5 @@
+import type { CalendarRegion, CountryCode } from '../config/countries';
+
 export type DrinkCategory = 'beer' | 'wine' | 'spirit' | 'cocktail' | 'other';
 export type NightStatus = 'active' | 'ended';
 export type MemberType = 'account' | 'guest';
@@ -163,6 +165,9 @@ export type NotificationEventType =
 export interface PreplotPreferences {
   enabled: boolean;
   sundayEnabled: boolean;
+  countryCode: CountryCode;
+  calendarRegion: CalendarRegion;
+  countrySelected: boolean;
 }
 
 export interface NotificationPreferences {

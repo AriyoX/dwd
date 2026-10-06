@@ -16,7 +16,7 @@ select extensions.is((select campaign from private.preplot_windows('2027-01-01')
 select extensions.ok(not has_function_privilege('authenticated', 'private.create_due_preplot_events(timestamptz)', 'EXECUTE'), 'accounts cannot schedule campaigns');
 select extensions.ok(not has_function_privilege('authenticated', 'public.recheck_native_notification_job(uuid,integer)', 'EXECUTE'), 'accounts cannot recheck worker jobs');
 select extensions.ok(not has_function_privilege('anon', 'public.record_preplot_open(uuid)', 'EXECUTE'), 'anonymous users cannot track opens');
-select extensions.is((select count(*) from pg_tables where schemaname='private' and tablename like 'preplot_%' and rowsecurity), 6::bigint, 'all private campaign tables have RLS');
+select extensions.is((select count(*) from pg_tables where schemaname='private' and tablename like 'preplot_%' and rowsecurity), 7::bigint, 'all private campaign tables have RLS');
 
 insert into auth.users(id,email,raw_user_meta_data) values
  ('91000000-0000-4000-8000-000000000001','preplot@example.test','{"display_name":"Plot","age_confirmed":true}'),
@@ -28,6 +28,7 @@ select set_config('request.jwt.claims','{"sub":"91000000-0000-4000-8000-00000000
 set local role authenticated;
 select public.register_native_push('93000000-0000-4000-8000-000000000001','ExpoPushToken[preplot]','ios');
 select public.update_native_push_context('93000000-0000-4000-8000-000000000001','Africa/Kampala');
+select public.update_preplot_country('UG','national');
 select extensions.is(public.get_preplot_preferences()->>'sundayEnabled', 'false', 'Sunday reminders default off');
 select extensions.throws_ok($$select public.update_native_push_context('93000000-0000-4000-8000-000000000001','Invalid/Timezone')$$,'22023','Invalid timezone.','device context rejects invalid timezone');
 reset role;
