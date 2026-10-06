@@ -150,9 +150,20 @@ export interface FinishedNight {
   categoryCounts: Partial<Record<DrinkCategory, number>>;
 }
 
-export type NotificationCategory = 'group_attention' | 'direct_checkin' | 'personal_reminder';
+export type NotificationCategory =
+  'group_attention' | 'direct_checkin' | 'personal_reminder' | 'preplot';
 export type NotificationEventType =
-  'group_attention' | 'direct_checkin' | 'personal_pace' | 'planned_end' | 'periodic_water';
+  | 'group_attention'
+  | 'direct_checkin'
+  | 'personal_pace'
+  | 'planned_end'
+  | 'periodic_water'
+  | 'preplot';
+
+export interface PreplotPreferences {
+  enabled: boolean;
+  sundayEnabled: boolean;
+}
 
 export interface NotificationPreferences {
   groupAttentionEnabled: boolean;

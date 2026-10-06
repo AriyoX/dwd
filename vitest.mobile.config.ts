@@ -8,5 +8,5 @@ export default defineConfig({
       react: fileURLToPath(new URL('./node_modules/react', import.meta.url)),
     },
   },
-  test: { environment: 'node', include: ['apps/mobile/**/*.test.tsx'] },
+  test: { environment: 'node', include: ['apps/mobile/tests/**/*.test.tsx'] },
 });

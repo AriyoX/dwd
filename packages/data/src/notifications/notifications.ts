@@ -4,14 +4,16 @@ import type {
   Database,
   NotificationEvent,
   NotificationPreferences,
+  PreplotPreferences,
 } from '@dwd/core';
-import { unwrapRpc } from '../shared/rpc';
+import { DataAccessError, unwrapRpc } from '../shared/rpc';
 
 export async function registerNativePush(
   client: SupabaseClient<Database>,
   installationId: string,
   token: string,
   platform: string,
+  timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ): Promise<void> {
   const { data, error } = await client.rpc('register_native_push', {
     p_installation_id: installationId,
@@ -19,6 +21,43 @@ export async function registerNativePush(
     p_platform: platform,
   });
   unwrapRpc(data, error);
+  const context = await client.rpc('update_native_push_context', {
+    p_installation_id: installationId,
+    p_timezone: timezone,
+  });
+  if (context.error) throw new DataAccessError(context.error.message, context.error.code);
+}
+
+export async function getPreplotPreferences(
+  client: SupabaseClient<Database>,
+): Promise<PreplotPreferences> {
+  const { data, error } = await client.rpc('get_preplot_preferences');
+  return unwrapRpc<PreplotPreferences>(data, error);
+}
+export async function updatePreplotPreferences(
+  client: SupabaseClient<Database>,
+  preferences: PreplotPreferences,
+): Promise<PreplotPreferences> {
+  const { data, error } = await client.rpc('update_preplot_preferences', {
+    p_enabled: preferences.enabled,
+    p_sunday_enabled: preferences.sundayEnabled,
+  });
+  return unwrapRpc<PreplotPreferences>(data, error);
+}
+export async function recordPreplotOpen(
+  client: SupabaseClient<Database>,
+  eventId: string,
+): Promise<void> {
+  const { error } = await client.rpc('record_preplot_open', { p_event_id: eventId });
+  if (error) throw new DataAccessError(error.message, error.code);
+}
+export async function getMyNotificationEvent(
+  client: SupabaseClient<Database>,
+  eventId: string,
+): Promise<NotificationEvent | null> {
+  const { data, error } = await client.rpc('get_my_notification_event', { p_event_id: eventId });
+  if (error) throw new DataAccessError(error.message, error.code);
+  return data as unknown as NotificationEvent | null;
 }
 export async function removeNativePush(
   client: SupabaseClient<Database>,

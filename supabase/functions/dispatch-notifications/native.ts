@@ -5,21 +5,29 @@ export interface NativePushJob {
   eventId: string;
   recipientUserId: string;
   nightId: string | null;
+  preplot?: boolean;
+  title?: string;
+  body?: string;
+  expiresAt?: string;
 }
 type ExpoResult = { status?: string; id?: string; details?: { error?: string } };
 export function nativePushMessage(job: NativePushJob) {
   return {
     to: job.token,
-    title: 'Drink with Desire',
-    body: 'You have a new notification. Open DWD to view it.',
+    title: job.preplot ? job.title : 'Drink with Desire',
+    body: job.preplot ? job.body : 'You have a new notification. Open DWD to view it.',
     sound: 'default',
     channelId: 'dwd-reminders',
     ttl: 120,
+    ...(job.preplot && job.expiresAt
+      ? { expiration: Math.floor(Date.parse(job.expiresAt) / 1000) }
+      : {}),
     data: { eventId: job.eventId, recipientUserId: job.recipientUserId, nightId: job.nightId },
   };
 }
 export function createNativeDispatcher(deps: {
   claim: () => Promise<NativePushJob[]>;
+  recheck?: (job: NativePushJob) => Promise<boolean>;
   complete: (job: NativePushJob, receipt: string | null, permanent: boolean) => Promise<void>;
   receipts: () => Promise<{ deliveryId: string; receiptId: string }[]>;
   completeReceipt: (deliveryId: string, unregistered: boolean, delivered: boolean) => Promise<void>;
@@ -68,6 +76,7 @@ export function createNativeDispatcher(deps: {
           let receipt: string | null = null;
           let permanent = false;
           try {
+            if (deps.recheck && !(await deps.recheck(job))) return;
             const result = await post('send', nativePushMessage(job));
             const ticket = result.data as ExpoResult | undefined;
             if (ticket?.status === 'ok' && typeof ticket.id === 'string') receipt = ticket.id;

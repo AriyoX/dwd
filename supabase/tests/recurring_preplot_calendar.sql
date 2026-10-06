@@ -1,0 +1,28 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select extensions.plan(20);
+
+select extensions.is(private.preplot_gregorian_easter(2026),'2026-04-05'::date,'Easter matches the official 2026 calendar');
+select extensions.is(private.preplot_gregorian_easter(2027),'2027-03-28'::date,'Easter changes with the year');
+select extensions.is(private.preplot_gregorian_easter(1954),'1954-04-18'::date,'computus handles the published lunar correction example');
+select extensions.is(private.preplot_gregorian_easter(2100),'2100-03-28'::date,'Gregorian century correction is preserved');
+select extensions.is(private.preplot_civil_hijri_date(1447,10,1),'2026-03-19'::date,'civil Fitr forecast agrees with .NET adjustment zero');
+select extensions.is(private.preplot_civil_hijri_date(1448,12,10),'2027-05-16'::date,'civil Adha forecast changes every lunar year');
+select extensions.is((select send_time::text from private.preplot_windows('2027-01-08') where not backup),'17:15:00','Friday pushes run after the old cutoff');
+select extensions.is((select send_time::text from private.preplot_windows('2030-01-12') where not backup),'15:30:00','Saturday pushes continue several years ahead');
+select extensions.is((select campaign from private.preplot_windows('2027-10-09')),'independence_holiday','Independence Day recurs without a dated row');
+select extensions.is((select campaign from private.preplot_windows('2028-10-08')),'independence_eve','holiday eve overrides a Sunday in another year');
+select extensions.is((select campaign from private.preplot_windows('2030-12-25')),'christmas_holiday','Christmas recurs in future years');
+select extensions.is((select campaign from private.preplot_windows('2030-12-26')),'boxing_day_holiday','Boxing Day recurs in future years');
+select extensions.is((select count(*) from private.preplot_windows('2027-03-26')),0::bigint,'future Good Friday suppresses Friday pushes');
+select extensions.is((select campaign from private.preplot_windows('2027-03-29')),'easter_monday_holiday','future Easter Monday has its holiday window');
+select extensions.is((select count(*) from private.preplot_windows('2027-03-07')),0::bigint,'estimated Eid quiet period overrides a future Sunday');
+select extensions.is((select count(*) from private.preplot_windows('2027-03-08')),0::bigint,'estimated Eid quiet period can suppress a fixed holiday');
+select extensions.is((select count(*) from private.preplot_windows('2030-12-31')),2::bigint,'New Year eve keeps two future opportunities');
+select extensions.ok(not has_table_privilege('authenticated','private.preplot_annual_holidays','SELECT'),'clients cannot read or alter the annual calendar');
+insert into private.preplot_holidays values('2027-01-08','special_observance','suppress','','','https://example.test/official');
+select extensions.is((select count(*) from private.preplot_windows('2027-01-08')),0::bigint,'dated official override suppresses an ordinary future Friday');
+insert into private.preplot_holidays values('2027-03-12','eid_al_fitr','suppress','','','https://example.test/official');
+select extensions.is((select campaign from private.preplot_windows('2027-03-08')),'womens_day_holiday','confirmed Eid replaces its estimate instead of leaving stale suppression');
+select * from extensions.finish();
+rollback;

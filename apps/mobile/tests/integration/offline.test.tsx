@@ -4,14 +4,14 @@ import { create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AuthChangeEvent, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
-import { SupabaseProvider, useSupabase } from './providers/supabase-provider';
-import { OfflineProvider, useOffline } from './providers/offline-provider';
-import { useAccountQuery } from './hooks/use-account-query';
-import { PendingLogs } from './components/pending-logs';
-import { PrimaryButton } from './components/primary-button';
-import { readOfflineSession } from './lib/offline-session';
-import { NativePendingLogStore, type NativePendingLog } from './lib/offline-logging';
-import { writeOfflineCache } from './lib/offline-cache';
+import { SupabaseProvider, useSupabase } from '@/providers/supabase-provider';
+import { OfflineProvider, useOffline } from '@/providers/offline-provider';
+import { useAccountQuery } from '@/hooks/use-account-query';
+import { PendingLogs } from '@/components/pending-logs';
+import { PrimaryButton } from '@/components/primary-button';
+import { readOfflineSession } from '@/lib/offline-session';
+import { NativePendingLogStore, type NativePendingLog } from '@/lib/offline-logging';
+import { writeOfflineCache } from '@/lib/offline-cache';
 
 const runtime = vi.hoisted(() => ({
   client: null as SupabaseClient<Database> | null,
@@ -44,7 +44,7 @@ vi.mock('react-native-reanimated', () => ({
 vi.mock('react-native-safe-area-context', () => ({ SafeAreaView: 'View' }));
 vi.mock('@expo/vector-icons', () => ({ Ionicons: 'Icon' }));
 vi.mock('@/providers/theme-provider', async () => {
-  const { lightColors, makeTypography } = await import('./theme/tokens');
+  const { lightColors, makeTypography } = await import('@/theme/tokens');
   return { useTheme: () => ({ colors: lightColors, typography: makeTypography(lightColors) }) };
 });
 vi.mock('@/lib/confirm', () => ({ confirmAction: runtime.confirm }));
@@ -188,9 +188,11 @@ describe('native offline provider and screen integration', () => {
       },
       abortSignal: () => request,
     });
-    runtime.client!.rpc = vi.fn(() => request) as unknown as SupabaseClient<Database>['rpc'];
+    if (!runtime.client) throw new Error('Missing test client');
+    runtime.client.rpc = vi.fn(() => request) as unknown as SupabaseClient<Database>['rpc'];
     await mount();
-    const originalConnection = load.mock.calls.at(-1)![0];
+    const originalConnection = load.mock.calls.at(-1)?.[0];
+    if (!originalConnection) throw new Error('Missing initial query');
     profile.mockResolvedValue({ data: { id: 'another-account' }, error: null });
     load.mockResolvedValue(['another account night']);
     await update(() =>

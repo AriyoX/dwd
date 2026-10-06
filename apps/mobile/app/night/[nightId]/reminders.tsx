@@ -5,6 +5,8 @@ import {
   getNotificationPreferences,
   setReminderPause,
   updateNotificationPreferences,
+  getPreplotPreferences,
+  updatePreplotPreferences,
 } from '@dwd/data';
 import { Choice } from '@/components/choice';
 import { PrimaryButton } from '@/components/primary-button';
@@ -24,6 +26,7 @@ export default function RemindersScreen() {
   return (
     <Screen insetTop={false} sheetTitle="Reminders">
       <Stack.Screen options={{ title: 'Reminders' }} />
+      <PreplotControls key={session?.user.id} />
       {!query.data ? (
         query.issue ? (
           <RetryPanel issue={query.issue} retry={() => void query.refresh()} />
@@ -40,6 +43,50 @@ export default function RemindersScreen() {
         onPress={() => router.push('/notifications')}
       />
     </Screen>
+  );
+}
+
+function PreplotControls() {
+  const query = useAccountQuery(getPreplotPreferences);
+  const action = useNightAction(query.refresh);
+  const { client } = useSupabase();
+  const { typography } = useTheme();
+  if (!query.data)
+    return query.issue ? (
+      <RetryPanel issue={query.issue} retry={() => void query.refresh()} />
+    ) : (
+      <LoadingPanel />
+    );
+  const preferences = query.data;
+  return (
+    <Panel>
+      <Text accessibilityRole="header" style={typography.sectionTitle}>
+        Before you head out
+      </Text>
+      <SettingsRow
+        label="Pre-plot reminders"
+        value={preferences.enabled}
+        disabled={action.busy}
+        onChange={(enabled) => {
+          if (client)
+            void action.run(() => updatePreplotPreferences(client, { ...preferences, enabled }));
+        }}
+      />
+      {preferences.enabled ? (
+        <SettingsRow
+          label="Include Sundays"
+          value={preferences.sundayEnabled}
+          disabled={action.busy}
+          onChange={(sundayEnabled) => {
+            if (client)
+              void action.run(() =>
+                updatePreplotPreferences(client, { ...preferences, sundayEnabled }),
+              );
+          }}
+        />
+      ) : null}
+      {action.issue ? <Notice error message={action.issue} /> : null}
+    </Panel>
   );
 }
 

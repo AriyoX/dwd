@@ -24,6 +24,12 @@ export function safeDestination(value: unknown): string {
   )
     return value;
   const invite = value.match(/^\/join\?token=([A-Za-z0-9_-]+)$/)?.[1];
+  if (
+    /^\/night\/new\?source=push&campaign=[a-z_]+&notificationId=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      value,
+    )
+  )
+    return value;
   if (invite && inviteTokenSchema.safeParse(invite).success) return value;
   if (
     /^\/night\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/(?:plan|summary|photos|log|guest|bottles|reminders|help|catch-up|planned-end|invite))?(?:\?memberId=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(

@@ -16,7 +16,8 @@ import Constants from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import {
   acknowledgeNotification,
-  getMyNotificationEvents,
+  getMyNotificationEvent,
+  recordPreplotOpen,
   registerNativePush,
   removeNativePush,
 } from '@dwd/data';
@@ -223,12 +224,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     Notifications.clearLastNotificationResponse();
     if (!data) return;
     try {
-      const events = await withRequestTimeout((signal) =>
-        getMyNotificationEvents(actorClient(client, actorSession.access_token, signal), 100),
+      const event = await withRequestTimeout((signal) =>
+        getMyNotificationEvent(
+          actorClient(client, actorSession.access_token, signal),
+          data.eventId,
+        ),
       );
       if (current.current.owner !== actor.owner || current.current.access !== 'ready') return;
-      const event = events.find((e) => e.id === data.eventId);
       router.push((event ? notificationRoute(event) : '/notifications') as Href);
+      if (event?.eventType === 'preplot') {
+        void withRequestTimeout((signal) =>
+          recordPreplotOpen(actorClient(client, actorSession.access_token, signal), event.id),
+        ).catch(() => undefined);
+      }
       if (event && !event.acknowledgedAt) {
         void withRequestTimeout((signal) =>
           acknowledgeNotification(actorClient(client, actorSession.access_token, signal), event.id),

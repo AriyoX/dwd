@@ -46,6 +46,14 @@ const browserDispatch = createDispatchHandler({
 const nativeDispatch = createNativeDispatcher({
   fetch,
   accessToken: Deno.env.get('DWD_EXPO_ACCESS_TOKEN'),
+  async recheck(job) {
+    const { data, error } = await supabase.rpc('recheck_native_notification_job', {
+      p_delivery_id: job.deliveryId,
+      p_attempt: job.attempt,
+    });
+    if (error) throw error;
+    return data === true;
+  },
   async claim() {
     const { data, error } = await supabase.rpc('claim_native_notification_jobs', { p_limit: 10 });
     if (error) throw error;

@@ -5,12 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
 import type { Notification, NotificationResponse, NotificationBehavior } from 'expo-notifications';
-import { NotificationsProvider, useNotifications } from './providers/notifications-provider';
+import { NotificationsProvider, useNotifications } from '@/providers/notifications-provider';
 import {
   INSTALLATION_KEY,
   pushPreferenceKey,
   pushRegistrationKey,
-} from './lib/native-notifications';
+} from '@/lib/native-notifications';
 
 const runtime = vi.hoisted(() => ({
   auth: {
@@ -30,6 +30,7 @@ const runtime = vi.hoisted(() => ({
   remove: vi.fn(),
   events: vi.fn(),
   acknowledge: vi.fn(),
+  preplotOpen: vi.fn(),
 }));
 vi.mock('@/providers/supabase-provider', () => ({ useSupabase: () => runtime.auth }));
 vi.mock('react-native', () => ({
@@ -49,7 +50,11 @@ vi.mock('expo-crypto', () => ({ randomUUID: () => '00000000-0000-4000-8000-00000
 vi.mock('@dwd/data', () => ({
   registerNativePush: runtime.register,
   removeNativePush: runtime.remove,
-  getMyNotificationEvents: runtime.events,
+  getMyNotificationEvent: async (...args: unknown[]) => {
+    const events = (await runtime.events(...args)) as unknown[];
+    return events[0] ?? null;
+  },
+  recordPreplotOpen: runtime.preplotOpen,
   acknowledgeNotification: runtime.acknowledge,
 }));
 vi.mock('expo-notifications', () => ({
@@ -139,6 +144,7 @@ beforeEach(() => {
   runtime.remove.mockResolvedValue(undefined);
   runtime.events.mockResolvedValue([{ id: eventId, nightId }]);
   runtime.acknowledge.mockResolvedValue(undefined);
+  runtime.preplotOpen.mockResolvedValue(undefined);
 });
 afterEach(async () => {
   if (root) await update(() => root?.unmount());
@@ -296,6 +302,22 @@ describe('native permission and token lifecycle', () => {
       shouldShowBanner: false,
       shouldShowList: false,
     });
+  });
+  it('opens Night setup from an expired pre-plot push and records the actual tap', async () => {
+    const route = `/night/new?source=push&campaign=friday_preplot&notificationId=${eventId}`;
+    runtime.events.mockResolvedValue([
+      {
+        id: eventId,
+        nightId: null,
+        eventType: 'preplot',
+        deepLink: route,
+        expiresAt: '2020-01-01T00:00:00Z',
+      },
+    ]);
+    runtime.last = response();
+    await mount();
+    expect(runtime.router.push).toHaveBeenCalledWith(route);
+    expect(runtime.preplotOpen).toHaveBeenCalledWith(expect.anything(), eventId);
   });
   it('deactivation does not require a registration RPC when this device never enabled push', async () => {
     await mount();

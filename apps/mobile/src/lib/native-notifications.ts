@@ -11,6 +11,15 @@ export function notificationTarget(data: unknown, owner: string) {
   return parsed.success && parsed.data.recipientUserId === owner ? parsed.data : null;
 }
 export function notificationRoute(event: NotificationEvent) {
+  if (event.eventType === 'preplot') {
+    const campaign =
+      /^\/night\/new\?source=push&campaign=([a-z_]+)&notificationId=([0-9a-f-]+)$/.exec(
+        event.deepLink,
+      );
+    if (campaign && campaign[2] === event.id)
+      return `/night/new?source=push&campaign=${campaign[1]}&notificationId=${event.id}`;
+    return '/night/new';
+  }
   // Never navigate to arbitrary URLs supplied by a push message.
   return event.nightId ? `/night/${event.nightId}` : '/notifications';
 }

@@ -1190,6 +1190,17 @@ export type Database = {
         Args: { p_installation_id: string; p_token: string; p_platform: string };
         Returns: Json;
       };
+      get_preplot_preferences: { Args: never; Returns: Json };
+      update_preplot_preferences: {
+        Args: { p_enabled: boolean; p_sunday_enabled: boolean };
+        Returns: Json;
+      };
+      update_native_push_context: {
+        Args: { p_installation_id: string; p_timezone: string };
+        Returns: undefined;
+      };
+      record_preplot_open: { Args: { p_event_id: string }; Returns: undefined };
+      get_my_notification_event: { Args: { p_event_id: string }; Returns: Json };
       remove_native_push: { Args: { p_installation_id: string }; Returns: Json };
       acknowledge_notification: {
         Args: { p_notification_id: string };

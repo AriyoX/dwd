@@ -49,6 +49,37 @@ Deno.test('accepted Expo ticket is recorded with the original attempt', async ()
   equal(f.requests[0]?.url, 'https://exp.host/--/api/v2/push/send');
   ok(f.requests[0]?.init?.signal);
 });
+Deno.test('pre-plot pushes use the campaign copy and expire with the window', () => {
+  const message = nativePushMessage({
+    ...job,
+    preplot: true,
+    title: 'Ofuluma leero? 👀',
+    body: 'Set up your Night before you head out.',
+    expiresAt: '2026-10-09T13:00:00Z',
+  });
+  equal(message.title, 'Ofuluma leero? 👀');
+  equal(message.body, 'Set up your Night before you head out.');
+  equal(message.expiration, Date.parse('2026-10-09T13:00:00Z') / 1000);
+});
+Deno.test('a Night starting after claim suppresses the send', async () => {
+  const f = fixture({ data: { status: 'ok', id: 'ticket' } });
+  const result = await createNativeDispatcher({
+    ...f.deps,
+    recheck: () => Promise.resolve(false),
+  })();
+  equal(result.accepted, 0);
+  equal(f.requests.length, 0);
+  equal(f.completed.length, 0);
+});
+Deno.test('a failed eligibility recheck never sends to Expo', async () => {
+  const f = fixture({ data: { status: 'ok', id: 'ticket' } });
+  await createNativeDispatcher({
+    ...f.deps,
+    recheck: () => Promise.reject(new Error('offline')),
+  })();
+  equal(f.requests.length, 0);
+  deepStrictEqual(f.completed, [['delivery', null, false]]);
+});
 Deno.test('DeviceNotRegistered is permanent without saving remote error text', async () => {
   const f = fixture({
     data: {
