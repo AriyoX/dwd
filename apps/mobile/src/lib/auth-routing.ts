@@ -39,6 +39,7 @@ export function legacyAuthRoute(mode: unknown) {
 // Product routes are also guarded by Stack.Protected, including their back history.
 export function authRedirect(access: AccessState, pathname: string, introductionSeen: boolean) {
   if (pathname === '/auth/callback' || pathname === '/legal') return null;
+  if (pathname === '/delete-account' && (access === 'ready' || access === 'profile')) return null;
   if (access === 'restoring') return null;
   if (access === 'recovery') return pathname === authRoutes.reset ? null : authRoutes.reset;
   if (access === 'profile') return pathname === authRoutes.complete ? null : authRoutes.complete;

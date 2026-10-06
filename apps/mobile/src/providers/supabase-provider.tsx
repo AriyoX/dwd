@@ -123,9 +123,11 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     else void client.auth.stopAutoRefresh();
 
     const initialVersion = authVersion;
-    const restore = (nextSession: Session | null, error: unknown) => {
-      if (!mounted || authVersion !== initialVersion) return;
-      const restored = nextSession ?? restoreOfflineSession(error);
+    const currentRestore = () => mounted && authVersion === initialVersion;
+    const restore = async (nextSession: Session | null, error: unknown) => {
+      if (!currentRestore()) return;
+      const restored = nextSession ?? (await restoreOfflineSession(error));
+      if (!currentRestore()) return;
       setSession(restored);
       if (!restored) markRecovery(null);
       setStatus(restored ? 'signed-in' : error ? 'error' : 'signed-out');
@@ -133,9 +135,9 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     };
     void withRequestTimeout(() => client.auth.getSession())
       .then(({ data, error }) => {
-        restore(data.session, error);
+        void restore(data.session, error);
       })
-      .catch((error: unknown) => restore(null, error));
+      .catch((error: unknown) => void restore(null, error));
 
     return () => {
       mounted = false;

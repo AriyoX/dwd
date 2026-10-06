@@ -471,6 +471,11 @@ export default function NightScreen() {
               }
             />
           ) : null}
+          <PrimaryButton
+            label="Report content or block someone"
+            variant="quiet"
+            onPress={() => router.push(`/night/${nightId}/report`)}
+          />
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 19 }}>
             DWD cannot determine sobriety or driving safety.
           </Text>

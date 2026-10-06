@@ -111,7 +111,7 @@ export function SignupForm({ next }: { next: string }) {
               state.fieldErrors?.['ageConfirmed'] === undefined ? undefined : 'age-error'
             }
           />
-          <span>I am 18 or older.</span>
+          <span>I am 18 or older, meet the local legal drinking age, and agree to the Terms.</span>
         </label>
         <FieldError id="age-error" errors={state.fieldErrors?.['ageConfirmed']} />
       </div>

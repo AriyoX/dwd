@@ -39,7 +39,7 @@ select set_config('request.jwt.claim.sub','a1000000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claims','{"sub":"a1000000-0000-4000-8000-000000000001","session_id":"a2000000-0000-4000-8000-000000000001"}',true);
 set local role authenticated;
 select extensions.is(public.get_preplot_preferences()->>'countryCode','UG','unset country retains the launch display default');
-select extensions.is(public.get_preplot_preferences()->>'countrySelected','false','new accounts require an explicit campaign country');
+select extensions.is(public.get_preplot_preferences()->>'countrySelected','true','new accounts use Uganda without a country selection step');
 select public.register_native_push('a3000000-0000-4000-8000-000000000001','ExpoPushToken[country]','ios');
 select public.update_native_push_context('a3000000-0000-4000-8000-000000000001','Africa/Nairobi');
 select extensions.is(public.update_preplot_country('KE','national')->>'countryCode','KE','account can explicitly choose Kenya');

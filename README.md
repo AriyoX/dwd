@@ -162,9 +162,9 @@ See [docs/deployment.md](docs/deployment.md) for the live project settings, CLI 
 - Persistent in-app notifications are available without browser permission. Standards-based Web Push integration is included but remains disabled until the server-only VAPID keys, dispatch Edge Function, and scheduler are configured; see [deployment](docs/deployment.md).
 - The compact outbox uses guarded `localStorage`, not a general offline database. It stores only pending activity data needed for retry and is isolated by account and night.
 - Invite lookup throttling is an in-process best-effort limiter. Production should add an edge or durable rate limiter after the vertical MVP is stable.
-- Account deletion is a private request for operator review, not an automatic destructive action. Data export is not implemented.
+- Account deletion is available in-app and at `/delete-account`, with a cancellable 30-day countdown and an hourly cleanup worker. Personal activity and photos are removed; other participants retain a minimal anonymous membership timeline. Data export is not implemented.
 - Vercel and the dedicated Supabase backend are deployed. The user deferred SMTP setup; public signup and password-reset email delivery still need it. See [deployment status](docs/deployment.md).
 - Database authorization is covered by isolated PostgreSQL tests; mobile and desktop onboarding checks use Playwright. See the deployment guide for the latest validation and deferred SMTP work.
-- Uganda emergency numbers `112` and `999` were rechecked against the [Uganda Police Force FAQ](https://upf.go.ug/faq/) on September 6, 2026.
+- Optional foreground location chooses local campaigns and Help numbers on mobile/web, with Uganda as the default. Supported markets and African expansion priorities are in [country support](docs/country-expansion.md).
 
 See [architecture](docs/architecture.md), [database and RLS](docs/database-and-rls.md), [manual QA](docs/manual-qa-checklist.md), and [mobile portability](docs/mobile-portability.md) for operational detail.

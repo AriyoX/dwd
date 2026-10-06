@@ -29,7 +29,7 @@ export default function DeleteAccountScreen() {
   return session ? <Deletion key={session.user.id} /> : null;
 }
 function Deletion() {
-  const query = useAccountQuery(getAccountDeletion);
+  const query = useAccountQuery(getAccountDeletion, '', false, true);
   const { client, session } = useSupabase();
   const notifications = useNotifications();
   const offline = useOffline();
@@ -76,7 +76,7 @@ function Deletion() {
       !query.data &&
       !(await confirmAction(
         'Delete your account?',
-        'Deletion is scheduled in 30 days. Signing in before deletion starts cancels it. Shared nights retain anonymous records.',
+        'Deletion is scheduled in 30 days. Signing in before deletion starts cancels it. Your plans, drink and water entries, and photos will be removed.',
         'Schedule deletion',
         true,
       ))
@@ -121,7 +121,7 @@ function Deletion() {
     <Screen insetTop={false}>
       <ScreenHeading title="Delete your account" />
       <Notice message="Your account and uploaded photos will be deleted after 30 days. Signing in before deletion starts cancels it." />
-      <Notice message="Shared nights retain anonymous records. Nights you host will be closed. Unfinished setups, messages and photo uploads on this device will be removed." />
+      <Notice message="Your plans, drink and water entries, and photos will be removed. Other participants keep their own records and a minimal anonymous membership timeline. Nights you host will be closed. Unsaved entries and drafts on this device will be discarded." />
       {query.loading ? <LoadingPanel /> : null}
       {query.issue ? (
         <RetryPanel issue={query.issue} retry={() => void query.refresh()} />
@@ -152,12 +152,12 @@ function Deletion() {
           {offline.issue ? (
             <Notice
               error
-              message="Could not read pending entries. Resolve device storage before scheduling deletion."
+              message="Pending entries could not be read. Deleting your account will also discard unsaved entries on this device."
             />
           ) : waiting ? (
             <Panel>
               <Notice
-                message={`${waiting} entries are waiting on this device. Sync or remove them before deleting your account.`}
+                message={`${waiting} unsaved entries will be discarded when you delete your account. You can review them first.`}
               />
               <PrimaryButton
                 label="Review pending entries"
@@ -176,7 +176,7 @@ function Deletion() {
             label="Schedule account deletion"
             variant="danger"
             busy={busy}
-            disabled={!confirmed || waiting > 0 || Boolean(offline.issue) || query.loading}
+            disabled={!confirmed || query.loading}
             onPress={() => void submit(false)}
           />
         </>

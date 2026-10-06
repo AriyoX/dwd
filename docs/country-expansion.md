@@ -1,12 +1,12 @@
 # Country support: campaigns and emergency help
 
-Implemented on October 6, 2026 for Uganda, Kenya, Tanzania, Rwanda, South Africa, Dubai/UAE, the United Kingdom, the United States, and Canada. African profiles appear first in both mobile and web country lists. The shared registry is `packages/core/src/config/countries.json`; the migration contains a tested snapshot of it.
+Implemented on October 6, 2026 for Uganda, Kenya, Tanzania, Rwanda, South Africa, Dubai/UAE, the United Kingdom, the United States, and Canada. African markets remain the first priority for calendar and timing reviews. The shared registry is `packages/core/src/config/countries.json`; the migration contains a tested snapshot of it.
 
-## Choosing countries
+## Automatic country on mobile and web
 
-**Campaign country** is an authenticated account setting in mobile Profile/Reminders and web Account. Existing accounts are migrated explicitly to Uganda. New accounts must select a country before pre-plot delivery becomes eligible. Country is never inferred from a timezone, language, IP address, or GPS. UK users select England & Wales, Scotland, or Northern Ireland.
+There is no country picker. After the location disclosure, users may grant foreground device/browser location. Existing permission is reused automatically; return to the foreground refreshes it. Coordinates are matched on-device against bundled public-domain Natural Earth v5.1.2 boundaries and never sent to DWD or a geocoder. Only the supported country and UK calendar region are saved to the signed-in account. IP address, language and timezone are not used to guess location. UK England/Wales, Scotland and Northern Ireland regions are also derived from coordinates.
 
-**Current country in Help** is a separate device-local choice. It works offline with bundled numbers and sources, without Supabase or location permissions. No calls appear until a supported country is chosen; an unsupported country clears a previous selection and shows local-emergency guidance. Returning travellers should confirm the visible country before calling. Changing this choice does not change campaign preferences.
+Uganda is the immediate default when permission is absent, declined, revoked, a fix fails, or coordinates fall outside supported countries. Help and campaigns use the same detected country. Help works offline using bundled numbers, clearly labels a Uganda fallback, and warns travellers to dial their actual local service if elsewhere. Android requests approximate foreground location only; there is no background tracking. Browser geolocation is allowed only for this origin. Source country/number remains visible before every call; opening the dialler requires a deliberate tap.
 
 ## African calendars
 
@@ -55,7 +55,7 @@ Uganda keeps Kampala/Luganda copy. Other profiles use concise English; Kenya/Tan
 | US           | 911 emergency                                       | [National 911 Program](https://www.911.gov/calling-911/)                                                    |
 | Canada       | 911 emergency                                       | [CRTC](https://web.crtc.gc.ca/eng/phone/911/)                                                               |
 
-Verified October 6, 2026. Service labels are deliberate: Tanzania's maternal m-mama line is not advertised as a general ambulance number, and Kenya's listed contacts are police emergency lines. Call availability depends on local services/network; unsupported locations receive guidance instead of a guessed number.
+Verified October 6, 2026. Service labels are deliberate: Tanzania's maternal m-mama line is not advertised as a general ambulance number, and Kenya's listed contacts are police emergency lines. Call availability depends on local services/network; unsupported locations show clearly labelled Uganda fallback numbers with guidance to contact their actual local service.
 
 Native Help and web EmergencyPanel use the same bundled registry and exact local `tel:` URI. Short numbers are never given an international prefix. Native dialler failure shows the exact number to dial manually; practice-tour calls stay disabled. No emergency calls are made during QA.
 
@@ -63,7 +63,7 @@ Native Help and web EmergencyPanel use the same bundled registry and exact local
 
 The additive migration is `20261006080503_country_campaigns_and_emergency_help.sql`. Market enable flags are server-only in `private.preplot_markets`. All new configuration remains private with RLS and no client table grants; account RPCs check ownership through `auth.uid()`.
 
-Automated verification covers every market, future years, observed days, national/UK region isolation, lunar/solemn suppression, DST, timezone compatibility, travel caps, opt-in, queued cancellation, offline country restoration, exact dialler targets, failed launches, and shared registry consistency. A signed mobile release and physical-device acceptance remain required; web changes ship with the next web release.
+Automated verification covers every market, future years, observed days, national/UK region isolation, lunar/solemn suppression, DST, timezone compatibility, travel caps, opt-in, queued cancellation, location denial/revocation, stale foreground fixes, on-device country lookup, exact dialler targets, failed launches, and shared registry consistency. A signed mobile release and physical-device acceptance remain required; public website deployment and physical acceptance must be verified for each release.
 
 On October 6, 2026, the migration was applied to DWD project `kdplbebaotvgcvjggacz` and `dispatch-notifications` was redeployed as active version 5. The existing scheduler returned HTTP 200 with `ok: true` at 08:34 and 08:35 UTC; an unauthenticated request returned HTTP 401. Hosted queries verified all nine enabled profiles, zero invalid configured timezones, future African holidays, Rwanda/Ramadan suppression, UK/US/Canadian timezone conversion, private-table RLS and denied client access to internal context. No manual dispatch or emergency call was made, and no native devices were registered at verification time.
 
@@ -73,6 +73,6 @@ Future development priorities:
 
 1. Appoint an African calendar/emergency-number review owner and review cadence. Add official lunar and exceptional-date overrides without replacing recurring weekend rules.
 2. Tune country/city windows from Night starts, opens and conversions, starting with Kenya, Tanzania, Rwanda and South Africa. Keep the caps and quiet hours while personalizing.
-3. Add locally reviewed languages, province/state/territory calendars, and explicit emirate selection. Keep emergency country independent of campaign country.
+3. Add locally reviewed languages, province/state/territory calendars, and automatic subregion detection where officially supported. Keep Help and campaigns on the same device-derived country; retain Uganda fallback and no country questionnaire.
 4. Monitor per-market acceptance, opens, conversion, opt-outs and suppression with aggregated telemetry. Use enable flags for incremental cohorts.
 5. Verify supported call buttons and offline Help on signed Android/iOS builds, with Linking mocked or dialler opening cancelled before a call is placed.

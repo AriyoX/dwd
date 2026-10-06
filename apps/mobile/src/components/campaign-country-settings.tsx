@@ -1,72 +1,29 @@
 import { Text } from 'react-native';
-import { UK_CALENDAR_REGIONS, defaultCalendarRegion } from '@dwd/core';
-import { getPreplotPreferences, updatePreplotCountry } from '@dwd/data';
-import { useAccountQuery } from '@/hooks/use-account-query';
-import { useNightAction } from '@/hooks/use-night-action';
-import { useSupabase } from '@/providers/supabase-provider';
+import { countryProfile, LOCATION_DISCLOSURE } from '@dwd/core';
+import { useCountryLocation } from '@/providers/location-provider';
 import { useTheme } from '@/providers/theme-provider';
-import { actorClient } from '@/lib/actor-client';
-import { CountryChoice } from './country-choice';
-import { Choice } from './choice';
-import { LoadingPanel, Notice, Panel, RetryPanel } from './screen';
+import { PrimaryButton } from './primary-button';
+import { Notice, Panel } from './screen';
 
 export function CampaignCountrySettings() {
-  const query = useAccountQuery(getPreplotPreferences);
-  const action = useNightAction(query.refresh);
-  const { client, session } = useSupabase();
+  const { location, permission, busy, request } = useCountryLocation();
   const { typography } = useTheme();
-  if (!query.data)
-    return query.issue ? (
-      <RetryPanel issue={query.issue} retry={() => void query.refresh()} />
-    ) : (
-      <LoadingPanel />
-    );
-  const preferences = query.data;
   return (
     <Panel>
       <Text accessibilityRole="header" style={typography.sectionTitle}>
-        Country & holidays
+        {countryProfile(location.countryCode)?.name}
+        {location.source === 'default' ? ' (default)' : ''}
       </Text>
-      <CountryChoice
-        value={preferences.countrySelected ? preferences.countryCode : null}
-        disabled={action.busy}
-        onChange={(code) => {
-          if (client && session)
-            void action.run(() =>
-              updatePreplotCountry(
-                actorClient(client, session.access_token),
-                code,
-                defaultCalendarRegion(code),
-              ),
-            );
-        }}
-      />
-      {preferences.countryCode === 'GB'
-        ? UK_CALENDAR_REGIONS.map((region) => (
-            <Choice
-              key={region.code}
-              compact
-              label={region.name}
-              selected={region.code === preferences.calendarRegion}
-              disabled={action.busy}
-              onPress={() => {
-                if (client && session)
-                  void action.run(() =>
-                    updatePreplotCountry(
-                      actorClient(client, session.access_token),
-                      'GB',
-                      region.code,
-                    ),
-                  );
-              }}
-            />
-          ))
-        : null}
-      <Notice message="Reminders use your device's local time. Choose your current country separately in Help." />
-      {preferences.countryCode === 'US' || preferences.countryCode === 'CA' ? (
+      <Notice message={LOCATION_DISCLOSURE} />
+      {permission === 'unknown' ? (
+        <PrimaryButton label="Use device location" busy={busy} onPress={() => void request()} />
+      ) : null}
+      {permission === 'denied' ? (
+        <Notice message="Location access is off. You can enable it in your device settings." />
+      ) : null}
+      {location.countryCode === 'US' || location.countryCode === 'CA' ? (
         <Notice message="Holiday reminders use the federal calendar." />
       ) : null}
-      {action.issue ? <Notice error message={action.issue} /> : null}
     </Panel>
   );
 }

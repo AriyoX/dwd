@@ -96,6 +96,7 @@ export interface WaterLog {
 }
 
 export interface NightPhoto {
+  moderationStatus?: 'pending' | 'approved' | 'rejected';
   id: string;
   nightId: string;
   uploadedByUserId: string | null;

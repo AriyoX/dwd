@@ -9,3 +9,5 @@ coverage
 supabase/.temp
 **/supabase/.temp
 .tmp
+# Generated compact offline country boundaries.
+packages/core/src/config/country-boundaries.json

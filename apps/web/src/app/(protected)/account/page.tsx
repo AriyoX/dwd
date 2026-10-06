@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BlockedUsers } from '@/features/account/blocked-users';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -15,11 +16,7 @@ import { TourButton } from '@/features/tour/tour-provider';
 import { DisplayNameForm, NotificationSettings } from '@/features/account/account-controls';
 import { NotificationInbox } from '@/features/notifications/notification-inbox';
 import { CountrySettings } from '@/features/account/country-settings';
-import {
-  getMyNotificationEvents,
-  getNotificationPreferences,
-  getPreplotPreferences,
-} from '@dwd/data';
+import { getMyNotificationEvents, getNotificationPreferences } from '@dwd/data';
 import type { NotificationEvent } from '@dwd/core';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 export const metadata = { title: 'Your account' };
@@ -40,10 +37,9 @@ export default async function AccountPage() {
     .from('account_deletions')
     .select('delete_after, status')
     .maybeSingle();
-  const [preferences, events, countryPreferences] = await Promise.all([
+  const [preferences, events] = await Promise.all([
     getNotificationPreferences(client).catch(() => null),
     getMyNotificationEvents(client).catch((): NotificationEvent[] => []),
-    getPreplotPreferences(client).catch(() => null),
   ]);
   return (
     <main id="main-content" className="page-shell settings-shell">
@@ -62,6 +58,7 @@ export default async function AccountPage() {
             Your account<span className="heading-dot">.</span>
           </h1>
         </header>
+        <BlockedUsers key={userId} />
         <div className="settings-layout">
           <div className="stack-lg">
             <Card className="stack settings-card">
@@ -69,13 +66,7 @@ export default async function AccountPage() {
                 <UserRound size={20} aria-hidden="true" /> Your profile
               </h2>
               <DisplayNameForm initialName={profile?.display_name ?? ''} />
-              {countryPreferences ? (
-                <CountrySettings initial={countryPreferences} />
-              ) : (
-                <p className="error-box" role="alert">
-                  Country settings could not load. Reload to retry.
-                </p>
-              )}
+              <CountrySettings />
               <p className="muted small">Past nights keep the name you used at the time.</p>
             </Card>
             <Card className="stack settings-card">

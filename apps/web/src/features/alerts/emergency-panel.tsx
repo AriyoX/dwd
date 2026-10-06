@@ -1,24 +1,10 @@
 'use client';
 
 import { Phone, TriangleAlert } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import {
-  COUNTRY_PROFILES,
-  countryProfile,
-  emergencyDialUri,
-  EMERGENCY_SIGNS,
-  isCountryCode,
-  readHelpCountry,
-  saveHelpCountry,
-  type CountryCode,
-} from '@dwd/core';
+import { countryProfile, emergencyDialUri, EMERGENCY_SIGNS } from '@dwd/core';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-
-const helpStorage = {
-  getItem: (key: string) => window.localStorage.getItem(key),
-  setItem: (key: string, value: string) => window.localStorage.setItem(key, value),
-};
+import { useCountryLocation } from '@/providers/location-provider';
 
 export function EmergencyPanel({
   open,
@@ -29,16 +15,9 @@ export function EmergencyPanel({
   onClose: () => void;
   practice?: boolean;
 }) {
-  const [country, setCountry] = useState<CountryCode | null>(null);
-  const [issue, setIssue] = useState<string | null>(null);
+  const { location } = useCountryLocation();
+  const country = location.countryCode;
   const profile = countryProfile(country);
-  useEffect(() => {
-    if (open)
-      queueMicrotask(() => {
-        setCountry(readHelpCountry(helpStorage));
-        setIssue(null);
-      });
-  }, [open]);
   return (
     <Dialog
       open={open}
@@ -55,44 +34,19 @@ export function EmergencyPanel({
           </div>
         ))}
       </div>
-      <div className="field">
-        <label htmlFor="help-country">Current country</label>
-        <select
-          id="help-country"
-          className="input"
-          value={country ?? ''}
-          onChange={(event) => {
-            const value = event.target.value;
-            const code = isCountryCode(value) ? value : null;
-            setCountry(code);
-            setIssue(
-              saveHelpCountry(helpStorage, code)
-                ? null
-                : 'Country could not be saved. Choose it again next time.',
-            );
-          }}
-        >
-          <option value="">Choose your country</option>
-          {COUNTRY_PROFILES.map((choice) => (
-            <option key={choice.code} value={choice.code}>
-              {choice.name}
-            </option>
-          ))}
-          <option value="unsupported">My country isn&apos;t listed</option>
-        </select>
-      </div>
+      <strong>
+        {profile?.name}
+        {location.source === 'default' ? ' (default)' : ''}
+      </strong>
       <p className="muted small">
-        Confirm your current country before calling. A DWD check-in does not call emergency
-        services.
+        {location.source === 'default'
+          ? 'Location is unavailable or unsupported. These numbers are for Uganda. If you are elsewhere, dial your local emergency number or ask someone nearby.'
+          : 'Location is approximate. Check that these emergency numbers apply where you are.'}
       </p>
+      <p className="muted small">A DWD check-in does not call emergency services.</p>
       {!profile ? (
         <p className="muted small">
           Use your local emergency number or ask someone nearby for help.
-        </p>
-      ) : null}
-      {issue ? (
-        <p className="error-box" role="alert">
-          {issue}
         </p>
       ) : null}
       <div className="field-grid">

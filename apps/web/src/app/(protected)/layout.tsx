@@ -4,6 +4,7 @@ import { ConnectionProvider } from '@/providers/connection-provider';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { TourProvider } from '@/features/tour/tour-provider';
 import { PwaRuntimeProvider } from '@/features/install/pwa-runtime';
+import { LocationProvider, LocationNotice } from '@/providers/location-provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,12 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
           userId={data.user.id}
           seen={data.user.user_metadata['tour_seen'] === true}
         >
-          {children}
+          <LocationProvider authenticated>
+            <div className="page-shell">
+              <LocationNotice />
+            </div>
+            {children}
+          </LocationProvider>
         </TourProvider>
       </ConnectionProvider>
     </PwaRuntimeProvider>

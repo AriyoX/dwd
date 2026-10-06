@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import type { NightPhoto } from '@dwd/core';
+import { ContentControls } from '@/features/support/content-controls';
 
 export type VisiblePhoto = NightPhoto & { url: string };
 
@@ -54,6 +55,19 @@ export function PhotoCollection({
             </button>
           )}
         </figcaption>
+        {photo.uploadedByUserId === currentUserId && photo.moderationStatus !== 'approved' ? (
+          <p className="small muted">
+            {photo.moderationStatus === 'rejected'
+              ? 'This photo was not approved for sharing.'
+              : 'Only you can see this photo until it has been reviewed.'}
+          </p>
+        ) : null}
+        <ContentControls
+          nightId={photo.nightId}
+          photoId={photo.id}
+          userId={photo.uploadedByUserId === currentUserId ? null : photo.uploadedByUserId}
+          label="Report photo or block uploader"
+        />
       </figure>
     );
   }

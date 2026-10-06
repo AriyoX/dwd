@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useReducedMotion } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
@@ -52,12 +52,14 @@ export default function PhotosScreen() {
   ) : null;
 }
 function Memories({ owner, nightId }: { owner: string; nightId: string }) {
+  const router = useRouter();
   const { session } = useSupabase();
   const token = session?.access_token;
   const { colors, typography } = useTheme();
   const reduced = useReducedMotion();
   const { width, height } = useWindowDimensions();
   const alive = useRef(true);
+  const stillMounted = () => alive.current;
   useLayoutEffect(() => {
     alive.current = true;
     return () => {
@@ -72,7 +74,7 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
       if (!photos.length) return [];
       const { data, error } = await client.storage.from('night-memories').createSignedUrls(
         photos.map((p) => p.objectPath),
-        15 * 60,
+        60,
       );
       if (error) throw error;
       return photos.map((photo) => {
@@ -158,13 +160,13 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
           owner,
         });
       } catch {
-        if (alive.current)
+        if (stillMounted())
           setIssue(
             'Could not prepare this photo. Choose a smaller image or check photo access in Settings.',
           );
         return;
       }
-      if (!alive.current) {
+      if (!stillMounted()) {
         removeLocalPhoto(prepared);
         return;
       }
@@ -178,10 +180,14 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
     });
   }
   async function upload(value: PhotoTask) {
+    const accessToken = token;
+    if (!accessToken) return;
     await run('Uploading photo', async () => {
       await withRequestTimeout(
         (signal) =>
-          savePhotoTask(photoClient(token!, signal), value, () => photoFile(value).arrayBuffer()),
+          savePhotoTask(photoClient(accessToken, signal), value, () =>
+            photoFile(value).arrayBuffer(),
+          ),
         60_000,
       );
       if (!alive.current) return;
@@ -191,6 +197,8 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
     });
   }
   async function discard(id: string, path: string, pending?: PhotoTask) {
+    const accessToken = token;
+    if (!accessToken) return;
     if (
       inFlight.current ||
       !(await confirmAction(
@@ -205,8 +213,8 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
     await run('Removing photo', async () => {
       await withRequestTimeout((signal) =>
         pending
-          ? discardPhotoTask(photoClient(token!, signal), pending)
-          : removePhoto(photoClient(token!, signal), id, path),
+          ? discardPhotoTask(photoClient(accessToken, signal), pending)
+          : removePhoto(photoClient(accessToken, signal), id, path),
       );
       if (!alive.current) return;
       if (pending) clearTask(pending);
@@ -314,6 +322,31 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
         .filter((photo) => photo.id !== task?.id)
         .map((photo) => (
           <Panel key={photo.id}>
+            {photo.uploadedByUserId === owner && photo.moderationStatus !== 'approved' ? (
+              <Notice
+                message={
+                  photo.moderationStatus === 'rejected'
+                    ? 'This photo was not approved for sharing.'
+                    : 'Only you can see this photo until it has been reviewed.'
+                }
+              />
+            ) : null}
+            <PrimaryButton
+              label="Report photo or block uploader"
+              variant="quiet"
+              onPress={() =>
+                router.push({
+                  pathname: '/night/[nightId]/report',
+                  params: {
+                    nightId,
+                    photoId: photo.id,
+                    ...(photo.uploadedByUserId && photo.uploadedByUserId !== owner
+                      ? { userId: photo.uploadedByUserId }
+                      : {}),
+                  },
+                })
+              }
+            />
             <Action
               label={`View photo by ${photo.uploaderName}`}
               disabled={!photo.url || Boolean(busy)}
@@ -397,8 +430,9 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
                   variant="secondary"
                   disabled={!viewed || photos.indexOf(viewed) === 0}
                   onPress={() => {
+                    if (!viewed) return;
                     setBroken(null);
-                    setViewing(photos[photos.indexOf(viewed!) - 1]?.id ?? null);
+                    setViewing(photos[photos.indexOf(viewed) - 1]?.id ?? null);
                   }}
                 />
               </View>
@@ -408,8 +442,9 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
                   variant="secondary"
                   disabled={!viewed || photos.indexOf(viewed) === photos.length - 1}
                   onPress={() => {
+                    if (!viewed) return;
                     setBroken(null);
-                    setViewing(photos[photos.indexOf(viewed!) + 1]?.id ?? null);
+                    setViewing(photos[photos.indexOf(viewed) + 1]?.id ?? null);
                   }}
                 />
               </View>

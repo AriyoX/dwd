@@ -261,6 +261,10 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '61000000-0000-4000-8000-000000000001', true);
 select extensions.is((select count(*) from public.night_photos), 1::bigint, 'completed-night photo is visible to its uploader');
 
+reset role;
+update public.night_photos set moderation_status = 'approved'
+where id = '65000000-0000-4000-8000-000000000001';
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '61000000-0000-4000-8000-000000000002', true);
 select extensions.is((select count(*) from public.night_photos), 1::bigint, 'another authorized participant can view the memory');
 select extensions.throws_ok(

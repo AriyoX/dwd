@@ -1367,6 +1367,19 @@ export type Database = {
         Returns: Json;
       };
       schedule_account_deletion: { Args: never; Returns: Json };
+      block_user: { Args: { p_user_id: string }; Returns: undefined };
+      unblock_user: { Args: { p_user_id: string }; Returns: undefined };
+      get_blocked_users: { Args: never; Returns: Json };
+      report_content: {
+        Args: {
+          p_night_id: string;
+          p_member_id: string | null;
+          p_photo_id: string | null;
+          p_reason: string;
+          p_request_key: string;
+        };
+        Returns: string;
+      };
       send_check_in: {
         Args: {
           p_night_id: string;

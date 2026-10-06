@@ -15,6 +15,7 @@ import { AuthNavigation } from '@/components/auth-navigation';
 import { OnboardingProvider } from '@/providers/onboarding-provider';
 import { OfflineProvider } from '@/providers/offline-provider';
 import { NotificationsProvider } from '@/providers/notifications-provider';
+import { LocationProvider } from '@/providers/location-provider';
 
 export default function RootLayout() {
   return (
@@ -23,7 +24,9 @@ export default function RootLayout() {
         <OfflineProvider>
           <OnboardingProvider>
             <NotificationsProvider>
-              <Navigation />
+              <LocationProvider>
+                <Navigation />
+              </LocationProvider>
             </NotificationsProvider>
           </OnboardingProvider>
         </OfflineProvider>
@@ -93,17 +96,20 @@ function Navigation() {
         </Stack.Protected>
         <Stack.Screen name="auth/callback" options={{ title: 'Confirm account' }} />
         <Stack.Screen name="legal" options={{ title: 'DWD' }} />
+        <Stack.Protected guard={access === 'ready' || access === 'profile'}>
+          <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
+        </Stack.Protected>
         <Stack.Protected guard={access === 'ready'}>
           <Stack.Screen name="tour" options={{ title: 'Practice tour' }} />
           <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
           <Stack.Screen name="profile" options={{ ...sheet, title: 'Edit profile' }} />
           <Stack.Screen name="support" options={{ title: 'Support & feedback' }} />
-          <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
           <Stack.Screen name="reminders" options={{ ...sheet, title: 'Reminders' }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="night/new" options={{ title: 'Start a night' }} />
           <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
           <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
+          <Stack.Screen name="night/[nightId]/report" options={{ title: 'Report or block' }} />
           <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log a drink' }} />
           <Stack.Screen
             name="night/[nightId]/catch-up"

@@ -2,6 +2,8 @@
 
 Updated 5 October 2026. Aim: repeatable release confidence without asking an agent to rerun every check. See [release setup](mobile-release-readiness.md) first.
 
+October 6 store audit: mounted tests are organized under `apps/mobile/tests/integration/`, including notification, offline/account ownership, automatic location and local Help calls. Location tests cover no unsolicited OS prompt, an existing grant, disclosed opt-in, permission revocation, foreground refresh, stale results and unsupported coordinates. Help tests never place real calls. Shared pure-rule and auth-storage tests stay in root `tests/` and use the unit config; native mounted suites use `vitest.mobile.config.ts`. The current pass has 33 mounted tests, 416 unit tests and 521 isolated database assertions. Run Expo Doctor and export commands from `apps/mobile`, not the root app configuration.
+
 ## What was run in this review
 
 - Mobile TypeScript.

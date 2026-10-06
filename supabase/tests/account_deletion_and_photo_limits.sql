@@ -121,7 +121,7 @@ select extensions.ok((select display_name = 'Deleted user' and user_id is null a
 select extensions.ok((select display_name = 'Deleted guest' and managed_by_user_id is null from public.night_members where id = '73000000-0000-4000-8000-000000000003'), 'managed guest history survives anonymously');
 select extensions.ok((select message not like '%Host Guest%' from public.night_alerts where dedupe_key = 'deletion-guest-checkin'), 'managed guest names are removed from retained alerts');
 select extensions.is((select count(*) from private.invite_revocations where user_id = '71000000-0000-4000-8000-000000000001'), 0::bigint, 'private invitation retry records do not block deletion');
-select extensions.is((select count(*) from public.drink_logs where night_id = '72000000-0000-4000-8000-000000000001' and actor_user_id is null), 1::bigint, 'historical drinks survive without account linkage');
+select extensions.is((select count(*) from public.drink_logs where night_id = '72000000-0000-4000-8000-000000000001' and actor_user_id is null), 0::bigint, 'personal drinks are erased with the deleted account');
 select extensions.ok((select changed_by is null from public.night_end_time_changes where night_id = '72000000-0000-4000-8000-000000000001'), 'extension history survives without its actor');
 select extensions.ok(exists (select 1 from auth.users where id = '71000000-0000-4000-8000-000000000002') and exists (select 1 from public.night_photos where uploaded_by_user_id = '71000000-0000-4000-8000-000000000002' and deleted_at is null), 'the friend account and photos remain intact');
 select * from extensions.finish(true);

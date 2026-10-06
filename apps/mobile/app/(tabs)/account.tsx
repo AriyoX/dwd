@@ -14,6 +14,7 @@ import { useTheme, useThemedStyles } from '@/providers/theme-provider';
 import type { ThemeColors, makeTypography } from '@/theme/tokens';
 import { NavigationRow } from '@/components/navigation-row';
 import { useNotifications } from '@/providers/notifications-provider';
+import { BlockedUsers } from '@/components/blocked-users';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -180,6 +181,7 @@ export default function AccountScreen() {
           />
         ) : null}
       </Panel>
+      {session ? <BlockedUsers key={session.user.id} /> : null}
     </Screen>
   );
 }

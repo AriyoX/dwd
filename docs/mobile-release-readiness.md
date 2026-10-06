@@ -2,6 +2,14 @@
 
 Use this document for the current release; earlier implementation notes describe the state before hosted deployment. The app is ready for a signed testing build after credentials are configured, but physical push, authentication, deep links and server-writing journeys still need acceptance testing.
 
+## Store audit update — 6 October
+
+The [Google Play audit](google-play-readiness.md) records policy requirements, fixes, Data Safety mapping and remaining signed-build/owner steps. Location now uses optional foreground permission on both clients, with on-device boundary lookup, no country picker and Uganda fallback. Help shares that country. Public privacy, terms, support and account-deletion resources use the supplied legal contact; native legal documents work offline. Native sessions migrate to encrypted SecureStore. Personal activity is erased during account deletion. Reports, blocking and approval-only photo sharing are implemented; a human moderation operator remains necessary.
+
+Validation for this update: 521 database assertions across 19 suites; 416 unit tests and 33 mounted mobile tests; production web build and Android Metro/Hermes export; Expo Doctor 21/21. Android config introspection confirmed coarse foreground location/internet in app-requested permissions, with fine/background location, camera, microphone and broad media access blocked. Final merged-manifest, native-library page alignment and signed-device tests are still required. Native config has no Firebase file and no Apple team configured; store signing and physical acceptance cannot be certified from an export.
+
+Migration `20261006085557_automatic_country_and_store_safety.sql` was applied to dedicated DWD after a clean dry run and local database checks. `dispatch-notifications` is active version 6. Hosted verification confirmed private block-table RLS, anonymous denial/authenticated access for block/report RPCs, and service-only deletion completion. Minute dispatch and hourly deletion jobs succeeded. Expected scoped SECURITY DEFINER/private-table advisor notices remain; leaked-password protection is still disabled. There were no Apple identities and no active native registrations at verification. `npm ci --ignore-scripts` reproduced the pinned workspace installation. Local public legal/support/deletion pages returned HTTP 200 with contact details and same-origin geolocation policy; no connected Browser was available for a visual review.
+
 ## Pre-plot backend update — 6 October
 
 Both pre-plot migrations are applied and `dispatch-notifications` is deployed as active version 4. The existing minute Cron returned HTTP 200 with `ok: true`; an unauthenticated request returned HTTP 401. Recurring campaigns continue beyond 2026, including Friday/Saturday, optional Sunday, holiday eve/day, and New Year's Eve. See [pre-plot notifications](preplot-notifications.md) for scheduling, suppression, verification, and the remaining physical-device checks.
@@ -33,7 +41,7 @@ Run **all EAS commands from `apps/mobile`**. The resolved native configuration i
 | Slug                         | `drink-with-desire`                    |
 | Callback scheme              | `dwd`                                  |
 
-The pre-existing root `app.json` / `eas.json` / `tsconfig.json` were preserved. Root config points at EAS project `3c42e920-8d7a-4f61-8870-db43b3aa45ad` and Android package `com.ahumuza.dwd`; it is not the mobile workspace configuration. Do not build from the repository root. If that alternative package is the identity already registered in your store, decide on the permanent identity before publishing, then align native config, Firebase, Apple, EAS and website associations together. A package/bundle ID change is a different installed app.
+Root configuration is outside this change, including the owner's deletion of root `eas.json` and new root `tsconfig.json`. Root `app.json` points at EAS project `3c42e920-8d7a-4f61-8870-db43b3aa45ad` and Android package `com.ahumuza.dwd`; it is not the mobile workspace configuration. Do not build from the repository root. If that alternative package is the identity already registered in your store, decide on the permanent identity before publishing, then align native config, Firebase, Apple, EAS and website associations together. A package/bundle ID change is a different installed app.
 
 This follows [Expo's monorepo build layout](https://docs.expo.dev/build-reference/build-with-monorepos/).
 

@@ -2,6 +2,8 @@ export * from './alcohol/calculations';
 export * from './bottles/bottles';
 export * from './config/constants';
 export * from './config/countries';
+export * from './config/location';
+export * from './legal/documents';
 export * from './config/presets';
 export * from './invites/invitations';
 export * from './permissions/permissions';

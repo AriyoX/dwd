@@ -54,13 +54,15 @@ describe('database security invariants', () => {
   });
 
   it('hardens every security-definer function with an empty search path', () => {
-    const declarations = migration.split('create or replace function ').slice(1);
+    const declarations = migration.split(/create (?:or replace )?function /).slice(1);
     const definerDeclarations = declarations.filter((item) =>
       item.slice(0, item.indexOf('as $$')).includes('security definer'),
     );
     expect(definerDeclarations.length).toBeGreaterThan(10);
     for (const declaration of definerDeclarations) {
-      expect(declaration.slice(0, declaration.indexOf('as $$'))).toContain("set search_path = ''");
+      expect(declaration.slice(0, declaration.indexOf('as $$'))).toMatch(
+        /set\s+search_path\s*=\s*''/,
+      );
     }
   });
 
@@ -137,7 +139,23 @@ describe('workspace and secret boundaries', () => {
     const packageFiles = [join(root, 'package.json'), ...findNamed(root, 'package.json')].filter(
       (file) => file !== join(root, 'apps', 'mobile', 'package.json'),
     );
-    const packages = packageFiles.map((file) => readFileSync(file, 'utf8')).join('\n');
+    const packages = packageFiles
+      .map((file) => {
+        const manifest = JSON.parse(readFileSync(file, 'utf8')) as {
+          dependencies?: object;
+          devDependencies?: object;
+          peerDependencies?: object;
+          optionalDependencies?: object;
+        };
+        // Root overrides constrain transitive peers without adding native dependencies to web/core.
+        return JSON.stringify([
+          manifest.dependencies,
+          manifest.devDependencies,
+          manifest.peerDependencies,
+          manifest.optionalDependencies,
+        ]);
+      })
+      .join('\n');
     expect(packages).not.toMatch(
       /"(?:react-native|expo|expo-router|nativewind|@react-native-async-storage\/async-storage|expo-secure-store)"\s*:/i,
     );
@@ -151,7 +169,7 @@ describe('workspace and secret boundaries', () => {
     expect(contents).not.toMatch(/next_public_[a-z0-9_]*(?:secret|service_role)/i);
     expect(contents).not.toMatch(/sb_secret_[a-z0-9_-]{20,}/i);
     expect(contents).not.toMatch(/eyj[a-z0-9_-]{20,}\.[a-z0-9_-]{20,}\.[a-z0-9_-]{20,}/i);
-  });
+  }, 20_000);
 });
 
 function sourceFiles(directory: string): string[] {

@@ -421,7 +421,7 @@ function AuthForm({
           {mode === 'signup' || mode === 'complete' ? (
             <>
               <Choice
-                label="I am 18 or older."
+                label="I am 18 or older, meet the local legal drinking age, and agree to the Terms."
                 selected={adult}
                 disabled={busy}
                 onPress={() => setAdult(!adult)}
@@ -502,6 +502,14 @@ function AuthForm({
           ) : null}
         </View>
       )}
+      {mode === 'complete' && session ? (
+        <PrimaryButton
+          label="Delete this account"
+          variant="quiet"
+          disabled={busy}
+          onPress={() => router.push('/delete-account')}
+        />
+      ) : null}
       <LegalLinks />
     </Screen>
   );

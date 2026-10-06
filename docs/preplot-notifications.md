@@ -1,12 +1,12 @@
 # Pre-plot notifications
 
-Country support was extended on October 6, 2026 to Kenya, Tanzania, Rwanda, South Africa, Dubai/UAE, the UK, US and Canada. The country setting, local-time rules, calendars, country-specific Help calls, and current limitations are documented in [country support](country-expansion.md). New accounts must choose a campaign country; existing accounts retain Uganda. The V1 table below remains the default wall-clock schedule for all profiles, with a country-specific holiday calendar and copy.
+Country support was extended on October 6, 2026 to Kenya, Tanzania, Rwanda, South Africa, Dubai/UAE, the UK, US and Canada. The country setting, local-time rules, calendars, country-specific Help calls, and current limitations are documented in [country support](country-expansion.md). Country is derived from optional foreground device location on mobile and web, with Uganda as the fallback. No country selection is required. The V1 table below remains the default wall-clock schedule for all profiles, with a country-specific holiday calendar and copy.
 
 DWD uses its existing minute Cron → `dispatch-notifications` → Expo pipeline for planning reminders. Only registered iOS/Android installations with an active sign-in, enabled device delivery, and a recorded target timezone qualify. The new mobile build records the installation's IANA timezone on registration and foreground return. Existing builds have no timezone context and receive no pre-plot campaigns until upgraded.
 
 ## V1 schedule
 
-For Uganda, all times are local to `Africa/Kampala` (UTC+3). Devices reporting `Africa/Nairobi` also qualify because some East African device settings use that zone. Other selected countries use their supported installation IANA zones, including DST. Timezone compatibility does not establish that a person is physically in a country. A user's most recently updated, enabled installation determines timezone eligibility, and individual installations with different timezone context cannot receive the campaign.
+For Uganda, all times are local to `Africa/Kampala` (UTC+3). Devices reporting `Africa/Nairobi` also qualify because some East African device settings use that zone. Other detected countries use their supported installation IANA zones, including DST. Timezone compatibility does not establish that a person is physically in a country. A user's most recently updated, enabled installation determines timezone eligibility, and individual installations with different timezone context cannot receive the campaign.
 
 | Moment                  | Send time           | Window closes       |
 | ----------------------- | ------------------- | ------------------- |

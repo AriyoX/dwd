@@ -18,6 +18,7 @@ import { useTheme } from '@/providers/theme-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { PendingLogs } from '@/components/pending-logs';
 import { TourEntry } from '@/components/tour-entry';
+import { CampaignCountrySettings } from '@/components/campaign-country-settings';
 
 export default function TonightScreen() {
   const router = useRouter();
@@ -56,6 +57,7 @@ export default function TonightScreen() {
         </Text>
       </View>
       <ScreenHeading title="Tonight" />
+      <CampaignCountrySettings />
       <PendingLogs key={session?.user.id} />
       {session ? <TourEntry key={session.user.id} owner={session.user.id} /> : null}
       {status === 'signed-in' ? (

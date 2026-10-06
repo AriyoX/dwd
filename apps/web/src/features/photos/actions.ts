@@ -36,7 +36,7 @@ export async function getNightPhotosAction(
     if (photos.length === 0) return { ok: true, photos: [] };
     const { data, error } = await client.storage.from('night-memories').createSignedUrls(
       photos.map((photo) => photo.objectPath),
-      15 * 60,
+      60,
     );
     if (error) throw error;
     const urls = new Map(data.map((item) => [item.path, item.signedUrl]));

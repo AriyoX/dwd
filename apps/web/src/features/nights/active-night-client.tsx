@@ -37,6 +37,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { TonightView, ParticipantCard, ParticipantSwitcher, DrinkChooser } from './night-content';
 import { NightFrame } from './night-frame';
 import { EmergencyPanel } from '@/features/alerts/emergency-panel';
+import { NightContentControls } from '@/features/support/content-controls';
 import { deleteActivityAction } from '@/features/drink-logging/actions';
 import { ShareInviteDialog } from '@/features/invites/share-invite-dialog';
 import { createBrowserOutbox, type BrowserOutboxBundle } from '@/features/offline/browser-outbox';
@@ -1400,6 +1401,7 @@ function ActiveNightView({
         initialUrl={inviteUrl}
         onClose={() => setInviteOpen(false)}
       />
+      <NightContentControls snapshot={snapshot} />
       <EmergencyPanel open={emergencyOpen} onClose={() => setEmergencyOpen(false)} />
       <OverdueDialog
         open={overdueOpen}

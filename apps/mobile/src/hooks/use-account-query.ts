@@ -18,6 +18,7 @@ export function useAccountQuery<T>(
   load: (client: SupabaseClient<Database>) => Promise<T>,
   scope = '',
   cache = false,
+  allowIncompleteAccount = false,
 ) {
   const { client, session, status } = useSupabase();
   const [data, setData] = useState<{ owner: string; scope: string; value: T } | null>(null);
@@ -29,7 +30,13 @@ export function useAccountQuery<T>(
   const owner = session?.user.id;
   const accessToken = session?.access_token;
   const refresh = useCallback(async () => {
-    if (!client || !owner || !accessToken || status !== 'signed-in') return;
+    if (
+      !client ||
+      !owner ||
+      !accessToken ||
+      (status !== 'signed-in' && !(allowIncompleteAccount && status === 'onboarding'))
+    )
+      return;
     const request = ++version.current;
     setLoading(true);
     try {
@@ -64,7 +71,7 @@ export function useAccountQuery<T>(
     } finally {
       if (focused.current && request === version.current) setLoading(false);
     }
-  }, [client, owner, accessToken, status, load, scope, cache]);
+  }, [client, owner, accessToken, status, load, scope, cache, allowIncompleteAccount]);
   useFocusEffect(
     useCallback(() => {
       focused.current = true;

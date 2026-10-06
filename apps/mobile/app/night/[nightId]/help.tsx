@@ -2,25 +2,17 @@ import { useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  countryProfile,
-  emergencyDialUri,
-  EMERGENCY_SIGNS,
-  readHelpCountry,
-  saveHelpCountry,
-  type CountryCode,
-} from '@dwd/core';
+import { countryProfile, emergencyDialUri, EMERGENCY_SIGNS } from '@dwd/core';
 import { PrimaryButton } from '@/components/primary-button';
 import { Notice, Panel, Screen } from '@/components/screen';
 import { useTheme } from '@/providers/theme-provider';
-import { CountryChoice } from '@/components/country-choice';
+import { useCountryLocation } from '@/providers/location-provider';
 
 export default function HelpScreen() {
   const { colors, typography } = useTheme();
   const [issue, setIssue] = useState<string | null>(null);
-  const [country, setCountry] = useState<CountryCode | null>(() =>
-    readHelpCountry(globalThis.localStorage),
-  );
+  const { location } = useCountryLocation();
+  const country = location.countryCode;
   const profile = countryProfile(country);
   async function call(number: string) {
     const uri = emergencyDialUri(country, number);
@@ -40,18 +32,15 @@ export default function HelpScreen() {
         <Text accessibilityRole="header" style={typography.sectionTitle}>
           Someone needs help
         </Text>
-        <CountryChoice
-          label="Current country"
-          value={country}
-          onChange={(code) => {
-            setCountry(code);
-            setIssue(
-              saveHelpCountry(globalThis.localStorage, code)
-                ? null
-                : 'Country could not be saved. Choose it again next time.',
-            );
-          }}
-        />
+        <Text style={typography.sectionTitle}>
+          {profile?.name}
+          {location.source === 'default' ? ' (default)' : ''}
+        </Text>
+        {location.source === 'default' ? (
+          <Notice message="Location is unavailable or unsupported. These numbers are for Uganda. If you are elsewhere, dial your local emergency number or ask someone nearby." />
+        ) : (
+          <Notice message="Location is approximate. Check that these emergency numbers apply where you are." />
+        )}
         {profile?.emergency.map(({ number, service }) => (
           <PrimaryButton
             key={number}
@@ -61,16 +50,7 @@ export default function HelpScreen() {
             onPress={() => void call(number)}
           />
         ))}
-        <Notice message="Confirm your current country before calling. A DWD check-in does not call emergency services." />
-        <PrimaryButton
-          label="My country isn't listed"
-          variant="quiet"
-          onPress={() => {
-            setCountry(null);
-            saveHelpCountry(globalThis.localStorage, null);
-            setIssue('Use your local emergency number or ask someone nearby for help.');
-          }}
-        />
+        <Notice message="A DWD check-in does not call emergency services." />
         {issue ? <Notice error message={issue} /> : null}
       </Panel>
       <Panel>

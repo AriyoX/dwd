@@ -1,38 +1,43 @@
-import { useState } from 'react';
+import { Linking, Text } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
+import { LEGAL_CONTACT, LEGAL_UPDATED, PRIVACY_POLICY, TERMS_OF_SERVICE } from '@dwd/core';
 import { PrimaryButton } from '@/components/primary-button';
-import { Notice, Panel, Screen, ScreenHeading } from '@/components/screen';
-import { siteUrl } from '@/lib/site';
-
+import { Panel, Screen, ScreenHeading } from '@/components/screen';
+import { useTheme } from '@/providers/theme-provider';
+import { useState } from 'react';
+import { Notice } from '@/components/screen';
 export default function LegalScreen() {
   const { document } = useLocalSearchParams<{ document?: string }>();
-  const terms = document === 'terms';
+  const policy = document === 'terms' ? TERMS_OF_SERVICE : PRIVACY_POLICY;
+  const { typography } = useTheme();
   const [issue, setIssue] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  async function open() {
-    setBusy(true);
-    setIssue(null);
-    try {
-      await WebBrowser.openBrowserAsync(`${siteUrl()}/${terms ? 'terms' : 'privacy'}`);
-    } catch {
-      setIssue('Could not open the DWD website. Check your connection and retry.');
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <Screen insetTop={false}>
-      <ScreenHeading title={terms ? 'Terms of use' : 'Privacy notice'} />
-      <Panel>
-        <Notice message="Read the current document on the DWD website." />
-        <PrimaryButton
-          label={terms ? 'Read Terms' : 'Read Privacy notice'}
-          busy={busy}
-          onPress={() => void open()}
-        />
-        {issue ? <Notice error message={issue} /> : null}
-      </Panel>
+      <ScreenHeading title={policy.title} />
+      <Text style={typography.body}>Updated {LEGAL_UPDATED}</Text>
+      <Text style={typography.body}>{policy.introduction}</Text>
+      {policy.sections.map((section) => (
+        <Panel key={section.title}>
+          <Text accessibilityRole="header" style={typography.sectionTitle}>
+            {section.title}
+          </Text>
+          {section.paragraphs.map((paragraph) => (
+            <Text key={paragraph} style={typography.body}>
+              {paragraph}
+            </Text>
+          ))}
+        </Panel>
+      ))}
+      <PrimaryButton
+        label={LEGAL_CONTACT.email}
+        variant="quiet"
+        onPress={() =>
+          void Linking.openURL(`mailto:${LEGAL_CONTACT.email}`).catch(() =>
+            setIssue('Could not open email. Contact ' + LEGAL_CONTACT.email + ' directly.'),
+          )
+        }
+      />
+      {issue ? <Notice error message={issue} /> : null}
     </Screen>
   );
 }

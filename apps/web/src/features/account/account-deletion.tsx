@@ -7,8 +7,10 @@ import { cancelAccountDeletionAction, scheduleAccountDeletionAction } from './ac
 
 export function AccountDeletion({
   initialDeletion,
+  expanded = false,
 }: {
   initialDeletion: { delete_after: string; status: string } | null;
+  expanded?: boolean;
 }) {
   const router = useRouter();
   const [deletion, setDeletion] = useState(initialDeletion);
@@ -44,7 +46,7 @@ export function AccountDeletion({
   }
 
   return (
-    <details className="account-deletion">
+    <details className="account-deletion" open={expanded || undefined}>
       <summary>Delete your account</summary>
       <div className="stack">
         <p>
@@ -52,8 +54,8 @@ export function AccountDeletion({
           starts cancels it.
         </p>
         <p className="muted small">
-          Shared nights retain anonymous records. Nights you host will be closed. Save or remove
-          unsaved drinks and unfinished setups on this device.
+          Your personal entries and plans will be removed. Other participants’ records remain;
+          nights you host will be closed. Clear saved browser data on each device.
         </p>
         {deletion ? (
           <>

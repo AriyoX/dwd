@@ -122,7 +122,11 @@ describe('native product access', () => {
         .replace(/\.tsx?$/, '');
       if (!/\.tsx?$/.test(String(file)) || /(^|\/)_[^/]+$/.test(route) || route.startsWith('+'))
         continue;
-      if (route.startsWith('auth/') || ['welcome', 'onboarding', 'legal'].includes(route)) continue;
+      if (
+        route.startsWith('auth/') ||
+        ['welcome', 'onboarding', 'legal', 'delete-account'].includes(route)
+      )
+        continue;
       expect(protectedScreens.has(route.startsWith('(tabs)/') ? '(tabs)' : route), route).toBe(
         true,
       );
@@ -137,6 +141,15 @@ describe('native product access', () => {
         'restoring',
       );
     }
+  });
+  it('allows account deletion before profile completion without exposing product routes', () => {
+    expect(authRedirect('profile', '/delete-account', true)).toBeNull();
+    expect(authRedirect('ready', '/delete-account', true)).toBeNull();
+    expect(authRedirect('recovery', '/delete-account', true)).toBe(authRoutes.reset);
+    const layout = readFileSync(new URL('../apps/mobile/app/_layout.tsx', import.meta.url), 'utf8');
+    expect(layout).toMatch(
+      /guard=\{access === 'ready' \|\| access === 'profile'\}[\s\S]*?name="delete-account"[\s\S]*?<\/Stack.Protected>/,
+    );
   });
   it('requires a completed profile belonging to the current actor', () => {
     expect(
