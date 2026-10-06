@@ -90,7 +90,7 @@ describe('native photo recovery', () => {
   it('uploads bytes to the canonical path and registers matching immutable metadata', async () => {
     const api = connection();
     const bytes = new Uint8Array([1, 2, 3]).buffer;
-    await savePhotoTask(api.client, task, async () => bytes);
+    await savePhotoTask(api.client, task, () => Promise.resolve(bytes));
     expect(api.upload).toHaveBeenCalledWith(photoObjectPath(task), bytes, {
       contentType: 'image/jpeg',
       upsert: false,
@@ -107,7 +107,7 @@ describe('native photo recovery', () => {
       error: { code: 'network', message: 'Response lost' },
     });
     await expect(
-      savePhotoTask(api.client, task, async () => new Uint8Array([1, 2, 3]).buffer),
+      savePhotoTask(api.client, task, () => Promise.resolve(new Uint8Array([1, 2, 3]).buffer)),
     ).rejects.toThrow();
     api.list.mockResolvedValue({ data: [{ name: `${task.id}.jpg` }], error: null });
     const read = vi.fn().mockRejectedValue(new Error('Local file unavailable'));
@@ -119,17 +119,17 @@ describe('native photo recovery', () => {
   it('does not treat a failed object lookup as an absent object', async () => {
     const api = connection();
     api.list.mockResolvedValue({ data: null, error: new Error('Offline') });
-    await expect(savePhotoTask(api.client, task, async () => new ArrayBuffer(3))).rejects.toThrow(
-      'Offline',
-    );
+    await expect(
+      savePhotoTask(api.client, task, () => Promise.resolve(new ArrayBuffer(3))),
+    ).rejects.toThrow('Offline');
     expect(api.upload).not.toHaveBeenCalled();
     expect(api.rpc).not.toHaveBeenCalled();
   });
   it('does not upload a local file whose byte count changed', async () => {
     const api = connection();
-    await expect(savePhotoTask(api.client, task, async () => new ArrayBuffer(4))).rejects.toThrow(
-      'changed',
-    );
+    await expect(
+      savePhotoTask(api.client, task, () => Promise.resolve(new ArrayBuffer(4))),
+    ).rejects.toThrow('changed');
     expect(api.upload).not.toHaveBeenCalled();
   });
   it('removes unfinished uploads without requiring a metadata row', async () => {

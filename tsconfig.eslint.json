@@ -8,7 +8,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["apps/web/src/*", "apps/mobile/src/*"]
+      "@/*": ["apps/web/src/*"]
     }
   },
   "include": [
@@ -21,5 +21,6 @@
     "tests/**/*.ts",
     "*.ts",
     "*.mjs"
-  ]
+  ],
+  "exclude": ["node_modules", "apps/mobile"]
 }

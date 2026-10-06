@@ -44,7 +44,7 @@ export async function preparePhoto(
           byteSize: temporary.size,
         });
         photoDirectory(task.owner).create({ intermediates: true, idempotent: true });
-        temporary.copy(photoFile(task));
+        await temporary.copy(photoFile(task));
         return task;
       } finally {
         if (temporary.exists) temporary.delete();
