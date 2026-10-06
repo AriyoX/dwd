@@ -10,6 +10,12 @@ Validation for this update: 521 database assertions across 19 suites; 416 unit t
 
 Migration `20261006085557_automatic_country_and_store_safety.sql` was applied to dedicated DWD after a clean dry run and local database checks. `dispatch-notifications` is active version 6. Hosted verification confirmed private block-table RLS, anonymous denial/authenticated access for block/report RPCs, and service-only deletion completion. Minute dispatch and hourly deletion jobs succeeded. Expected scoped SECURITY DEFINER/private-table advisor notices remain; leaked-password protection is still disabled. There were no Apple identities and no active native registrations at verification. `npm ci --ignore-scripts` reproduced the pinned workspace installation. Local public legal/support/deletion pages returned HTTP 200 with contact details and same-origin geolocation policy; no connected Browser was available for a visual review.
 
+## App Store follow-up — 6 October
+
+The [App Store audit](app-store-readiness.md) adds server-side Apple credential capture/revocation, deletion guards, privacy manifests, production ATS enforcement and explicit planning-push opt-in copy. The deletion migration also fixes cleanup of a host's fresh active Night. Final checks passed: 544 database assertions across 20 suites, 424 unit tests, 33 mounted tests, 33 worker tests, all workspace type checks, production web build and iOS Metro/Hermes export. Public database types were checked against the hosted schema.
+
+Migration `20261006103849_apple_revocation_and_release_audit.sql` is applied. `apple-account-token` v1 and `delete-accounts` v2 are active alongside dispatcher v6. Private Apple credentials are inaccessible through direct client/service table reads. Hosted schedulers succeeded at 11:08/11:00 UTC. Apple readiness returns 503 until the owner supplies server secrets; provider exchange/revocation and signed-device acceptance are pending. See the audit for setup, App Privacy declarations and remaining submission steps.
+
 ## Pre-plot backend update — 6 October
 
 Both pre-plot migrations are applied and `dispatch-notifications` is deployed as active version 4. The existing minute Cron returned HTTP 200 with `ok: true`; an unauthenticated request returned HTTP 401. Recurring campaigns continue beyond 2026, including Friday/Saturday, optional Sunday, holiday eve/day, and New Year's Eve. See [pre-plot notifications](preplot-notifications.md) for scheduling, suppression, verification, and the remaining physical-device checks.

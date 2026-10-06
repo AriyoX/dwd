@@ -658,6 +658,7 @@ export type Database = {
           height: number | null;
           id: string;
           mime_type: string;
+          moderation_status: string;
           night_id: string;
           object_path: string;
           uploaded_by_user_id: string | null;
@@ -671,6 +672,7 @@ export type Database = {
           height?: number | null;
           id: string;
           mime_type: string;
+          moderation_status?: string;
           night_id: string;
           object_path: string;
           uploaded_by_user_id?: string | null;
@@ -684,6 +686,7 @@ export type Database = {
           height?: number | null;
           id?: string;
           mime_type?: string;
+          moderation_status?: string;
           night_id?: string;
           object_path?: string;
           uploaded_by_user_id?: string | null;
@@ -1367,6 +1370,24 @@ export type Database = {
         Returns: Json;
       };
       schedule_account_deletion: { Args: never; Returns: Json };
+      get_apple_deletion_ready: { Args: never; Returns: boolean };
+      get_apple_deletion_token: {
+        Args: { p_claim_id: string; p_request_id: string; p_user_id: string };
+        Returns: Json;
+      };
+      mark_apple_authorization_revoked: {
+        Args: { p_claim_id: string; p_request_id: string; p_user_id: string };
+        Returns: boolean;
+      };
+      store_apple_revocation_token: {
+        Args: {
+          p_client_id: string;
+          p_encrypted_token: string;
+          p_subject: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
       block_user: { Args: { p_user_id: string }; Returns: undefined };
       unblock_user: { Args: { p_user_id: string }; Returns: undefined };
       get_blocked_users: { Args: never; Returns: Json };

@@ -4,20 +4,33 @@ import { appleSignIn, type AppleAuthAdapter } from '../apps/mobile/src/lib/apple
 import { AppleButton } from '../apps/mobile/src/components/apple-button';
 import type { AuthClient } from '../apps/mobile/src/lib/auth-actions';
 
-const auth = { signInWithIdToken: vi.fn(), updateUser: vi.fn(), getSession: vi.fn() };
+const auth = {
+  signInWithIdToken: vi.fn(),
+  updateUser: vi.fn(),
+  getSession: vi.fn(),
+  signOut: vi.fn(),
+};
+const invoke = vi.fn();
 const rpc = vi.fn();
-const client = { auth, rpc } as unknown as AuthClient;
-const credential = { identityToken: 'apple-token', state: 'request-state', name: ' Alex ' };
+const client = { auth, rpc, functions: { invoke } } as unknown as AuthClient;
+const credential = {
+  identityToken: 'apple-token',
+  authorizationCode: 'one-use-code',
+  state: 'request-state',
+  name: ' Alex ',
+};
 let adapter: AppleAuthAdapter;
 beforeEach(() => {
   vi.resetAllMocks();
+  invoke.mockResolvedValue({ data: { ok: true }, error: null });
+  auth.signOut.mockResolvedValue({ error: null });
   adapter = {
     randomUUID: vi.fn().mockReturnValueOnce('raw-nonce').mockReturnValueOnce('request-state'),
     sha256: (value) => Promise.resolve(createHash('sha256').update(value).digest('hex')),
     authorize: vi.fn().mockResolvedValue(credential),
   };
   auth.signInWithIdToken.mockResolvedValue({
-    data: { session: { user: { id: 'actor' } } },
+    data: { session: { access_token: 'actor-token', user: { id: 'actor' } } },
     error: null,
   });
   auth.getSession.mockResolvedValue({ data: { session: { user: { id: 'actor' } } }, error: null });
@@ -45,6 +58,38 @@ describe('iOS Apple authentication', () => {
     expect(await appleSignIn(client, adapter)).toBe(true);
     expect(auth.updateUser).not.toHaveBeenCalled();
   });
+  it('sends the one-use code only to the authenticated server with the initiating token', async () => {
+    await appleSignIn(client, adapter);
+    expect(invoke).toHaveBeenCalledWith(
+      'apple-account-token',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { Authorization: 'Bearer actor-token' },
+        body: { authorizationCode: 'one-use-code' },
+      }),
+    );
+  });
+  it('rejects unconfigured Apple services before opening the OS sign-in sheet', async () => {
+    invoke.mockResolvedValue({ error: new Error('Not configured') });
+    await expect(appleSignIn(client, adapter)).rejects.toThrow('unavailable');
+    expect(adapter.authorize).not.toHaveBeenCalled();
+    expect(auth.signInWithIdToken).not.toHaveBeenCalled();
+  });
+  it('ends the initiating local session after credential capture fails', async () => {
+    invoke
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: new Error('Offline') });
+    await expect(appleSignIn(client, adapter)).rejects.toThrow('Could not finish');
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+  it('does not sign out a different account after failed capture', async () => {
+    invoke
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: new Error('Offline') });
+    auth.getSession.mockResolvedValue({ data: { session: { user: { id: 'other' } } } });
+    await expect(appleSignIn(client, adapter)).rejects.toThrow('Could not finish');
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
   it('treats cancellation as recoverable without starting a Supabase session', async () => {
     adapter.authorize = vi.fn().mockRejectedValue({ code: 'ERR_REQUEST_CANCELED' });
     expect(await appleSignIn(client, adapter)).toBe(false);
@@ -54,6 +99,7 @@ describe('iOS Apple authentication', () => {
     { ...credential, state: 'another-request' },
     { ...credential, state: null },
     { ...credential, identityToken: null },
+    { ...credential, authorizationCode: null },
   ])('rejects missing tokens and mismatched request state (%j)', async (response) => {
     adapter.authorize = vi.fn().mockResolvedValue(response);
     await expect(appleSignIn(client, adapter)).rejects.toThrow('could not be verified');

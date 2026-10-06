@@ -22,6 +22,15 @@ export async function scheduleAccountDeletionAction(
   try {
     const client = await authenticatedClient();
     const { data, error } = await client.rpc('schedule_account_deletion');
+    if (
+      error?.code === '55000' &&
+      error.message === 'Reconnect Apple in DWD before scheduling deletion.'
+    )
+      return {
+        ok: false,
+        error:
+          'Reconnect your linked Apple account in DWD, then request deletion. Contact support if you cannot access it.',
+      };
     if (error) throw error;
     const result = z.object({ deleteAfter: z.iso.datetime({ offset: true }) }).safeParse(data);
     if (!result.success) throw new Error('Deletion was not scheduled.');

@@ -14,6 +14,7 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       title: 'Information we use',
       paragraphs: [
+        'For Sign in with Apple, a one-use authorization code is exchanged on the server. A provider refresh token is stored encrypted solely to revoke Apple access during account deletion; it is removed with the account. Codes and raw provider tokens are not stored on your device or included in operator-facing messages.',
         'Accounts include your email, authentication identifiers and sessions, display name, adult/legal-age confirmation and account preferences. Password authentication is handled by Supabase; DWD does not display passwords to operators or other participants. If you choose Google or Apple sign-in, the provider supplies identity information such as an identifier, email and sometimes a name. You may use Apple’s private relay address.',
         'DWD stores the nights you create or join, plans, drink and chaser entries, corrections, invitation metadata, alerts, check-in requests, uploaded photos, feedback and security/audit events. Drink entries can reveal personal habits. Do not put passwords, invitation links or unnecessary sensitive information into names, photos or reports.',
         'Hosting and authentication providers process technical information such as IP addresses and request logs to operate and secure the service. DWD has no advertising or analytics SDKs, does not sell personal data and does not access contacts, call history or the microphone.',

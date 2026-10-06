@@ -92,7 +92,7 @@ export default function NotificationsScreen() {
           </>
         ) : (
           <>
-            <Notice message="Get reminders and check-ins when DWD is closed. Personal details stay in your inbox." />
+            <Notice message="Enable night reminders, check-ins and weekend/holiday planning pushes when DWD is closed. You can turn planning pushes off in Reminders. Personal details stay in your inbox." />
             <PrimaryButton
               label={
                 push.state === 'unavailable' ? 'Retry device connection' : 'Enable notifications'

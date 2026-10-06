@@ -14,7 +14,9 @@ Drink with Desire is not a drinking game, competition, medical device, BAC calcu
 
 The working web MVP includes email/password authentication, audited profile creation, transactional night creation, personal and managed-guest plans, hashed invitations, idempotent redemption, one-tap alcohol and water logging, deterministic checkpoints, Realtime snapshot refresh, offline queuing, corrections, prospective end-time extensions, irreversible ending, and factual summaries.
 
-It deliberately has no marketing site, full native/mobile feature set, social login, PIN or delegated-edit flow, spending, food logging, GPS, analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation, or guaranteed notification delivery when a browser is fully closed.
+The Expo mobile app shares the core night, account, safety and legal flows with the web app. Optional foreground device location selects the supported country on-device, with Uganda as the fallback. Native notifications include recurring weekend and holiday planning reminders; delivery depends on permission, credentials and the operating system. Native Sign in with Apple requires the server setup described in the [App Store audit](docs/app-store-readiness.md).
+
+The product has no marketing site, PIN or delegated account editing, spending, food logging, advertising analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation.
 
 ## Self-service onboarding
 

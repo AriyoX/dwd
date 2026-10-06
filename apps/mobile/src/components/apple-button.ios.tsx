@@ -25,6 +25,7 @@ const adapter: AppleAuthAdapter = {
     });
     return {
       identityToken: credential.identityToken,
+      authorizationCode: credential.authorizationCode,
       state: credential.state,
       name: credential.fullName ? AppleAuthentication.formatFullName(credential.fullName) : null,
     };

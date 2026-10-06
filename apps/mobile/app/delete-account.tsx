@@ -1,7 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { cancelAccountDeletion, getAccountDeletion, scheduleAccountDeletion } from '@dwd/data';
+import {
+  cancelAccountDeletion,
+  getAccountDeletion,
+  getAppleDeletionReady,
+  scheduleAccountDeletion,
+} from '@dwd/data';
+import { AppleButton } from '@/components/apple-button';
 import { PrimaryButton } from '@/components/primary-button';
 import {
   LoadingPanel,
@@ -30,6 +36,7 @@ export default function DeleteAccountScreen() {
 }
 function Deletion() {
   const query = useAccountQuery(getAccountDeletion, '', false, true);
+  const apple = useAccountQuery(getAppleDeletionReady, 'apple-deletion', false, true);
   const { client, session } = useSupabase();
   const notifications = useNotifications();
   const offline = useOffline();
@@ -149,6 +156,38 @@ function Deletion() {
         </Panel>
       ) : (
         <>
+          {apple.data === false ? (
+            <Panel>
+              <Notice message="Reconnect the Apple account linked to DWD so its access can be revoked when your account is deleted." />
+              <AppleButton
+                disabled={busy}
+                busy={busy}
+                onSignIn={(authenticate) => {
+                  if (inFlight.current) return;
+                  inFlight.current = true;
+                  setBusy(true);
+                  setIssue(null);
+                  void authenticate()
+                    .then(
+                      () => {
+                        if (active()) void apple.refresh();
+                      },
+                      () => {
+                        if (active())
+                          setIssue('Could not reconnect Apple. Try again when connected.');
+                      },
+                    )
+                    .finally(() => {
+                      inFlight.current = false;
+                      if (active()) setBusy(false);
+                    });
+                }}
+              />
+            </Panel>
+          ) : null}
+          {apple.issue ? (
+            <RetryPanel issue={apple.issue} retry={() => void apple.refresh()} />
+          ) : null}
           {offline.issue ? (
             <Notice
               error
@@ -176,7 +215,7 @@ function Deletion() {
             label="Schedule account deletion"
             variant="danger"
             busy={busy}
-            disabled={!confirmed || query.loading}
+            disabled={!confirmed || query.loading || apple.loading || apple.data !== true}
             onPress={() => void submit(false)}
           />
         </>

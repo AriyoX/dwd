@@ -8,6 +8,7 @@ export interface DeletionJob {
 export function createDeletionHandler(deps: {
   secret: string | undefined;
   claim: () => Promise<DeletionJob[]>;
+  revokeApple: (job: DeletionJob) => Promise<void>;
   removePhotos: (paths: string[]) => Promise<void>;
   complete: (job: DeletionJob) => Promise<boolean>;
 }) {
@@ -26,6 +27,8 @@ export function createDeletionHandler(deps: {
       const jobs = await deps.claim();
       for (const job of jobs) {
         try {
+          // Provider revocation must finish before any irreversible account/photo cleanup.
+          await deps.revokeApple(job);
           // Remove actual objects through the Storage API before deleting metadata/Auth.
           // A failed job remains processing and can be reclaimed after its lease expires.
           for (let index = 0; index < job.objectPaths.length; index += 100) {

@@ -36,6 +36,10 @@ export async function cancelAccountDeletion(client: SupabaseClient<Database>) {
   const { error } = await client.rpc('cancel_account_deletion');
   if (error) throw error;
 }
+export async function getAppleDeletionReady(client: SupabaseClient<Database>) {
+  const { data, error } = await client.rpc('get_apple_deletion_ready');
+  return z.boolean().parse(unwrapRpc(data, error));
+}
 export const supportRequestSchema = z.object({
   requestKey: z.uuid(),
   kind: z.enum(['feedback', 'problem']),
