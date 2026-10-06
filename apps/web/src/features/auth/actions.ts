@@ -48,6 +48,7 @@ export async function loginAction(
       error: 'Email or password not accepted. Please try again.',
     };
   const next = safeReturnPath(parsed.data.next);
+  if (next === '/delete-account') redirect(next);
   let destination = next;
   try {
     const client = await createServerSupabaseClient();

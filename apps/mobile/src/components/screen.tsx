@@ -7,31 +7,47 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/providers/theme-provider';
 import { radii } from '@/theme/tokens';
 import { PrimaryButton } from './primary-button';
+import { SheetHeading } from './sheet-heading';
 
 export function Screen({
   children,
   contentStyle,
   refreshControl,
   insetTop = true,
+  footer,
+  scrollRef,
+  sheetTitle,
 }: {
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   refreshControl?: ScrollViewProps['refreshControl'];
   insetTop?: boolean;
+  footer?: ReactNode;
+  scrollRef?: Ref<ScrollView>;
+  sheetTitle?: string;
 }) {
   const { colors } = useTheme();
   return (
     <SafeAreaView
-      edges={insetTop ? ['top', 'left', 'right'] : ['left', 'right']}
+      edges={
+        footer
+          ? ['top', 'bottom', 'left', 'right']
+          : insetTop
+            ? ['top', 'left', 'right']
+            : ['left', 'right']
+      }
       style={{ flex: 1, backgroundColor: colors.background }}
     >
+      {sheetTitle ? <SheetHeading title={sheetTitle} /> : null}
       <ScrollView
+        ref={scrollRef}
         automaticallyAdjustKeyboardInsets
+        nestedScrollEnabled
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           {
@@ -40,7 +56,7 @@ export function Screen({
             width: '100%',
             maxWidth: 600,
             paddingHorizontal: 22,
-            paddingTop: 24,
+            paddingTop: 16,
             paddingBottom: 40,
             gap: 24,
           },
@@ -53,6 +69,20 @@ export function Screen({
       >
         {children}
       </ScrollView>
+      {footer ? (
+        <View
+          style={{
+            alignSelf: 'center',
+            width: '100%',
+            maxWidth: 600,
+            paddingHorizontal: 22,
+            paddingTop: 12,
+            paddingBottom: 8,
+          }}
+        >
+          {footer}
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -64,9 +94,10 @@ export function Panel({ children, style }: { children: ReactNode; style?: StyleP
         {
           padding: 20,
           borderRadius: radii.card,
-          borderWidth: 1,
+          borderWidth: 0.5,
           borderColor: colors.border,
           backgroundColor: colors.surface,
+          borderCurve: 'continuous',
           gap: 16,
         },
         style,
@@ -93,7 +124,12 @@ export function Notice({ message, error = false }: { message: string; error?: bo
     <Text
       accessibilityRole={error ? 'alert' : 'text'}
       accessibilityLiveRegion="polite"
-      style={{ color: error ? colors.danger : colors.muted, fontSize: 15, lineHeight: 23 }}
+      style={{
+        color: error ? colors.danger : colors.muted,
+        fontSize: 15,
+        lineHeight: 23,
+        ...(error ? { padding: 14, borderRadius: 14, backgroundColor: colors.surfaceSoft } : {}),
+      }}
     >
       {message}
     </Text>

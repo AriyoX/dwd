@@ -24,7 +24,7 @@ export function CompleteSignupForm({ next, name }: { next: string; name: string 
       </label>
       <label className="checkbox-row">
         <input type="checkbox" name="ageConfirmed" required />
-        <span>I am 18 or older.</span>
+        <span>I am 18 or older, meet the local legal drinking age, and agree to the Terms.</span>
       </label>
       {state.error && (
         <p className="error-box" role="alert">
@@ -43,6 +43,9 @@ export function CompleteSignupForm({ next, name }: { next: string; name: string 
         </Link>
         .
       </p>
+      <Link href="/delete-account" className="text-link">
+        Delete this account
+      </Link>
       <SignOutButton />
     </form>
   );

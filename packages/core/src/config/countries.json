@@ -1,0 +1,653 @@
+[
+  {
+    "code": "UG",
+    "name": "Uganda",
+    "priority": "africa",
+    "timezones": ["Africa/Kampala", "Africa/Nairobi"],
+    "observed": "none",
+    "easter": true,
+    "lunar": "eid",
+    "calendarSource": "https://arusha.mofa.go.ug/basic-page/public-holidays",
+    "emergencySource": "https://upf.go.ug/public-safety-crime-response-and-security-operations-update/",
+    "emergencyAuthority": "Uganda Police Force",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "112",
+        "service": "Emergency"
+      },
+      {
+        "number": "999",
+        "service": "Emergency"
+      }
+    ],
+    "holidays": []
+  },
+  {
+    "code": "KE",
+    "name": "Kenya",
+    "priority": "africa",
+    "timezones": ["Africa/Nairobi", "Africa/Kampala", "Africa/Dar_es_Salaam"],
+    "observed": "sunday",
+    "easter": true,
+    "lunar": "eid",
+    "calendarSource": "https://new.kenyalaw.org/akn/ke/act/1912/21/eng@2024-04-26/source",
+    "emergencySource": "https://nationalpolice.go.ke/sites/default/files/2026-04/NPS%20Handbook_2025.pdf",
+    "emergencyAuthority": "National Police Service",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "999",
+        "service": "Police emergency"
+      },
+      {
+        "number": "112",
+        "service": "Police emergency"
+      },
+      {
+        "number": "911",
+        "service": "Police emergency"
+      }
+    ],
+    "holidays": [
+      {
+        "month": 1,
+        "day": 1,
+        "campaign": "new_year",
+        "mode": "celebrate"
+      },
+      {
+        "month": 5,
+        "day": 1,
+        "campaign": "labour_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 6,
+        "day": 1,
+        "campaign": "madaraka",
+        "mode": "celebrate"
+      },
+      {
+        "month": 10,
+        "day": 10,
+        "campaign": "mazingira",
+        "mode": "celebrate"
+      },
+      {
+        "month": 10,
+        "day": 20,
+        "campaign": "mashujaa",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 12,
+        "campaign": "jamhuri",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 25,
+        "campaign": "christmas",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 26,
+        "campaign": "boxing_day",
+        "mode": "celebrate"
+      }
+    ]
+  },
+  {
+    "code": "TZ",
+    "name": "Tanzania",
+    "priority": "africa",
+    "timezones": ["Africa/Dar_es_Salaam", "Africa/Nairobi", "Africa/Kampala"],
+    "observed": "none",
+    "easter": true,
+    "lunar": "eid_mawlid",
+    "calendarSource": "https://www.om.tzembassy.go.tz/services/public-holidays-in-tanzania",
+    "emergencySource": "https://www.tanzania.go.tz/faqs",
+    "emergencyAuthority": "Government of Tanzania",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "112",
+        "service": "Police"
+      },
+      {
+        "number": "114",
+        "service": "Fire and rescue"
+      }
+    ],
+    "holidays": [
+      {
+        "month": 1,
+        "day": 1,
+        "campaign": "new_year",
+        "mode": "celebrate"
+      },
+      {
+        "month": 1,
+        "day": 12,
+        "campaign": "zanzibar_revolution",
+        "mode": "celebrate"
+      },
+      {
+        "month": 4,
+        "day": 7,
+        "campaign": "karume",
+        "mode": "suppress"
+      },
+      {
+        "month": 4,
+        "day": 26,
+        "campaign": "union_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 5,
+        "day": 1,
+        "campaign": "labour_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 7,
+        "day": 7,
+        "campaign": "saba_saba",
+        "mode": "celebrate"
+      },
+      {
+        "month": 8,
+        "day": 8,
+        "campaign": "nane_nane",
+        "mode": "celebrate"
+      },
+      {
+        "month": 10,
+        "day": 14,
+        "campaign": "nyerere",
+        "mode": "suppress"
+      },
+      {
+        "month": 12,
+        "day": 9,
+        "campaign": "independence",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 25,
+        "campaign": "christmas",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 26,
+        "campaign": "boxing_day",
+        "mode": "celebrate"
+      }
+    ]
+  },
+  {
+    "code": "RW",
+    "name": "Rwanda",
+    "priority": "africa",
+    "timezones": ["Africa/Kigali", "Africa/Maputo"],
+    "observed": "weekend",
+    "easter": true,
+    "lunar": "eid",
+    "calendarSource": "https://www.mifotra.gov.rw/fileadmin/user_upload/Mifotra/Publication/4.PRESIDENTIAL_ORDERS/PO_on_Mission__delegations_of_powers_and_public_holidays_2022__1_.pdf",
+    "emergencySource": "https://www.gov.rw/emergency",
+    "emergencyAuthority": "Government of Rwanda",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "912",
+        "service": "Ambulance"
+      },
+      {
+        "number": "112",
+        "service": "Emergency"
+      }
+    ],
+    "holidays": [
+      {
+        "month": 1,
+        "day": 1,
+        "campaign": "new_year",
+        "mode": "celebrate"
+      },
+      {
+        "month": 1,
+        "day": 2,
+        "campaign": "new_year_second_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 2,
+        "day": 1,
+        "campaign": "heroes_day",
+        "mode": "suppress"
+      },
+      {
+        "month": 5,
+        "day": 1,
+        "campaign": "labour_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 7,
+        "day": 1,
+        "campaign": "independence",
+        "mode": "celebrate"
+      },
+      {
+        "month": 7,
+        "day": 4,
+        "campaign": "liberation",
+        "mode": "celebrate"
+      },
+      {
+        "month": 8,
+        "day": 15,
+        "campaign": "assumption",
+        "mode": "suppress"
+      },
+      {
+        "month": 12,
+        "day": 25,
+        "campaign": "christmas",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 26,
+        "campaign": "boxing_day",
+        "mode": "celebrate"
+      }
+    ]
+  },
+  {
+    "code": "ZA",
+    "name": "South Africa",
+    "priority": "africa",
+    "timezones": ["Africa/Johannesburg"],
+    "observed": "sunday",
+    "easter": true,
+    "lunar": "none",
+    "calendarSource": "https://www.gov.za/about-sa/public-holidays",
+    "emergencySource": "https://www.sanews.gov.za/south-africa/arrive-alive-road-safety-tips",
+    "emergencyAuthority": "South African Government News Agency",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "112",
+        "service": "Mobile emergency"
+      },
+      {
+        "number": "10177",
+        "service": "Ambulance"
+      },
+      {
+        "number": "10111",
+        "service": "Police"
+      }
+    ],
+    "holidays": [
+      {
+        "month": 1,
+        "day": 1,
+        "campaign": "new_year",
+        "mode": "celebrate"
+      },
+      {
+        "month": 3,
+        "day": 21,
+        "campaign": "human_rights",
+        "mode": "suppress"
+      },
+      {
+        "month": 4,
+        "day": 27,
+        "campaign": "freedom_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 5,
+        "day": 1,
+        "campaign": "workers_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 6,
+        "day": 16,
+        "campaign": "youth_day",
+        "mode": "suppress"
+      },
+      {
+        "month": 8,
+        "day": 9,
+        "campaign": "womens_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 9,
+        "day": 24,
+        "campaign": "heritage_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 16,
+        "campaign": "reconciliation",
+        "mode": "suppress"
+      },
+      {
+        "month": 12,
+        "day": 25,
+        "campaign": "christmas",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 26,
+        "campaign": "goodwill",
+        "mode": "celebrate"
+      }
+    ]
+  },
+  {
+    "code": "AE",
+    "name": "Dubai / UAE",
+    "priority": "international",
+    "timezones": ["Asia/Dubai"],
+    "observed": "none",
+    "easter": false,
+    "lunar": "uae",
+    "calendarSource": "https://u.ae/en/information-and-services/public-holidays-and-religious-affairs/public-holidays",
+    "emergencySource": "https://u.ae/en/information-and-services/justice-safety-and-the-law/handling-emergencies",
+    "emergencyAuthority": "Government of the UAE",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "998",
+        "service": "Ambulance"
+      },
+      {
+        "number": "999",
+        "service": "Police"
+      },
+      {
+        "number": "997",
+        "service": "Fire"
+      }
+    ],
+    "holidays": [
+      {
+        "month": 1,
+        "day": 1,
+        "campaign": "new_year",
+        "mode": "celebrate"
+      },
+      {
+        "month": 11,
+        "day": 30,
+        "campaign": "commemoration",
+        "mode": "suppress"
+      },
+      {
+        "month": 12,
+        "day": 2,
+        "campaign": "national_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 3,
+        "campaign": "national_day_second_day",
+        "mode": "celebrate"
+      }
+    ]
+  },
+  {
+    "code": "GB",
+    "name": "United Kingdom",
+    "priority": "international",
+    "timezones": ["Europe/London", "Europe/Belfast", "GB", "GB-Eire"],
+    "observed": "uk",
+    "easter": true,
+    "lunar": "none",
+    "calendarSource": "https://www.gov.uk/bank-holidays",
+    "emergencySource": "https://www.gov.uk/guidance/999-and-112-the-uks-national-emergency-numbers",
+    "emergencyAuthority": "UK Government",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "999",
+        "service": "Emergency"
+      },
+      {
+        "number": "112",
+        "service": "Emergency"
+      }
+    ],
+    "holidays": [
+      {
+        "month": 1,
+        "day": 1,
+        "campaign": "new_year",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 25,
+        "campaign": "christmas",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 26,
+        "campaign": "boxing_day",
+        "mode": "celebrate"
+      }
+    ]
+  },
+  {
+    "code": "US",
+    "name": "United States",
+    "priority": "international",
+    "timezones": [
+      "America/New_York",
+      "America/Detroit",
+      "America/Kentucky/Louisville",
+      "America/Kentucky/Monticello",
+      "America/Indiana/Indianapolis",
+      "America/Indiana/Vincennes",
+      "America/Indiana/Winamac",
+      "America/Indiana/Marengo",
+      "America/Indiana/Petersburg",
+      "America/Indiana/Vevay",
+      "America/Chicago",
+      "America/Indiana/Tell_City",
+      "America/Indiana/Knox",
+      "America/Menominee",
+      "America/North_Dakota/Center",
+      "America/North_Dakota/New_Salem",
+      "America/North_Dakota/Beulah",
+      "America/Denver",
+      "America/Boise",
+      "America/Phoenix",
+      "America/Los_Angeles",
+      "America/Anchorage",
+      "America/Juneau",
+      "America/Sitka",
+      "America/Metlakatla",
+      "America/Yakutat",
+      "America/Nome",
+      "America/Adak",
+      "Pacific/Honolulu",
+      "US/Eastern",
+      "US/Central",
+      "US/Mountain",
+      "US/Pacific",
+      "US/Alaska",
+      "US/Aleutian",
+      "US/Arizona",
+      "US/Hawaii",
+      "US/Indiana-Starke",
+      "US/Michigan",
+      "US/East-Indiana",
+      "America/Indianapolis",
+      "America/Louisville",
+      "America/Knox_IN",
+      "America/Fort_Wayne",
+      "America/Shiprock",
+      "America/Atka",
+      "Pacific/Johnston"
+    ],
+    "observed": "us",
+    "easter": false,
+    "lunar": "none",
+    "calendarSource": "https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/",
+    "emergencySource": "https://www.911.gov/calling-911/",
+    "emergencyAuthority": "National 911 Program",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "911",
+        "service": "Emergency"
+      }
+    ],
+    "holidays": [
+      {
+        "month": 1,
+        "day": 1,
+        "campaign": "new_year",
+        "mode": "celebrate"
+      },
+      {
+        "month": 6,
+        "day": 19,
+        "campaign": "juneteenth",
+        "mode": "suppress"
+      },
+      {
+        "month": 7,
+        "day": 4,
+        "campaign": "independence",
+        "mode": "celebrate"
+      },
+      {
+        "month": 11,
+        "day": 11,
+        "campaign": "veterans",
+        "mode": "suppress"
+      },
+      {
+        "month": 12,
+        "day": 25,
+        "campaign": "christmas",
+        "mode": "celebrate"
+      }
+    ]
+  },
+  {
+    "code": "CA",
+    "name": "Canada",
+    "priority": "international",
+    "timezones": [
+      "America/St_Johns",
+      "America/Halifax",
+      "America/Glace_Bay",
+      "America/Moncton",
+      "America/Goose_Bay",
+      "America/Blanc-Sablon",
+      "America/Toronto",
+      "America/Iqaluit",
+      "America/Atikokan",
+      "America/Winnipeg",
+      "America/Resolute",
+      "America/Rankin_Inlet",
+      "America/Regina",
+      "America/Swift_Current",
+      "America/Edmonton",
+      "America/Cambridge_Bay",
+      "America/Inuvik",
+      "America/Creston",
+      "America/Dawson_Creek",
+      "America/Fort_Nelson",
+      "America/Whitehorse",
+      "America/Dawson",
+      "America/Vancouver",
+      "America/Montreal",
+      "America/Thunder_Bay",
+      "America/Nipigon",
+      "America/Rainy_River",
+      "America/Pangnirtung",
+      "America/Yellowknife",
+      "Canada/Atlantic",
+      "Canada/Central",
+      "Canada/Eastern",
+      "Canada/Mountain",
+      "Canada/Newfoundland",
+      "Canada/Pacific",
+      "Canada/Saskatchewan",
+      "Canada/Yukon",
+      "America/Coral_Harbour"
+    ],
+    "observed": "none",
+    "easter": true,
+    "lunar": "none",
+    "calendarSource": "https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/vacations-holidays.html",
+    "emergencySource": "https://web.crtc.gc.ca/eng/phone/911/",
+    "emergencyAuthority": "CRTC",
+    "reviewedAt": "2026-10-06",
+    "emergency": [
+      {
+        "number": "911",
+        "service": "Emergency"
+      }
+    ],
+    "holidays": [
+      {
+        "month": 1,
+        "day": 1,
+        "campaign": "new_year",
+        "mode": "celebrate"
+      },
+      {
+        "month": 7,
+        "day": 1,
+        "campaign": "canada_day",
+        "mode": "celebrate"
+      },
+      {
+        "month": 9,
+        "day": 30,
+        "campaign": "truth_reconciliation",
+        "mode": "suppress"
+      },
+      {
+        "month": 11,
+        "day": 11,
+        "campaign": "remembrance",
+        "mode": "suppress"
+      },
+      {
+        "month": 12,
+        "day": 25,
+        "campaign": "christmas",
+        "mode": "celebrate"
+      },
+      {
+        "month": 12,
+        "day": 26,
+        "campaign": "boxing_day",
+        "mode": "celebrate"
+      }
+    ]
+  }
+]

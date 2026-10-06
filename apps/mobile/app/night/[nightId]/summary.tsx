@@ -1,6 +1,8 @@
-import { RefreshControl, Text, View } from 'react-native';
+import { RefreshControl, Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { NightActivity } from '@/components/night-activity';
+import { RecapMembers, RecapTimeline } from '@/components/recap-details';
+import { NavigationRow } from '@/components/navigation-row';
 import { PrimaryButton } from '@/components/primary-button';
 import {
   LoadingPanel,
@@ -13,13 +15,14 @@ import {
 import { useNight } from '@/hooks/use-night';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { PendingLogs } from '@/components/pending-logs';
 
 export default function SummaryScreen() {
   const { nightId } = useLocalSearchParams<{ nightId: string }>();
   const router = useRouter();
   const { status } = useSupabase();
   const { colors, typography } = useTheme();
-  const { snapshot, issue, refresh, loading } = useNight(nightId, true);
+  const { snapshot, issue, refresh, loading, cached } = useNight(nightId, true);
   const member = snapshot?.members.find((m) => m.id === snapshot.currentMemberId);
   return (
     <Screen
@@ -32,6 +35,11 @@ export default function SummaryScreen() {
         />
       }
     >
+      <PendingLogs
+        key={`${nightId}:${snapshot?.currentUserId}`}
+        nightId={nightId}
+        snapshot={snapshot}
+      />
       {status !== 'signed-in' ? (
         <Notice message="Sign in to view this recap." />
       ) : issue && !snapshot ? (
@@ -53,36 +61,24 @@ export default function SummaryScreen() {
           {member ? (
             <>
               <Panel>
-                <Text accessibilityRole="header" style={typography.sectionTitle}>
-                  Your recap
-                </Text>
-                <Text style={{ color: colors.text, fontSize: 26, fontWeight: '600' }}>
-                  {member.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
-                  {member.waterLogs.filter((log) => !log.deletedAt).length} waters
-                </Text>
+                <NavigationRow
+                  label="Photo memories"
+                  icon="images-outline"
+                  onPress={() => router.push(`/night/${nightId}/photos`)}
+                />
               </Panel>
+              <RecapTimeline snapshot={snapshot} />
+              <RecapMembers snapshot={snapshot} />
               <NightActivity member={member} timezone={snapshot.night.timezone} />
             </>
           ) : null}
-          {snapshot.historyScope !== 'personal' ? (
-            <Panel>
-              <Text accessibilityRole="header" style={typography.sectionTitle}>
-                People
-              </Text>
-              {snapshot.members.map((m) => (
-                <View key={m.id} style={{ gap: 4 }}>
-                  <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
-                    {m.displayName}
-                  </Text>
-                  <Text style={typography.body}>
-                    {m.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
-                    {m.waterLogs.filter((log) => !log.deletedAt).length} waters
-                  </Text>
-                </View>
-              ))}
-            </Panel>
+          {issue ? (
+            cached ? (
+              <Notice message={issue} />
+            ) : (
+              <RetryPanel issue={issue} retry={() => void refresh()} />
+            )
           ) : null}
-          {issue ? <RetryPanel issue={issue} retry={() => void refresh()} /> : null}
           <PrimaryButton
             label="Back to history"
             variant="secondary"

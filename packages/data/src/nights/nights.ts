@@ -13,6 +13,7 @@ import { toJson, unwrapRpc } from '../shared/rpc';
 export async function startNightOut(
   client: SupabaseClient<Database>,
   input: StartNightInput,
+  recoverable = false,
 ): Promise<StartNightResult> {
   const args = {
     p_creation_key: input.creationKey,
@@ -24,7 +25,7 @@ export async function startNightOut(
   };
   const { data, error } = input.sharedBottle
     ? await client.rpc('start_night_with_bottle', { ...args, p_bottle: toJson(input.sharedBottle) })
-    : await client.rpc('start_night_out', args);
+    : await client.rpc(recoverable ? 'start_night_out_recoverable' : 'start_night_out', args);
   return unwrapRpc<StartNightResult>(data, error);
 }
 

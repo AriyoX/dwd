@@ -37,6 +37,12 @@ export default defineConfig(
     },
   },
   {
+    // Native aliases must resolve against their own project, not the web's @/ path.
+    files: ['apps/mobile/**/*.ts', 'apps/mobile/**/*.tsx'],
+    languageOptions: { parserOptions: { project: './apps/mobile/tsconfig.json' } },
+    rules: { 'jsx-a11y/alt-text': 'off' },
+  },
+  {
     files: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {
       '@typescript-eslint/no-unsafe-assignment': 'off',

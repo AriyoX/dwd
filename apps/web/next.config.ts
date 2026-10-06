@@ -1,7 +1,8 @@
 import type { NextConfig } from 'next';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
-const backend = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321');
+const rawBackend: unknown = process.env['NEXT_PUBLIC_SUPABASE_URL'];
+const backend = new URL(typeof rawBackend === 'string' ? rawBackend : 'http://127.0.0.1:54321');
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''}`,
@@ -31,7 +32,7 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), payment=()',
+            value: 'camera=(), microphone=(), geolocation=(self), payment=()',
           },
         ],
       },

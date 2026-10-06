@@ -6,16 +6,19 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "react-native": ["node_modules/react-native"],
+      "react-native/*": ["node_modules/react-native/*"]
     }
   },
   "include": [
+    "app.config.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
   ],
   "exclude": ["node_modules"]
 }

@@ -1,3 +1,5 @@
+import type { CalendarRegion, CountryCode } from '../config/countries';
+
 export type DrinkCategory = 'beer' | 'wine' | 'spirit' | 'cocktail' | 'other';
 export type NightStatus = 'active' | 'ended';
 export type MemberType = 'account' | 'guest';
@@ -94,6 +96,7 @@ export interface WaterLog {
 }
 
 export interface NightPhoto {
+  moderationStatus?: 'pending' | 'approved' | 'rejected';
   id: string;
   nightId: string;
   uploadedByUserId: string | null;
@@ -150,9 +153,23 @@ export interface FinishedNight {
   categoryCounts: Partial<Record<DrinkCategory, number>>;
 }
 
-export type NotificationCategory = 'group_attention' | 'direct_checkin' | 'personal_reminder';
+export type NotificationCategory =
+  'group_attention' | 'direct_checkin' | 'personal_reminder' | 'preplot';
 export type NotificationEventType =
-  'group_attention' | 'direct_checkin' | 'personal_pace' | 'planned_end' | 'periodic_water';
+  | 'group_attention'
+  | 'direct_checkin'
+  | 'personal_pace'
+  | 'planned_end'
+  | 'periodic_water'
+  | 'preplot';
+
+export interface PreplotPreferences {
+  enabled: boolean;
+  sundayEnabled: boolean;
+  countryCode: CountryCode;
+  calendarRegion: CalendarRegion;
+  countrySelected: boolean;
+}
 
 export interface NotificationPreferences {
   groupAttentionEnabled: boolean;

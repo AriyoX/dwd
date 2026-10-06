@@ -24,7 +24,9 @@ additional_redirect_urls = [
   "https://drink-with-desire.vercel.app/auth/confirm?**",
   "https://dwd-*-ariyoxs-projects.vercel.app/auth/confirm?**",
   "http://localhost:3000/auth/confirm?**",
-  "http://127.0.0.1:3000/auth/confirm?**"
+  "http://127.0.0.1:3000/auth/confirm?**",
+  "dwd://auth/callback",
+  "dwd://auth/callback?**"
 ]
 enable_signup = true
 enable_anonymous_sign_ins = false

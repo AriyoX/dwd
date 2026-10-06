@@ -658,6 +658,7 @@ export type Database = {
           height: number | null;
           id: string;
           mime_type: string;
+          moderation_status: string;
           night_id: string;
           object_path: string;
           uploaded_by_user_id: string | null;
@@ -671,6 +672,7 @@ export type Database = {
           height?: number | null;
           id: string;
           mime_type: string;
+          moderation_status?: string;
           night_id: string;
           object_path: string;
           uploaded_by_user_id?: string | null;
@@ -684,6 +686,7 @@ export type Database = {
           height?: number | null;
           id?: string;
           mime_type?: string;
+          moderation_status?: string;
           night_id?: string;
           object_path?: string;
           uploaded_by_user_id?: string | null;
@@ -1175,6 +1178,37 @@ export type Database = {
     };
     Functions: {
       acknowledge_check_in: { Args: { p_request_id: string }; Returns: Json };
+      start_night_out_recoverable: {
+        Args: {
+          p_creation_key: string;
+          p_title: string;
+          p_ends_at: string;
+          p_timezone: string;
+          p_host_plan: Json;
+          p_guests?: Json;
+        };
+        Returns: Json;
+      };
+      register_native_push: {
+        Args: { p_installation_id: string; p_token: string; p_platform: string };
+        Returns: Json;
+      };
+      get_preplot_preferences: { Args: never; Returns: Json };
+      update_preplot_country: {
+        Args: { p_country_code: string; p_calendar_region?: string };
+        Returns: Json;
+      };
+      update_preplot_preferences: {
+        Args: { p_enabled: boolean; p_sunday_enabled: boolean };
+        Returns: Json;
+      };
+      update_native_push_context: {
+        Args: { p_installation_id: string; p_timezone: string };
+        Returns: undefined;
+      };
+      record_preplot_open: { Args: { p_event_id: string }; Returns: undefined };
+      get_my_notification_event: { Args: { p_event_id: string }; Returns: Json };
+      remove_native_push: { Args: { p_installation_id: string }; Returns: Json };
       acknowledge_notification: {
         Args: { p_notification_id: string };
         Returns: Json;
@@ -1336,6 +1370,37 @@ export type Database = {
         Returns: Json;
       };
       schedule_account_deletion: { Args: never; Returns: Json };
+      get_apple_deletion_ready: { Args: never; Returns: boolean };
+      get_apple_deletion_token: {
+        Args: { p_claim_id: string; p_request_id: string; p_user_id: string };
+        Returns: Json;
+      };
+      mark_apple_authorization_revoked: {
+        Args: { p_claim_id: string; p_request_id: string; p_user_id: string };
+        Returns: boolean;
+      };
+      store_apple_revocation_token: {
+        Args: {
+          p_client_id: string;
+          p_encrypted_token: string;
+          p_subject: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      block_user: { Args: { p_user_id: string }; Returns: undefined };
+      unblock_user: { Args: { p_user_id: string }; Returns: undefined };
+      get_blocked_users: { Args: never; Returns: Json };
+      report_content: {
+        Args: {
+          p_night_id: string;
+          p_member_id: string | null;
+          p_photo_id: string | null;
+          p_reason: string;
+          p_request_key: string;
+        };
+        Returns: string;
+      };
       send_check_in: {
         Args: {
           p_night_id: string;
@@ -1352,7 +1417,10 @@ export type Database = {
       share_bottle_and_plan: {
         Args: {
           p_bottle: Json;
+          p_creator_expected_revision?: number;
+          p_creator_make_main?: boolean;
           p_expected_revision: number;
+          p_make_main?: boolean;
           p_member_id: string;
           p_night_id: string;
           p_request_key: string;

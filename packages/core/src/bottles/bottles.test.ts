@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBottlePlan, bottlePlanProgress } from './bottles';
+import { buildBottlePlan, bottleMainChoice, bottlePlanProgress } from './bottles';
 import { sharedBottleInputSchema, planItemsSchema, customDrinkSchema } from '../schemas/schemas';
 import { calculatePlanTotal } from '../plans/plans';
 import type { AlcoholLog, PlanItemInput, SharedBottle } from '../types/domain';
@@ -29,6 +29,25 @@ const beer: PlanItemInput = {
 };
 
 describe('shared bottle plans', () => {
+  it('keeps the existing main by default when creating or joining a bottle', () => {
+    expect(bottleMainChoice([beer], bottle.id)).toEqual({
+      isMain: false,
+      required: false,
+      currentMainLabel: 'Beer',
+    });
+    expect(bottleMainChoice([beer])).toEqual(bottleMainChoice([beer], bottle.id));
+  });
+  it('requires the bottle to remain main when it is the first or already the main drink', () => {
+    expect(bottleMainChoice([]).required).toBe(true);
+    expect(bottleMainChoice([{ ...beer, archivedAt: '2026-10-01' }]).isMain).toBe(true);
+    const plan = buildBottlePlan([beer], bottle, 2, 'add');
+    expect(bottleMainChoice(plan, bottle.id)).toEqual({
+      isMain: true,
+      required: true,
+      currentMainLabel: 'Shared gin',
+    });
+    expect(bottleMainChoice(plan).isMain).toBe(false);
+  });
   it('plans individual pours, not the whole bottle, and retains its source through validation', () => {
     const plan = planItemsSchema.parse(buildBottlePlan([], bottle, 2, 'add'));
     expect(plan[0]).toMatchObject({

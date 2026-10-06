@@ -3,7 +3,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const containerName = `dwd-db-test-${process.pid}`;
-const image = process.env.DWD_TEST_DB_IMAGE ?? 'public.ecr.aws/supabase/postgres:17.6.1.143';
+/** @type {unknown} */
+const configuredImage = process.env.DWD_TEST_DB_IMAGE;
+const image =
+  typeof configuredImage === 'string' && configuredImage
+    ? configuredImage
+    : 'public.ecr.aws/supabase/postgres:17.6.1.143';
 const root = process.cwd();
 const requestedSuites = process.argv.slice(2);
 const migrations = readdirSync(join(root, 'supabase', 'migrations'))
@@ -90,6 +95,24 @@ try {
   }
 
   for (const migration of migrations) {
+    if (migration === migrations[0]) {
+      // GoTrue normally creates sessions; the isolated Postgres image omits it.
+      docker(
+        'exec',
+        containerName,
+        'psql',
+        '-X',
+        '-q',
+        '-v',
+        'ON_ERROR_STOP=1',
+        '-U',
+        'supabase_admin',
+        '-d',
+        'postgres',
+        '-c',
+        "create table if not exists auth.sessions (id uuid primary key, user_id uuid not null references auth.users(id) on delete cascade); create table if not exists auth.identities (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, provider text not null, provider_id text not null, identity_data jsonb not null, unique(provider,provider_id)); create index if not exists identities_user_id_idx on auth.identities(user_id); create or replace function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb$$; grant execute on function auth.jwt() to authenticated, service_role;",
+      );
+    }
     docker(
       'cp',
       join(root, 'supabase', 'migrations', migration),

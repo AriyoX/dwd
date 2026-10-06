@@ -21,6 +21,7 @@ export async function shareBottleAndPlan(
   memberId: string,
   expectedRevision: number,
   requestKey: string,
+  choices?: { makeMain: boolean; creatorExpectedRevision: number; creatorMakeMain: boolean },
 ): Promise<NightSnapshot> {
   const { data, error } = await client.rpc('share_bottle_and_plan', {
     p_night_id: nightId,
@@ -28,6 +29,11 @@ export async function shareBottleAndPlan(
     p_member_id: memberId,
     p_expected_revision: expectedRevision,
     p_request_key: requestKey,
+    ...(choices && {
+      p_make_main: choices.makeMain,
+      p_creator_expected_revision: choices.creatorExpectedRevision,
+      p_creator_make_main: choices.creatorMakeMain,
+    }),
   });
   return unwrapRpc<NightSnapshot>(data, error);
 }

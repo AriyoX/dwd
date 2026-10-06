@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
-import { RefreshControl, Share, Text, View } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   calculatePlanTotal,
   determinePlanStatus,
@@ -8,15 +8,13 @@ import {
   canUserLogForMember,
   canUserEndOrExtendNight,
   canUserLeaveNight,
+  bottlePlanProgress,
 } from '@dwd/core';
-import {
-  createNightInvite,
-  endNight,
-  extendNight,
-  leaveNight,
-  softDeleteActivity,
-} from '@dwd/data';
+import { endNight, extendNight, leaveNight, softDeleteActivity, visibleAlerts } from '@dwd/data';
 import { Choice } from '@/components/choice';
+import { NightMetrics } from '@/components/night-metrics';
+import { NightPeople } from '@/components/night-people';
+import { NightCheckIns } from '@/components/night-check-ins';
 import { NightActivity } from '@/components/night-activity';
 import { PrimaryButton } from '@/components/primary-button';
 import {
@@ -30,24 +28,53 @@ import {
 import { useNight } from '@/hooks/use-night';
 import { useLogging } from '@/hooks/use-logging';
 import { confirmAction } from '@/lib/confirm';
-import { hashInvite, newInviteToken } from '@/lib/invites';
+import { plannedEndKey } from '@/lib/catch-up';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { availableBottles, nightAccess } from '@/lib/night-features';
+import { PendingLogs } from '@/components/pending-logs';
 
 export default function NightScreen() {
-  const { nightId } = useLocalSearchParams<{ nightId: string }>();
+  const { nightId, memberId } = useLocalSearchParams<{ nightId: string; memberId?: string }>();
   const router = useRouter();
   const { client, status } = useSupabase();
   const { colors, typography } = useTheme();
-  const { snapshot, issue, refresh, connected, now, loading } = useNight(nightId);
+  const { snapshot, issue, refresh, connected, now, loading, cached } = useNight(nightId);
   const logging = useLogging(() => {
     void refresh();
-  });
-  const [selected, setSelected] = useState<string | null>(null);
+  }, snapshot);
+  const [selection, setSelection] = useState<{
+    destination: string | undefined;
+    memberId: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inFlight = useRef(false);
-  const invite = useRef<{ token: string; expiresAt: string } | null>(null);
+  const dismissedEnd = useRef<string | null>(null);
+  const endAt = snapshot?.night.endsAt;
+  const owner = snapshot?.currentUserId;
+  const nightStatus = snapshot?.night.status;
+  useFocusEffect(
+    useCallback(() => {
+      if (!endAt || !owner || nightStatus !== 'active' || Date.parse(endAt) > now) return;
+      const key = plannedEndKey(owner, nightId);
+      let dismissed = dismissedEnd.current === `${owner}:${endAt}`;
+      try {
+        dismissed ||= globalThis.localStorage.getItem(key) === endAt;
+      } catch {
+        /* Retain an in-memory dismissal. */
+      }
+      if (!dismissed) {
+        dismissedEnd.current = `${owner}:${endAt}`;
+        try {
+          globalThis.localStorage.setItem(key, endAt);
+        } catch {
+          /* The in-memory dismissal still prevents a loop. */
+        }
+        router.push(`/night/${nightId}/planned-end`);
+      }
+    }, [endAt, owner, nightStatus, nightId, now, router]),
+  );
   const actor = snapshot?.members.find((m) => m.id === snapshot.currentMemberId) ?? null;
   const manageable =
     snapshot?.members.filter((target) =>
@@ -58,6 +85,7 @@ export default function NightScreen() {
         night: snapshot.night,
       }),
     ) ?? [];
+  const selected = selection?.destination === memberId ? selection?.memberId : memberId;
   const member = manageable.find((m) => m.id === selected) ?? actor;
   const allowed =
     member &&
@@ -71,6 +99,7 @@ export default function NightScreen() {
   const drinks = member?.drinkLogs.filter((log) => !log.deletedAt) ?? [];
   const water = member?.waterLogs.filter((log) => !log.deletedAt) ?? [];
   const quick = member?.planItems.find((p) => p.isQuickLog && !p.archivedAt);
+  const mainBottle = snapshot?.sharedBottles?.find((b) => b.id === quick?.sharedBottleId);
   const planned = calculatePlanTotal(member?.planItems.filter((p) => !p.archivedAt) ?? []);
   const planStatus = determinePlanStatus(
     drinks.reduce((sum, log) => sum + log.ethanolGrams, 0),
@@ -109,24 +138,6 @@ export default function NightScreen() {
       router.replace(`/night/${nightId}/summary`);
     }, 'Night ended.');
   }
-  async function shareInvite() {
-    if (!client) return;
-    await mutate(async () => {
-      invite.current ??= {
-        token: await newInviteToken(),
-        expiresAt: new Date(Date.now() + 24 * 3_600_000).toISOString(),
-      };
-      await createNightInvite(client, {
-        nightId,
-        tokenHash: await hashInvite(invite.current.token),
-        expiresAt: invite.current.expiresAt,
-        maxUses: null,
-      });
-      await Share.share({
-        message: `Join ${snapshot?.night.title ?? 'my night'} on DWD. Invite code: ${invite.current.token}`,
-      });
-    }, '');
-  }
   return (
     <Screen
       insetTop={false}
@@ -141,6 +152,11 @@ export default function NightScreen() {
       <Stack.Screen
         options={{ title: snapshot?.night.status === 'ended' ? 'Night ended' : 'Tonight' }}
       />
+      <PendingLogs
+        key={`${nightId}:${snapshot?.currentUserId}`}
+        nightId={nightId}
+        snapshot={snapshot}
+      />
       {status !== 'signed-in' ? (
         <Panel>
           <Notice message="Sign in to open this night." />
@@ -153,13 +169,23 @@ export default function NightScreen() {
       ) : (
         <>
           <ScreenHeading title={snapshot.night.title} />
+          <PrimaryButton
+            label="Get help"
+            icon="medical-outline"
+            variant="danger"
+            onPress={() => router.push(`/night/${nightId}/help`)}
+          />
           <Text style={typography.body}>
             {snapshot.night.status === 'ended'
               ? 'Ended'
               : `Planned end · ${new Date(snapshot.night.endsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: snapshot.night.timezone })}`}
           </Text>
           {issue ? (
-            <RetryPanel issue={issue} retry={() => void refresh()} />
+            cached ? (
+              <Notice message={issue} />
+            ) : (
+              <RetryPanel issue={issue} retry={() => void refresh()} />
+            )
           ) : !connected && snapshot.night.status === 'active' ? (
             <Notice message="Reconnecting to live updates" />
           ) : null}
@@ -175,53 +201,99 @@ export default function NightScreen() {
                   <Text accessibilityRole="header" style={typography.sectionTitle}>
                     Logging for
                   </Text>
-                  {manageable.map((m) => (
-                    <Choice
-                      key={m.id}
-                      label={m.displayName}
-                      selected={m.id === member?.id}
-                      disabled={busy || logging.busy}
-                      onPress={() => setSelected(m.id)}
-                    />
-                  ))}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, padding: 4 }}
+                  >
+                    {manageable.map((m) => (
+                      <View key={m.id} style={{ minWidth: 120, maxWidth: 220 }}>
+                        <Choice
+                          compact
+                          label={m.displayName}
+                          selected={m.id === member?.id}
+                          disabled={busy || logging.busy}
+                          onPress={() => setSelection({ destination: memberId, memberId: m.id })}
+                        />
+                      </View>
+                    ))}
+                  </ScrollView>
                 </View>
               ) : null}
               {member ? (
-                <Panel>
+                <Panel style={{ padding: 18, gap: 18 }}>
                   <Text accessibilityRole="header" style={typography.sectionTitle}>
                     {member.id === actor?.id ? 'Your evening' : member.displayName}
                   </Text>
-                  <Text style={{ color: colors.text, fontSize: 24, fontWeight: '600' }}>
-                    {drinks.length} drinks · {water.length} waters
-                  </Text>
+                  <NightMetrics drinks={drinks.length} water={water.length} />
                   <Text style={typography.body}>
                     {member.planSetupCompletedAt === null
                       ? 'Choose a plan to start'
                       : planned === 0
-                        ? 'Water-only plan'
+                        ? 'Chaser-only plan'
                         : planStatus === 'within_plan'
                           ? 'Within your plan'
                           : planStatus === 'reached'
                             ? 'Plan reached'
                             : 'Beyond your plan'}
                   </Text>
-                  {member.id === actor?.id ? (
+                  {nightAccess(snapshot, member.id).canEdit ? (
                     <PrimaryButton
                       label={member.planSetupCompletedAt === null ? 'Set your plan' : 'Edit plan'}
-                      variant="secondary"
+                      variant="quiet"
                       disabled={busy || logging.busy}
-                      onPress={() => router.push(`/night/${nightId}/plan`)}
+                      onPress={() =>
+                        router.push({
+                          pathname: `/night/${nightId}/plan`,
+                          params: { memberId: member.id },
+                        })
+                      }
                     />
+                  ) : null}
+                  {mainBottle && quick ? (
+                    <View style={{ gap: 8 }}>
+                      <Text style={typography.body}>
+                        {mainBottle.remainingMl} ml left in {mainBottle.label}
+                      </Text>
+                      <Text style={typography.body}>
+                        {bottlePlanProgress(mainBottle.id, drinks, quick.volumeMl)} drinks logged ·{' '}
+                        {quick.plannedQuantity} planned
+                      </Text>
+                      {mainBottle.closedAt ? (
+                        <Notice message="This bottle has been put away. Choose another main drink." />
+                      ) : mainBottle.remainingMl < quick.volumeMl ? (
+                        <Notice message="Less than one drink remains. Adjust the size in Shared bottles." />
+                      ) : null}
+                    </View>
                   ) : null}
                   {allowed ? (
                     <>
                       {quick ? (
-                        <PrimaryButton
-                          label={`Log ${quick.label.toLowerCase()}`}
-                          busy={logging.busy}
-                          disabled={busy}
-                          onPress={() => void logging.log(member.id, { planItemId: quick.id })}
-                        />
+                        <View style={{ gap: 10 }}>
+                          <Text
+                            style={{
+                              color: colors.muted,
+                              fontSize: 13,
+                              fontWeight: '500',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {quick.label} · {quick.volumeMl} ml · {quick.abvPercent}%
+                          </Text>
+                          <PrimaryButton
+                            label={`Log ${quick.label.toLowerCase()}`}
+                            icon="add-circle-outline"
+                            busy={logging.busy}
+                            disabled={
+                              busy ||
+                              Boolean(
+                                mainBottle &&
+                                (mainBottle.closedAt || mainBottle.remainingMl < quick.volumeMl),
+                              )
+                            }
+                            onPress={() => void logging.log(member.id, { planItemId: quick.id })}
+                          />
+                        </View>
                       ) : null}
                       <PrimaryButton
                         label={quick ? 'Log another drink' : 'Log a drink'}
@@ -235,11 +307,24 @@ export default function NightScreen() {
                         }
                       />
                       <PrimaryButton
-                        label="Log water"
+                        label="Log chaser"
+                        icon="water-outline"
                         variant="water"
                         disabled={busy}
                         busy={logging.busy}
                         onPress={() => void logging.log(member.id, 'water')}
+                      />
+                      <PrimaryButton
+                        label="Add missed entries"
+                        icon="time-outline"
+                        variant="quiet"
+                        disabled={busy || logging.busy}
+                        onPress={() =>
+                          router.push({
+                            pathname: `/night/${nightId}/catch-up`,
+                            params: { memberId: member.id },
+                          })
+                        }
                       />
                       {logging.issue || logging.notice ? (
                         <Notice
@@ -251,10 +336,47 @@ export default function NightScreen() {
                   ) : null}
                 </Panel>
               ) : null}
-              {Date.parse(snapshot.night.endsAt) <= now ? (
-                <Notice message="The planned end time has passed." />
+              {member && allowed ? (
+                <PrimaryButton
+                  label="Shared bottles"
+                  icon="wine-outline"
+                  variant="secondary"
+                  disabled={busy || logging.busy}
+                  onPress={() =>
+                    router.push({
+                      pathname: `/night/${nightId}/bottles`,
+                      params: { memberId: member.id },
+                    })
+                  }
+                />
               ) : null}
-              {snapshot.alerts
+              {member &&
+              allowed &&
+              availableBottles(snapshot, member.id).some(
+                (b) => !b.closedAt && b.remainingMl > 0 && !b.joinedMemberIds.includes(member.id),
+              ) ? (
+                <Notice message="A shared bottle is available. Open Shared bottles to choose whether to join." />
+              ) : null}
+              <NightCheckIns
+                key={`${snapshot.currentUserId}:${nightId}`}
+                snapshot={snapshot}
+                now={now}
+              />
+              <PrimaryButton
+                label="Reminders"
+                icon="notifications-outline"
+                variant="quiet"
+                onPress={() => router.push(`/night/${nightId}/reminders`)}
+              />
+              {Date.parse(snapshot.night.endsAt) <= now ? (
+                <PrimaryButton
+                  label="Night check-in"
+                  icon="time-outline"
+                  variant="secondary"
+                  onPress={() => router.push(`/night/${nightId}/planned-end`)}
+                />
+              ) : null}
+              {visibleAlerts(snapshot)
                 .filter((alert) => !alert.expiresAt || Date.parse(alert.expiresAt) > now)
                 .map((alert) => (
                   <Panel key={alert.id}>
@@ -287,25 +409,12 @@ export default function NightScreen() {
               }}
             />
           ) : null}
-          <Panel>
-            <Text accessibilityRole="header" style={typography.sectionTitle}>
-              People
-            </Text>
-            {snapshot.members
-              .filter((m) => m.leftAt === null)
-              .map((m) => (
-                <View key={m.id} style={{ gap: 4 }}>
-                  <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
-                    {m.displayName}
-                    {m.role === 'host' ? ' · Host' : ''}
-                  </Text>
-                  <Text style={typography.body}>
-                    {m.drinkLogs.filter((log) => !log.deletedAt).length} drinks ·{' '}
-                    {m.waterLogs.filter((log) => !log.deletedAt).length} waters
-                  </Text>
-                </View>
-              ))}
-          </Panel>
+          <NightPeople
+            key={`${snapshot.currentUserId}:${nightId}`}
+            snapshot={snapshot}
+            busy={busy || logging.busy}
+            refresh={refresh}
+          />
           {message ? <Notice message={message} /> : null}
           {host ? (
             <Panel>
@@ -313,14 +422,16 @@ export default function NightScreen() {
                 Host controls
               </Text>
               <PrimaryButton
-                label="Share invite code"
+                label="Invitation link"
+                icon="share-outline"
                 variant="secondary"
                 busy={busy}
                 disabled={logging.busy}
-                onPress={() => void shareInvite()}
+                onPress={() => router.push(`/night/${nightId}/invite`)}
               />
               <PrimaryButton
                 label="Extend by 30 minutes"
+                icon="time-outline"
                 variant="secondary"
                 busy={busy}
                 disabled={logging.busy}
@@ -331,7 +442,7 @@ export default function NightScreen() {
               />
               <PrimaryButton
                 label="End night"
-                variant="secondary"
+                variant="danger"
                 disabled={busy || logging.busy}
                 onPress={() => void finish()}
               />
@@ -360,6 +471,11 @@ export default function NightScreen() {
               }
             />
           ) : null}
+          <PrimaryButton
+            label="Report content or block someone"
+            variant="quiet"
+            onPress={() => router.push(`/night/${nightId}/report`)}
+          />
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 19 }}>
             DWD cannot determine sobriety or driving safety.
           </Text>

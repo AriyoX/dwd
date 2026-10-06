@@ -19,6 +19,9 @@ const commandSchema = z.discriminatedUnion('kind', [
     memberId: z.uuid(),
     expectedRevision: z.number().int().min(0),
     requestKey: z.uuid(),
+    makeMain: z.boolean(),
+    creatorExpectedRevision: z.number().int().min(0),
+    creatorMakeMain: z.boolean(),
   }),
   z.object({
     kind: z.literal('plan'),
@@ -59,6 +62,11 @@ export async function sharedBottleAction(
             command.memberId,
             command.expectedRevision,
             command.requestKey,
+            {
+              makeMain: command.makeMain,
+              creatorExpectedRevision: command.creatorExpectedRevision,
+              creatorMakeMain: command.creatorMakeMain,
+            },
           )
         : command.kind === 'plan'
           ? await planSharedBottle(
@@ -88,6 +96,9 @@ export async function sharedBottleAction(
       'This bottle is for selected people.',
       'This night has ended.',
       'Your plan changed. Close this window and try again.',
+      'Your own plan changed. Close this window and try again.',
+      'This bottle is already shared. Join or adjust it instead.',
+      'This request belongs to another bottle.',
       'Check the drink size.',
       'Choose between 1 and 50 drinks.',
     ];
@@ -100,7 +111,7 @@ export async function sharedBottleAction(
     if (message.includes('between 0 and 20 items'))
       return {
         ok: false,
-        error: 'Your plan is full. Remove a drink before adding another bottle.',
+        error: 'A plan is full. Remove a drink from it before adding another bottle.',
       };
     return {
       ok: false,

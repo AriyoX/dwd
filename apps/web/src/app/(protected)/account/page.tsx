@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BlockedUsers } from '@/features/account/blocked-users';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -14,6 +15,7 @@ import { AccountDeletion } from '@/features/account/account-deletion';
 import { TourButton } from '@/features/tour/tour-provider';
 import { DisplayNameForm, NotificationSettings } from '@/features/account/account-controls';
 import { NotificationInbox } from '@/features/notifications/notification-inbox';
+import { CountrySettings } from '@/features/account/country-settings';
 import { getMyNotificationEvents, getNotificationPreferences } from '@dwd/data';
 import type { NotificationEvent } from '@dwd/core';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -56,6 +58,7 @@ export default async function AccountPage() {
             Your account<span className="heading-dot">.</span>
           </h1>
         </header>
+        <BlockedUsers key={userId} />
         <div className="settings-layout">
           <div className="stack-lg">
             <Card className="stack settings-card">
@@ -63,6 +66,7 @@ export default async function AccountPage() {
                 <UserRound size={20} aria-hidden="true" /> Your profile
               </h2>
               <DisplayNameForm initialName={profile?.display_name ?? ''} />
+              <CountrySettings />
               <p className="muted small">Past nights keep the name you used at the time.</p>
             </Card>
             <Card className="stack settings-card">

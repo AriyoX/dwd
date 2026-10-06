@@ -14,7 +14,16 @@
   ],
   "overrides": {
     "postcss": "8.5.25",
-    "sharp": "0.35.3"
+    "sharp": "0.35.5",
+    "react-native": "0.86.3",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1",
+    "brace-expansion@^1.1.0": "1.1.21",
+    "brace-expansion@^5.0.0": "5.0.12",
+    "js-yaml@^4.0.0": "4.3.2",
+    "source-map-js": "1.2.2",
+    "decode-uri-component": "0.5.0",
+    "uuid": "11.1.1"
   },
   "scripts": {
     "dev": "npm run dev --workspace @dwd/web",
@@ -25,7 +34,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint . --max-warnings=0",
     "test": "npm run test:unit && npm run test:db",
-    "test:unit": "vitest run",
+    "test:unit": "vitest run && npm run test:mobile",
+    "test:mobile": "vitest run --config vitest.mobile.config.ts",
     "test:browser": "playwright test",
     "test:db": "node scripts/test-database.mjs",
     "test:watch": "vitest",
@@ -36,10 +46,11 @@
     "@eslint/js": "9.39.5",
     "@playwright/test": "1.63.0",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.3.8",
+    "next": "16.3.8",
     "prettier": "3.9.6",
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   }
 }

@@ -3,20 +3,25 @@ import { ActivityIndicator, Pressable, Text, type StyleProp, type ViewStyle } fr
 import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { useTheme } from '@/providers/theme-provider';
 import { radii } from '@/theme/tokens';
+import { Ionicons } from '@expo/vector-icons';
 
 export function Action({
   children,
   onPress,
   label,
   disabled = false,
+  busy = false,
   selected,
+  expanded,
   style,
 }: {
   children: ReactNode;
   onPress: () => void;
   label: string;
   disabled?: boolean;
+  busy?: boolean;
   selected?: boolean;
+  expanded?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const [pressed, setPressed] = useState(false);
@@ -25,7 +30,12 @@ export function Action({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled, ...(selected === undefined ? {} : { selected }) }}
+      accessibilityState={{
+        disabled,
+        busy,
+        ...(selected === undefined ? {} : { selected }),
+        ...(expanded === undefined ? {} : { expanded }),
+      }}
       disabled={disabled}
       onPress={onPress}
       onPressIn={() => setPressed(true)}
@@ -55,24 +65,39 @@ export function PrimaryButton({
   onPress,
   disabled = false,
   busy = false,
+  busyLabel = 'Saving',
   variant = 'primary',
+  icon,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   busy?: boolean;
-  variant?: 'primary' | 'secondary' | 'water';
+  busyLabel?: string;
+  variant?: 'primary' | 'secondary' | 'water' | 'quiet' | 'danger';
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
 }) {
   const { colors } = useTheme();
   const foreground =
-    variant === 'primary' ? colors.onPrimary : variant === 'water' ? colors.waterText : colors.text;
+    variant === 'primary'
+      ? colors.onPrimary
+      : variant === 'water'
+        ? colors.waterText
+        : variant === 'danger'
+          ? colors.danger
+          : variant === 'quiet'
+            ? colors.primary
+            : colors.text;
   return (
     <Action
-      label={busy ? `${label}, saving` : label}
+      label={busy ? busyLabel : label}
       disabled={disabled || busy}
+      busy={busy}
       onPress={onPress}
       style={{
         minHeight: 52,
+        flexDirection: 'row',
+        gap: 10,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 18,
@@ -85,15 +110,33 @@ export function PrimaryButton({
             ? colors.primary
             : variant === 'water'
               ? colors.waterSoft
-              : colors.surface,
+              : variant === 'quiet'
+                ? 'transparent'
+                : colors.surface,
       }}
     >
       {busy ? (
-        <ActivityIndicator accessibilityLabel="Saving" color={foreground} />
+        <>
+          <ActivityIndicator color={foreground} accessible={false} />
+          <Text style={{ color: foreground, fontSize: 16, fontWeight: '600', flexShrink: 1 }}>
+            {busyLabel}
+          </Text>
+        </>
       ) : (
-        <Text style={{ color: foreground, fontSize: 16, fontWeight: '600', textAlign: 'center' }}>
-          {label}
-        </Text>
+        <>
+          {icon ? <Ionicons name={icon} size={20} color={foreground} accessible={false} /> : null}
+          <Text
+            style={{
+              color: foreground,
+              fontSize: 16,
+              fontWeight: '600',
+              textAlign: 'center',
+              flexShrink: 1,
+            }}
+          >
+            {label}
+          </Text>
+        </>
       )}
     </Action>
   );

@@ -7,7 +7,7 @@ The native client lives in `apps/mobile`, using Expo SDK 57, React Native, Expo 
 - Tonight, History, and Account use the platform's native tab bar, with SF Symbols on iOS.
 - The supplied DWD vector wordmark retains its trimmed bounds and aspect ratio. It renders in plum in light mode and warm white in dark mode. Regenerate it with `node scripts/generate-mobile-brand.mjs` when the source vector changes.
 - System, Light, and Dark appearance choices persist on the device. The palette covers screens, forms, sheets, native navigation, and status bar. System follows the device's appearance setting.
-- Existing sign-in and account session persistence through Expo SQLite; foreground/background token refresh.
+- Illustrated first-launch onboarding with persistent completion/skip, distinct native sign-in, signup/adult confirmation, confirmation/code/resend, password recovery/reset, branded Google browser authentication and complete-profile flows. All product screens require a restored session and completed profile; recovery sessions remain isolated. Sessions persist through Expo SQLite with foreground/background token refresh. Invitation destinations survive onboarding, authentication and cold starts. Hosted callback setup and installed-build verification remain pending; see [Native authentication and onboarding](mobile-auth.md).
 - Start a night: name, planned duration, an explicit water-only or drinks plan, planned quantities, and a quick-log drink.
 - Join a night: paste a web invite link or code, preview the host and night, join, and set a personal plan.
 - Active night: plan status, quick logging, planned/preset/custom drinks, water, activity timeline, and undo within the existing 15-minute correction window.
@@ -35,7 +35,7 @@ npm install
 npm run mobile
 ```
 
-Only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` belong in the app environment. Expo requires static `process.env.EXPO_PUBLIC_…` access to inline these values. Never bundle a Supabase secret or service-role key. Use the existing typed data APIs and shared schemas, with server RPCs enforcing membership, idempotency, and warnings. See [Supabase's Expo setup](https://docs.expo.dev/guides/using-supabase/).
+`EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` configure the account connection. Optional `EXPO_PUBLIC_SITE_URL` sets the website opened by Terms and Privacy. Expo requires static `process.env.EXPO_PUBLIC_…` access to inline these values. Never bundle a Supabase secret or service-role key. Use the existing typed data APIs and shared schemas, with server RPCs enforcing membership, idempotency, and warnings. See [Supabase's Expo setup](https://docs.expo.dev/guides/using-supabase/).
 
 The iOS Simulator requires macOS and Xcode. Windows can run Metro and export the native JS bundle; EAS can build signed iOS binaries. Expo Go is useful for basic development; custom extensions require a development build. See [Expo development builds](https://docs.expo.dev/develop/development-builds/use-development-builds/).
 
@@ -57,7 +57,9 @@ The activity/widget extension is planned, not installed or shipped in this updat
 
 ## Remaining mobile work
 
-Full auth onboarding and recovery/deep-link handling, persistent offline replay, managed-guest creation, shared-bottle editing, photo memories, native notifications/check-ins, and profile/account editing remain follow-up work. Logging currently needs a connection; immediate retries retain their identity while that screen remains mounted, but no persistent offline outbox is shipped yet.
+See [Mobile UI and web parity review](mobile-ui-and-parity-review.md) for the October 2026 UI pass, emulator verification and prioritized feature handoff to Sol.
+
+Hosted native auth redirects and installed-build callback verification, persistent offline replay, photo memories, native push delivery, and profile/account editing remain follow-up work. Help/check-ins, reminder controls, managed-guest creation/editing/removal and shared-bottle tracking are implemented; see [Native night features](mobile-night-features.md). Logging currently needs a connection; immediate retries retain their identity while that screen remains mounted, but no persistent offline outbox is shipped yet.
 
 ## Verification and device checks
 

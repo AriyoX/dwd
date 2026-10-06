@@ -9,14 +9,27 @@ import { Text } from 'react-native';
 import { Action } from '@/components/primary-button';
 import { StatusBar } from 'expo-status-bar';
 import { useReducedMotion } from 'react-native-reanimated';
-import { SupabaseProvider } from '@/providers/supabase-provider';
+import { SupabaseProvider, useSupabase } from '@/providers/supabase-provider';
 import { ThemeProvider, useTheme } from '@/providers/theme-provider';
+import { AuthNavigation } from '@/components/auth-navigation';
+import { OnboardingProvider } from '@/providers/onboarding-provider';
+import { OfflineProvider } from '@/providers/offline-provider';
+import { NotificationsProvider } from '@/providers/notifications-provider';
+import { LocationProvider } from '@/providers/location-provider';
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
       <SupabaseProvider>
-        <Navigation />
+        <OfflineProvider>
+          <OnboardingProvider>
+            <NotificationsProvider>
+              <LocationProvider>
+                <Navigation />
+              </LocationProvider>
+            </NotificationsProvider>
+          </OnboardingProvider>
+        </OfflineProvider>
       </SupabaseProvider>
     </ThemeProvider>
   );
@@ -24,6 +37,7 @@ export default function RootLayout() {
 
 function Navigation() {
   const router = useRouter();
+  const { access } = useSupabase();
   const { colors, scheme } = useTheme();
   const reduced = useReducedMotion();
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
@@ -58,6 +72,7 @@ function Navigation() {
       }}
     >
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <AuthNavigation />
       <Stack
         screenOptions={{
           headerTintColor: colors.primary,
@@ -68,13 +83,75 @@ function Navigation() {
           ...(reduced ? { animation: 'fade' } : {}),
         }}
       >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="night/new" options={{ title: 'Start a night' }} />
-        <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
-        <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
-        <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log a drink' }} />
-        <Stack.Screen name="night/[nightId]/plan" options={{ ...sheet, title: 'Your plan' }} />
-        <Stack.Screen name="night/[nightId]/summary" options={{ title: 'Night recap' }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Protected guard={access !== 'ready'}>
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/index" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/confirm" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/complete-profile" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Screen name="auth/callback" options={{ title: 'Confirm account' }} />
+        <Stack.Screen name="legal" options={{ title: 'DWD' }} />
+        <Stack.Protected guard={access === 'ready' || access === 'profile'}>
+          <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
+        </Stack.Protected>
+        <Stack.Protected guard={access === 'ready'}>
+          <Stack.Screen name="tour" options={{ title: 'Practice tour' }} />
+          <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+          <Stack.Screen name="profile" options={{ ...sheet, title: 'Edit profile' }} />
+          <Stack.Screen name="support" options={{ title: 'Support & feedback' }} />
+          <Stack.Screen name="reminders" options={{ ...sheet, title: 'Reminders' }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="night/new" options={{ title: 'Start a night' }} />
+          <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
+          <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
+          <Stack.Screen name="night/[nightId]/report" options={{ title: 'Report or block' }} />
+          <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log a drink' }} />
+          <Stack.Screen
+            name="night/[nightId]/catch-up"
+            options={{ ...sheet, title: 'Add missed entries' }}
+          />
+          <Stack.Screen
+            name="night/[nightId]/planned-end"
+            options={{ ...sheet, title: 'Night check-in' }}
+          />
+          <Stack.Screen
+            name="night/[nightId]/invite"
+            options={{ ...sheet, title: 'Invite people' }}
+          />
+          <Stack.Screen name="night/[nightId]/plan" options={{ ...sheet, title: 'Your plan' }} />
+          <Stack.Screen name="night/[nightId]/guest" options={{ ...sheet, title: 'Add person' }} />
+          <Stack.Screen
+            name="night/[nightId]/bottles"
+            options={{ ...sheet, title: 'Shared bottles' }}
+          />
+          <Stack.Screen
+            name="night/[nightId]/reminders"
+            options={{ ...sheet, title: 'Reminders' }}
+          />
+          <Stack.Screen
+            name="night/[nightId]/help"
+            options={{
+              ...sheet,
+              title: 'Get help',
+              headerRight: () => (
+                <Action
+                  label="Done"
+                  onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+                  style={{ minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 }}
+                >
+                  <Text style={{ color: colors.primary, fontSize: 17 }}>Done</Text>
+                </Action>
+              ),
+            }}
+          />
+          <Stack.Screen name="night/[nightId]/summary" options={{ title: 'Night recap' }} />
+          <Stack.Screen name="night/[nightId]/photos" options={{ title: 'Photo memories' }} />
+        </Stack.Protected>
       </Stack>
     </NavigationThemeProvider>
   );

@@ -1,10 +1,17 @@
 .git
 .tmp
+.tmp/**
 .tmp-*
+.tmp-*/**
 node_modules
 **/node_modules
+**/node_modules/**
 **/.next
+**/.next/**
+**/.expo
+**/.expo/**
 **/dist
+**/dist/**
 **/*.tsbuildinfo
 **/.env*
 .env*
