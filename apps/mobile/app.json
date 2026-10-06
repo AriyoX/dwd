@@ -16,7 +16,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Use location for local emergency numbers and holiday reminders.",
+          "locationWhenInUsePermission": "Use location for local emergency numbers.",
           "locationAlwaysPermission": false,
           "locationAlwaysAndWhenInUsePermission": false,
           "motionUsagePermission": false,
