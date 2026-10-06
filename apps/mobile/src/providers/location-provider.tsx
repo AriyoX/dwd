@@ -11,20 +11,42 @@ interface LocationValue {
   location: CountryLocation;
   permission: 'unknown' | 'granted' | 'denied';
   busy: boolean;
+  enabled: boolean;
+  disable: () => void;
   request: () => Promise<void>;
 }
 const Context = createContext<LocationValue | null>(null);
+const preferenceKey = 'dwd.location.enabled';
+function remember(enabled: boolean) {
+  try {
+    localStorage.setItem(preferenceKey, String(enabled));
+  } catch {
+    /* Keep the in-memory choice. */
+  }
+}
 
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState(DEFAULT_COUNTRY_LOCATION);
   const [permission, setPermission] = useState<LocationValue['permission']>('unknown');
   const [busy, setBusy] = useState(true);
+  const [enabled, setEnabled] = useState(true);
+  const allowed = useRef(true);
   const version = useRef(0);
   const { client, session, access } = useSupabase();
   const token = session?.access_token;
   const ready = access === 'ready';
   async function refresh(prompt = false) {
     const attempt = ++version.current;
+    if (prompt) {
+      allowed.current = true;
+      setEnabled(true);
+      remember(true);
+    }
+    if (!allowed.current) {
+      setLocation(DEFAULT_COUNTRY_LOCATION);
+      setBusy(false);
+      return;
+    }
     setBusy(true);
     setLocation(DEFAULT_COUNTRY_LOCATION);
     try {
@@ -58,7 +80,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Read external permission before saving the default country.
+    try {
+      allowed.current = localStorage.getItem(preferenceKey) !== 'false';
+      setEnabled(allowed.current);
+    } catch {
+      /* Storage may be unavailable. */
+    }
     void refresh();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') void refresh();
@@ -91,8 +118,18 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       current = false;
     };
   }, [client, token, ready, busy, location]);
+  function disable() {
+    allowed.current = false;
+    version.current++;
+    setEnabled(false);
+    setBusy(false);
+    setLocation(DEFAULT_COUNTRY_LOCATION);
+    remember(false);
+  }
   return (
-    <Context.Provider value={{ location, permission, busy, request: () => refresh(true) }}>
+    <Context.Provider
+      value={{ location, permission, busy, enabled, disable, request: () => refresh(true) }}
+    >
       {children}
     </Context.Provider>
   );

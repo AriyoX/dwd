@@ -55,19 +55,17 @@ export default async function AccountPage() {
             {(profile?.display_name || 'You').slice(0, 1).toUpperCase()}
           </span>
           <h1>
-            Your account<span className="heading-dot">.</span>
+            Account<span className="heading-dot">.</span>
           </h1>
         </header>
-        <BlockedUsers key={userId} />
         <div className="settings-layout">
           <div className="stack-lg">
             <Card className="stack settings-card">
               <h2 className="section-title">
-                <UserRound size={20} aria-hidden="true" /> Your profile
+                <UserRound size={20} aria-hidden="true" /> Profile
               </h2>
               <DisplayNameForm initialName={profile?.display_name ?? ''} />
               <CountrySettings />
-              <p className="muted small">Past nights keep the name you used at the time.</p>
             </Card>
             <Card className="stack settings-card">
               {preferences ? (
@@ -91,7 +89,7 @@ export default async function AccountPage() {
           <div className="stack-lg settings-sidebar">
             <Card className="stack settings-card" id="messages">
               <h2 className="section-title">
-                <MessageCircle size={20} aria-hidden="true" /> Your messages
+                <MessageCircle size={20} aria-hidden="true" /> Messages
               </h2>
               {result.error ? (
                 <p role="alert">
@@ -101,10 +99,7 @@ export default async function AccountPage() {
                   </Link>
                 </p>
               ) : requests.length === 0 ? (
-                <div className="settings-empty">
-                  <MessageCircle size={28} strokeWidth={1.5} aria-hidden="true" />
-                  <p>No messages yet</p>
-                </div>
+                <p className="muted small">No messages yet</p>
               ) : (
                 requests.map((request) => (
                   <article className="stack request-record" key={request.id}>
@@ -143,20 +138,18 @@ export default async function AccountPage() {
                 Send a message <ArrowUpRight size={16} aria-hidden="true" />
               </Link>
             </Card>
-            <Card className="stack settings-card tour-invitation">
-              <span className="settings-feature-icon">
-                <Compass size={28} aria-hidden="true" />
-              </span>
-              <h2>A little look around</h2>
-              <TourButton className="button button-secondary" />
-            </Card>
             <Card className="stack settings-card">
+              <h2 className="section-title">
+                <Compass size={20} aria-hidden="true" /> Help
+              </h2>
+              <TourButton className="text-link" />
               <h2 className="section-title">
                 <Shield size={20} aria-hidden="true" /> Privacy & account
               </h2>
               <Link href="/privacy" className="text-link">
-                Your privacy <ArrowUpRight size={16} aria-hidden="true" />
+                Privacy policy <ArrowUpRight size={16} aria-hidden="true" />
               </Link>
+              <BlockedUsers key={userId} />
               {deletionResult.error ? (
                 <p className="error-box" role="alert">
                   Account deletion settings could not load. Reload this page to retry.

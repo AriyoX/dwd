@@ -40,7 +40,7 @@ test('real local signup, draft recovery, water-only night, support and history',
   await page.getByLabel('Display name', { exact: true }).fill('Alex Test');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('New password', { exact: true }).fill('local-test-password-123');
-  await page.getByLabel('I am 18 or older.').check();
+  await page.getByRole('checkbox', { name: /I am 18 or older/ }).check();
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page).toHaveURL(/\/home(?:\?tour=start)?$/);
   await page.getByRole('dialog').getByRole('button', { name: 'Skip tour', exact: true }).click();
@@ -123,7 +123,7 @@ test('real local signup, draft recovery, water-only night, support and history',
   await expect(
     page.getByRole('article').getByText('Something went wrong', { exact: true }),
   ).toBeVisible();
-  await page.locator('.account-deletion > summary').click();
+  await page.getByRole('main').getByText('Delete your account', { exact: true }).click();
   await page.getByRole('checkbox', { name: /I understand I will be signed out/ }).check();
   await page.getByRole('button', { name: 'Delete account in 30 days' }).click();
   await expect(page).toHaveURL(/\/login\?deletion=scheduled$/);

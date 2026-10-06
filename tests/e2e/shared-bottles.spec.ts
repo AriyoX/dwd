@@ -4,13 +4,10 @@ import { test, expect, type Page } from '@playwright/test';
 import type { Database, NightSnapshot } from '@dwd/core';
 
 async function account(name: string) {
-  const url = String(process.env['E2E_SUPABASE_URL'] ?? '');
+  const url = process.env['E2E_SUPABASE_URL'] ?? '';
   if (!['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
     throw new Error('Local backend required.');
-  const client = createClient<Database>(
-    url,
-    String(process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] ?? ''),
-  );
+  const client = createClient<Database>(url, process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] ?? '');
   const email = `bottles-${randomUUID()}@example.test`;
   const password = 'local-bottle-password-123';
   const { error } = await client.auth.signUp({

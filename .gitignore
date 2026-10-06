@@ -8,6 +8,8 @@ playwright-report/
 .expo-shared/
 test-results/
 *.tsbuildinfo
+*.apk
+*.aab
 .DS_Store
 Thumbs.db
 .vercel/

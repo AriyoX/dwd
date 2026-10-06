@@ -61,6 +61,8 @@ This follows [Expo's monorepo build layout](https://docs.expo.dev/build-referenc
 
 In the native EAS project, configure **preview** for testing and **production** for store builds. Ignored local `.env.local` files are not your cloud-build configuration.
 
+The 6 October testing APK omitted the account variables from the EAS preview environment, which caused “Account connection unavailable.” Preview now has the backend URL, matching publishable key and site URL. Rebuild the APK to include them; an already installed binary does not pick up environment changes. The `eas-build-post-install` hook now rejects missing, placeholder or private account credentials before bundling. Production still needs its own environment configuration.
+
 | Variable                               | Where / value                                                                                       |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `EXPO_PUBLIC_SUPABASE_URL`             | Public URL for the intended backend; production DWD uses `https://kdplbebaotvgcvjggacz.supabase.co` |

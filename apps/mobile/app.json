@@ -16,7 +16,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "DWD uses your location on this device to choose local emergency numbers and holiday reminders. Coordinates are not sent to DWD. Without access, Uganda is used.",
+          "locationWhenInUsePermission": "Use location for local emergency numbers.",
           "locationAlwaysPermission": false,
           "locationAlwaysAndWhenInUsePermission": false,
           "motionUsagePermission": false,

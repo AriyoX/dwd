@@ -4,6 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "eas-build-post-install": "node ../../scripts/check-mobile-build-env.mjs",
     "start": "expo start",
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit"

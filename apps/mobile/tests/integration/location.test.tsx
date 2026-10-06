@@ -53,6 +53,11 @@ const denied = { granted: false, status: 'denied' };
 const granted = { granted: true, status: 'granted' };
 const kenya = { coords: { latitude: -1.2864, longitude: 36.8172 } };
 beforeEach(() => {
+  const values = new Map<string, string>();
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+  });
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   runtime.state = 'active';
   runtime.permission.mockReset().mockResolvedValue(denied);
@@ -75,6 +80,36 @@ async function foreground(state: string) {
   await act(() => runtime.foreground?.(state));
 }
 describe('automatic native location', () => {
+  it('keeps location off across foreground refreshes and remounts', async () => {
+    runtime.permission.mockResolvedValue(granted);
+    await mount();
+    await act(() => value.disable());
+    expect(value.location.countryCode).toBe('UG');
+    runtime.position.mockClear();
+    await foreground('active');
+    await act(() => root?.unmount());
+    await mount();
+    expect(value.enabled).toBe(false);
+    expect(runtime.position).not.toHaveBeenCalled();
+    await act(() => value.request());
+    expect(value.location.countryCode).toBe('KE');
+    expect(value.enabled).toBe(true);
+  });
+  it('ignores an in-flight fix after turning location off', async () => {
+    let resolve: (position: typeof kenya) => void = () => {};
+    runtime.permission.mockResolvedValue(granted);
+    runtime.position.mockReturnValue(
+      new Promise<typeof kenya>((done) => {
+        resolve = done;
+      }),
+    );
+    await mount();
+    await act(() => value.disable());
+    await act(() => resolve(kenya));
+    expect(value.location.countryCode).toBe('UG');
+    expect(value.enabled).toBe(false);
+    expect(runtime.save).not.toHaveBeenCalledWith({ owner: 'signed-in' }, 'KE', 'national');
+  });
   it('defaults to Uganda without opening the OS permission prompt', async () => {
     await mount();
     expect(value.location.countryCode).toBe('UG');
