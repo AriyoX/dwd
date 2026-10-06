@@ -1,5 +1,7 @@
 # Native help, managed guests and shared bottles
 
+Future country selection and country-specific Help call actions are specified in [country expansion](country-expansion.md), alongside regional pre-plot calendars and campaign windows.
+
 Implemented 2 October 2026, using the web flows and existing shared contracts/data APIs.
 
 ## Help and check-ins

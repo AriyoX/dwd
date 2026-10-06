@@ -1,8 +1,14 @@
-# Mobile release readiness — 5 October 2026
+# Mobile release readiness — 6 October 2026
 
 Use this document for the current release; earlier implementation notes describe the state before hosted deployment. The app is ready for a signed testing build after credentials are configured, but physical push, authentication, deep links and server-writing journeys still need acceptance testing.
 
-## Completed in this verification
+## Pre-plot backend update — 6 October
+
+Both pre-plot migrations are applied and `dispatch-notifications` is deployed as active version 4. The existing minute Cron returned HTTP 200 with `ok: true`; an unauthenticated request returned HTTP 401. Recurring campaigns continue beyond 2026, including Friday/Saturday, optional Sunday, holiday eve/day, and New Year's Eve. See [pre-plot notifications](preplot-notifications.md) for scheduling, suppression, verification, and the remaining physical-device checks.
+
+All 445 database assertions, 374 unit tests, 22 mobile tests, 18 worker tests, and workspace type checks passed. The two mounted mobile integration suites now live in `apps/mobile/tests/integration/`. Country-specific campaign calendars and Help call numbers have a [future development plan](country-expansion.md). No signed mobile build or store upload was started.
+
+## Completed in the 5 October verification
 
 - Reviewed the five P2 flows, shared components, notification worker, migration and web parity.
 - Applied `20261004070828_native_push_notifications.sql` to the dedicated **drink-with-desire** project, `kdplbebaotvgcvjggacz`, after its dry run and 29 isolated database assertions passed. Earlier Apple and shared-bottle migrations were already hosted.
@@ -14,7 +20,7 @@ Use this document for the current release; earlier implementation notes describe
 - Support fields stay locked until draft recovery finishes or unreadable storage is resolved. History retains the current list during refresh/failure. Buttons show readable progress and an accessibility busy state; choice labels include their essential detail. Existing 120 ms press feedback and Reduce Motion handling remain, with native navigation and no added decorative motion.
 - Added `testing`, `preview` (alias) and `production` profiles in `apps/mobile/eas.json`, plus `GOOGLE_SERVICES_JSON` support in the native app config.
 
-Validation is recorded in [the regression guide](mobile-regression-tests.md). New UI changes have source/type validation, not a new physical-device visual sign-off. Lint, full test suites, signed builds and manual QA are deliberately left as commands/checklists to save agent usage.
+Validation is recorded in [the regression guide](mobile-regression-tests.md). The October 5 UI review had source/type validation; the October 6 automated checks are recorded above. Physical-device visual sign-off, signed builds and manual QA remain release steps.
 
 ## 1. Use the correct app directory and identity
 

@@ -17,6 +17,8 @@ Physical devices, the new Maestro flow, signed binaries, lint and the complete s
 
 ## Commands for you to run
 
+Mounted native provider/screen tests live in `apps/mobile/tests/integration/`: `notifications.test.tsx` and `offline.test.tsx`. They run through `vitest.mobile.config.ts` with the native `@/` alias. The mobile TypeScript config explicitly includes this directory, keeping tests checked outside app source. Pure mobile logic tests remain in root `tests/mobile-*.test.ts` and use the ordinary Vitest configuration. Add future provider tests to the native integration directory rather than `src/`.
+
 Use the repository root unless noted. Install dependencies with `npm ci` if needed. Database tests start disposable Docker containers; Docker Desktop must be running. Do not point fault-injection or deletion tests at real users.
 
 Quick changed-feature checks:
