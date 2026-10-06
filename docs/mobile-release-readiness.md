@@ -6,7 +6,7 @@ Use this document for the current release; earlier implementation notes describe
 
 Both pre-plot migrations are applied and `dispatch-notifications` is deployed as active version 4. The existing minute Cron returned HTTP 200 with `ok: true`; an unauthenticated request returned HTTP 401. Recurring campaigns continue beyond 2026, including Friday/Saturday, optional Sunday, holiday eve/day, and New Year's Eve. See [pre-plot notifications](preplot-notifications.md) for scheduling, suppression, verification, and the remaining physical-device checks.
 
-All 445 database assertions, 374 unit tests, 22 mobile tests, 18 worker tests, and workspace type checks passed. The two mounted mobile integration suites now live in `apps/mobile/tests/integration/`. Country-specific campaign calendars and Help call numbers have a [future development plan](country-expansion.md). No signed mobile build or store upload was started.
+The first pass verified 445 database assertions, 374 unit tests, 22 mobile tests, 18 worker tests, and workspace type checks. Mounted mobile integration suites live in `apps/mobile/tests/integration/`. The subsequent country implementation passed 495 database assertions, 389 unit tests, 27 mobile tests and 18 worker tests. Its migration is applied and the dispatcher is active version 5, with successful scheduler checks at 08:34/08:35 UTC. Country-specific campaign calendars and Help call numbers are now implemented for the [supported countries](country-expansion.md). No signed mobile build or store upload was started.
 
 ## Completed in the 5 October verification
 

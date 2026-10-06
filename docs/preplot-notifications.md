@@ -1,10 +1,12 @@
 # Pre-plot notifications
 
+Country support was extended on October 6, 2026 to Kenya, Tanzania, Rwanda, South Africa, Dubai/UAE, the UK, US and Canada. The country setting, local-time rules, calendars, country-specific Help calls, and current limitations are documented in [country support](country-expansion.md). New accounts must choose a campaign country; existing accounts retain Uganda. The V1 table below remains the default wall-clock schedule for all profiles, with a country-specific holiday calendar and copy.
+
 DWD uses its existing minute Cron → `dispatch-notifications` → Expo pipeline for planning reminders. Only registered iOS/Android installations with an active sign-in, enabled device delivery, and a recorded target timezone qualify. The new mobile build records the installation's IANA timezone on registration and foreground return. Existing builds have no timezone context and receive no pre-plot campaigns until upgraded.
 
 ## V1 schedule
 
-All times are Kampala local time, `Africa/Kampala` (UTC+3). Devices reporting `Africa/Nairobi` also qualify because some East African device settings use that zone. This is timezone targeting; it does not establish that a person is physically in Uganda. A user's most recently updated, enabled installation determines timezone eligibility, and individual out-of-zone installations cannot receive the campaign.
+For Uganda, all times are local to `Africa/Kampala` (UTC+3). Devices reporting `Africa/Nairobi` also qualify because some East African device settings use that zone. Other selected countries use their supported installation IANA zones, including DST. Timezone compatibility does not establish that a person is physically in a country. A user's most recently updated, enabled installation determines timezone eligibility, and individual installations with different timezone context cannot receive the campaign.
 
 | Moment                  | Send time           | Window closes       |
 | ----------------------- | ------------------- | ------------------- |
@@ -30,7 +32,7 @@ Holiday campaigns replace overlapping weekend campaigns. Christmas Day takes pre
 - Account-level **Pre-plot reminders** defaults on for users who enable device delivery; **Include Sundays** defaults off. Both are in mobile Reminders and independent of in-Night reminders.
 - Suppress users participating in an active Night, including hosts and joined members. A Night started or joined in the past 12 hours also suppresses delivery, even after ending or leaving it.
 - Respect reminder pause, pending account deletion, disabled or revoked device registrations, and quiet hours (10 PM–8 AM by default). Quiet-hour fields are currently operator-controlled in `private.preplot_preferences`; equal start/end suppresses the full day.
-- Allow at most two campaign events per account per Friday–Thursday period, including holiday campaigns, across all devices. Reserved events count toward the cap even if delivery fails, keeping retries and outages conservative.
+- Allow at most two campaign events per account per local Friday–Thursday period, plus a conservative rolling seven-day guard across country/timezone changes, including holidays and all devices. Reserved events count toward the cap even if delivery fails, keeping retries and outages conservative.
 - Require at least two hours between campaign windows. A second campaign is suppressed if an earlier campaign in the period was opened, marked read, or converted to a Night. Evening backups additionally require an accepted, unopened primary on the same date.
 - A transaction-scoped advisory lock and unique account/day/campaign key prevent competing Cron ticks from creating duplicates. Delivery claims retain existing leases and bounded retries.
 - Starting or joining an active Night immediately suppresses its outstanding campaigns and discards queued, failed, or claimed deliveries. The worker rechecks eligibility immediately before every Expo send. Once Expo/APNs/FCM has accepted an in-flight message, the server cannot retract it; the existing short TTL and campaign expiration bound late arrival.
@@ -48,6 +50,8 @@ Push data carries account/event IDs; the app loads that specific owned event bef
 Personalized send timing is deferred until enough history exists. Use session buckets, actual opens, and Night start times to evaluate sending two to four hours before a person's usual start time, within relevant windows and all existing caps. Keep V1 fallback times for sparse histories, and compare conversion by campaign before enabling an optimizer. This follows the history-based approach described in [Braze's Intelligent Timing documentation](https://www.braze.com/docs/user_guide/brazeai/intelligence_suite/intelligent_timing).
 
 ## Release and verification
+
+The country-support migration `20261006080503_country_campaigns_and_emergency_help.sql` is now applied, and the worker is active version 5. The country release adds 50 database assertions and offline Help verification. See [country deployment verification](country-expansion.md#operations-verification-and-next-development) for the current backend status and release limits. The version 4 record below documents the initial Uganda release.
 
 On October 6, 2026, both `20261006072232_preplot_notifications.sql` and `20261006074348_recurring_preplot_calendar.sql` were applied to the dedicated DWD project, `kdplbebaotvgcvjggacz`. A subsequent migration dry run found no pending changes. `dispatch-notifications` was redeployed as active version 4 with its existing shared-secret authentication and minute Cron.
 
@@ -70,4 +74,4 @@ The final October 6, 2026 verification passed all 445 database assertions across
 
 Friday and Saturday primaries/backups, optional Sunday, holiday eve/day, and New Year's Eve campaigns are included. Existing group attention, direct check-ins, personal pace, planned end, and periodic logging reminders continue through their existing preference, lifecycle, and delivery rules. Pre-plot frequency caps do not mute those in-Night notifications.
 
-Country-specific calendars, targeting, copy, and the Help call action are planned in [country expansion](country-expansion.md). Personalized send-time optimization remains the separate history-based follow-up described above.
+Country-specific calendars, targeting, English copy, and Help call profiles are implemented in [country support](country-expansion.md). Personalized send-time optimization and locally reviewed translations remain follow-ups.

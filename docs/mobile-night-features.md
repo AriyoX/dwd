@@ -1,12 +1,12 @@
 # Native help, managed guests and shared bottles
 
-Future country selection and country-specific Help call actions are specified in [country expansion](country-expansion.md), alongside regional pre-plot calendars and campaign windows.
+Country selection and Help call profiles are implemented for the [supported countries](country-expansion.md), alongside regional pre-plot calendars and local-time campaign windows.
 
 Implemented 2 October 2026, using the web flows and existing shared contracts/data APIs.
 
 ## Help and check-ins
 
-- Get help stays near the top of a night and opens a native sheet without waiting for a network request. It includes the shared emergency signs, Uganda’s 112/999 call actions, phone-launch recovery, country context and the sobriety/driving boundary. Numbers were checked against the [Uganda Police Force update](https://upf.go.ug/public-safety-crime-response-and-security-operations-update/) on 2 October 2026. The [NHS alcohol-poisoning guidance](https://www.nhs.uk/conditions/alcohol-poisoning/) supports the symptom and stay-with-the-person copy.
+- Get help stays near the top of a night and opens a native sheet without waiting for a network request. It includes the shared emergency signs, an offline current-country choice, verified local call actions, phone-launch recovery and the sobriety/driving boundary. The bundled country profiles include service labels, primary sources and the October 6, 2026 review date. No Uganda number is silently used for an unknown country. The [NHS alcohol-poisoning guidance](https://www.nhs.uk/conditions/alcohol-poisoning/) supports the existing symptom and stay-with-the-person copy.
 - Each eligible participant has Check in. For a managed guest, Ask host to check in uses the existing recipient routing. Self, the host’s own guests, departed participants and ended nights do not offer remote check-ins.
 - Duplicate taps are guarded. An uncertain response retains its request UUID, scoped by account, night and recipient. Cooldown/local-only responses are shown without claiming delivery.
 - Unread check-ins and reminders for this account/night appear in the active night. Read state uses the existing acknowledgment API. Focus, foreground and 15-second polling refresh incoming events; expired requests and another account’s events are excluded.
