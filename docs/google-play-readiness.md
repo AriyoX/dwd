@@ -16,7 +16,7 @@ The repository fixes are implemented and automated checks are recorded in [mobil
 
 ## Public listing resources
 
-Use `https://dwdug.vercel.app/privacy`, `/terms`, `/delete-account` and `/support` after verifying the deployed pages. The developer/contact currently reads **Ariyo Ahumuza — ahumuzaariyo@gmail.com**. It is owner-supplied temporary information; replace the shared legal constant and store listings together when the permanent details are available. Do not describe the contact as a verified company or invent an address.
+The public [privacy](https://dwdug.vercel.app/privacy), [terms](https://dwdug.vercel.app/terms), [account deletion](https://dwdug.vercel.app/delete-account) and [support](https://dwdug.vercel.app/support) pages were deployed and verified on October 6, 2026: all return HTTP 200 without authentication and contain the supplied email. The developer/contact currently reads **Ariyo Ahumuza — ahumuzaariyo@gmail.com**. It is owner-supplied temporary information; replace the shared legal constant and store listings together when the permanent details are available. Do not describe the contact as a verified company or invent an address.
 
 ## Data Safety draft
 

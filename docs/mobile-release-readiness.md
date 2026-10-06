@@ -16,6 +16,12 @@ The [App Store audit](app-store-readiness.md) adds server-side Apple credential 
 
 Migration `20261006103849_apple_revocation_and_release_audit.sql` is applied. `apple-account-token` v1 and `delete-accounts` v2 are active alongside dispatcher v6. Private Apple credentials are inaccessible through direct client/service table reads. Hosted schedulers succeeded at 11:08/11:00 UTC. Apple readiness returns 503 until the owner supplies server secrets; provider exchange/revocation and signed-device acceptance are pending. See the audit for setup, App Privacy declarations and remaining submission steps.
 
+## Public web release — 6 October
+
+Google Play fixes are committed as `55d8cf0`; App Store fixes as `60a30b9`. Vercel built a clean checkout of `60a30b9` and deployment `dpl_EcRZq7EqbLRRGfrHDjyeikYc6iEi` was promoted to the existing public app after candidate checks. [Privacy](https://dwdug.vercel.app/privacy), [Terms](https://dwdug.vercel.app/terms), [Support](https://dwdug.vercel.app/support) and [account deletion](https://dwdug.vercel.app/delete-account) all returned HTTP 200 without authentication, remained on `dwdug.vercel.app` and contained the supplied support email. Privacy includes the Apple token-revocation disclosure. All four responses enforce `geolocation=(self)`, with camera/microphone permissions denied. No Git push, store upload or signed-device acceptance was performed.
+
+Hosted HTTP scheduler responses after the Apple deployment were HTTP 200 without timeouts. Both security and performance advisors were checked; missing foreign-key indexes are resolved. Remaining scoped RPC/unused-index notices and disabled leaked-password protection are explained in the store audits. Temporary test containers and the release checkout were removed after verification; unrelated owner work remains outside the commits.
+
 ## Pre-plot backend update — 6 October
 
 Both pre-plot migrations are applied and `dispatch-notifications` is deployed as active version 4. The existing minute Cron returned HTTP 200 with `ok: true`; an unauthenticated request returned HTTP 401. Recurring campaigns continue beyond 2026, including Friday/Saturday, optional Sunday, holiday eve/day, and New Year's Eve. See [pre-plot notifications](preplot-notifications.md) for scheduling, suppression, verification, and the remaining physical-device checks.
