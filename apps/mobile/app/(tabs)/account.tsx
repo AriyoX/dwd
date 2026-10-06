@@ -15,6 +15,7 @@ import type { ThemeColors, makeTypography } from '@/theme/tokens';
 import { NavigationRow } from '@/components/navigation-row';
 import { useNotifications } from '@/providers/notifications-provider';
 import { BlockedUsers } from '@/components/blocked-users';
+import { CampaignCountrySettings } from '@/components/campaign-country-settings';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -128,10 +129,11 @@ export default function AccountScreen() {
           />
         </Panel>
       )}
+      <CampaignCountrySettings />
       <Panel>
         {session ? (
           <NavigationRow
-            label="Replay practice tour"
+            label="Practice tour"
             icon="compass-outline"
             onPress={() => router.push('/tour?replay=1')}
           />

@@ -21,9 +21,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
           seen={data.user.user_metadata['tour_seen'] === true}
         >
           <LocationProvider authenticated>
-            <div className="page-shell">
-              <LocationNotice />
-            </div>
+            <LocationNotice />
             {children}
           </LocationProvider>
         </TourProvider>

@@ -723,6 +723,19 @@ p {
   background: var(--surface-soft);
   color: var(--muted);
 }
+.location-prompt {
+  width: min(calc(100% - 44px), 676px);
+  margin: 16px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.location-prompt .button {
+  min-height: 44px;
+  padding: 8px 12px;
+}
 .warning-box {
   border-color: #e3d3aa;
   background: #faf3df;

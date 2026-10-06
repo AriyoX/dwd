@@ -62,4 +62,4 @@ export function countryFromCoordinates(latitude: number, longitude: number): Cou
 }
 
 export const LOCATION_DISCLOSURE =
-  'DWD uses optional device location for local holiday reminders and emergency numbers. Coordinates stay on this device; only your country and holiday region are saved to your account. Without location access, DWD uses Uganda.';
+  'Use location for local emergency numbers and holiday reminders.';
