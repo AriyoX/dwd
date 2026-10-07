@@ -120,6 +120,10 @@ function BottleShelf({
   const active = bottles.filter((b) => !b.closedAt);
   const selected = bottles.find((b) => b.id === selectedId && !b.closedAt);
   const busy = action.busy || logging.busy;
+  function startLogging() {
+    onNavigate();
+    router.replace({ pathname: `/night/${snapshot.night.id}/log`, params: { memberId: member.id } });
+  }
   function fullPlan() {
     router.push({ pathname: `/night/${snapshot.night.id}/plan`, params: { memberId: member.id } });
   }
@@ -186,13 +190,7 @@ function BottleShelf({
           member={member}
           refresh={refresh}
           onBusy={setFormBusy}
-          onSaved={() =>
-            saved(
-              member.id === snapshot.currentMemberId
-                ? 'Bottle added to your plan.'
-                : `Bottle added to your plan and ${member.displayName}’s plan.`,
-            )
-          }
+          onSaved={startLogging}
         />
       ) : page === 'plan' && selected ? (
         <BottlePlan
@@ -201,7 +199,13 @@ function BottleShelf({
           member={member}
           refresh={refresh}
           onBusy={setFormBusy}
-          onSaved={() => saved('Bottle plan saved.')}
+          onSaved={() => {
+            if (member.planItems.some((p) => p.sharedBottleId === selected.id && !p.archivedAt)) {
+              saved('Bottle plan saved.');
+            } else {
+              startLogging();
+            }
+          }}
           onFullPlan={fullPlan}
         />
       ) : page === 'plan' ? (
