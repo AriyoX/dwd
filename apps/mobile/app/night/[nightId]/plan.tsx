@@ -71,9 +71,11 @@ function MemberPlan({
   const [initial] = useState(() => JSON.stringify([mode, items]));
   const dirty = initial !== JSON.stringify([mode, items]);
   const [issue, setIssue] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const action = useNightAction(refresh);
   async function save() {
-    if (!client || !nightAccess(snapshot, member.id).canEdit || mode === 'unselected') return;
+    if (!client || editing || !nightAccess(snapshot, member.id).canEdit || mode === 'unselected')
+      return;
     const parsed = replacePlanSchema.safeParse({
       memberId: member.id,
       items: mode === 'water_only' ? [] : items,
@@ -98,12 +100,13 @@ function MemberPlan({
         mode={mode}
         onModeChange={setMode}
         disabled={action.busy}
+        onEditingChange={setEditing}
       />
       <PrimaryButton
         label="Choose a shared bottle"
         icon="wine-outline"
         variant="quiet"
-        disabled={action.busy || dirty}
+        disabled={action.busy || dirty || editing}
         onPress={() =>
           router.push({
             pathname: `/night/${snapshot.night.id}/bottles`,
@@ -120,6 +123,7 @@ function MemberPlan({
         label="Save plan"
         busy={action.busy}
         disabled={
+          editing ||
           mode === 'unselected' ||
           (mode === 'drinks' && !items.length) ||
           member.planRevision !== revision

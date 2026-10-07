@@ -31,7 +31,10 @@ export function AccountMenu({ name }: { name: string }) {
       className="account-menu"
       ref={menu}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+        // Safari can blur the summary without focusing a pressed button. Let
+        // that click finish; outside pointer presses already close the menu.
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget))
+          event.currentTarget.open = false;
       }}
     >
       <summary
@@ -39,8 +42,17 @@ export function AccountMenu({ name }: { name: string }) {
         onPointerDown={() => {
           if (menu.current) menu.current.dataset['motion'] = 'pointer';
         }}
-        onKeyDown={() => {
-          if (menu.current) menu.current.dataset['motion'] = 'instant';
+        onKeyDown={(event) => {
+          const currentMenu = menu.current;
+          if (!currentMenu) return;
+          currentMenu.dataset['motion'] = 'instant';
+          // Enter an open menu consistently, including Safari's link-focus mode.
+          if (event.key === 'Tab' && !event.shiftKey && currentMenu.open) {
+            event.preventDefault();
+            currentMenu
+              .querySelector<HTMLElement>('nav a[href], nav button:not(:disabled)')
+              ?.focus();
+          }
         }}
       >
         <span className="avatar" aria-hidden="true">

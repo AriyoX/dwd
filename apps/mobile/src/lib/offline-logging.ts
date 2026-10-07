@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { PendingDrinkLog } from '@dwd/contracts';
 import { withRequestTimeout } from './request-timeout';
+import { entryFailureMessage } from './entry-message';
 import {
   calculateEthanolGrams,
   calculatePlanTotal,
@@ -105,7 +106,7 @@ export class NativePendingLogStore {
 type SendResult = DrinkLogResult | WaterLogResult;
 export type NativeSyncOutcome =
   'synced' | 'queued' | 'needs_confirmation' | 'rejected' | 'inactive';
-const RETRY_MESSAGE = 'Saved on this device. Will retry when connected.';
+const RETRY_MESSAGE = "We'll save this and sync it when you're back online.";
 
 export class NativeLogOutbox {
   private active = true;
@@ -186,7 +187,10 @@ export class NativeLogOutbox {
       this.store.update(key, {
         status: result.status === 'permanently_rejected' ? 'permanent_failure' : 'failed',
         retryCount: record.retryCount + 1,
-        lastError: result.message,
+        lastError:
+          result.status === 'permanently_rejected'
+            ? entryFailureMessage(result.code)
+            : RETRY_MESSAGE,
       });
       this.changed(false);
       return result.status === 'permanently_rejected' ? 'rejected' : 'queued';
@@ -237,7 +241,7 @@ export class NativeLogOutbox {
     }
   }
 
-  public async confirm(key: string): Promise<NativeSyncOutcome> {
+  public async confirm(key: string, send = true): Promise<NativeSyncOutcome> {
     if (!this.current()) return 'inactive';
     const record = this.store.getAll().find((item) => item.idempotencyKey === key);
     if (!record || record.status !== 'needs_confirmation') return 'inactive';
@@ -249,7 +253,7 @@ export class NativeLogOutbox {
       acknowledgeAfterEnd: record.acknowledgeAfterEnd || warnings.includes('after_end'),
     });
     this.changed(false);
-    return this.syncOne(key);
+    return send ? this.syncOne(key) : 'queued';
   }
 
   public async remove(key: string): Promise<void> {
@@ -260,7 +264,7 @@ export class NativeLogOutbox {
       if (!this.current()) return;
       const record = this.store.getAll().find((item) => item.idempotencyKey === key);
       // A concurrent sync may already have saved it. Refresh activity for its normal Undo action.
-      if (!record) throw new Error('Entry saved. Refresh activity to undo it.');
+      if (!record) throw new Error('Entry saved. Open Entries to undo it.');
       if (
         record.attempted &&
         record.status !== 'needs_confirmation' &&
@@ -274,7 +278,7 @@ export class NativeLogOutbox {
           );
           if (!this.current()) return;
         } else if (result.status === 'temporarily_failed') {
-          throw new Error('Reconnect to check whether this entry saved before removing it.');
+          throw new Error('Connect to the internet so we can check and remove this entry.');
         }
       }
       this.store.remove(key);

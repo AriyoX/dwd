@@ -206,7 +206,7 @@ export function NightPeople({
         />
       ) : null}
       {action.issue ? <Notice error message={action.issue} /> : null}
-      {action.notice ? <Notice message={action.notice} /> : null}
+      {action.notice ? <Notice dismissible message={action.notice} /> : null}
     </View>
   );
 }

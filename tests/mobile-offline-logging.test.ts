@@ -395,9 +395,14 @@ describe('native durable outbox', () => {
     });
   });
 
-  it.each(['after_actual_end', 'post_end_grace_expired', 'permission_denied', 'bottle_empty'])(
+  it.each([
+    ['after_actual_end', 'This entry was made after the night ended.'],
+    ['post_end_grace_expired', 'More than 24 hours have passed since the night ended.'],
+    ['permission_denied', "You can't log for this person."],
+    ['bottle_empty', 'There is less left in this bottle. Choose a smaller serving.'],
+  ])(
     'keeps permanent rejection %s visible without automatically retrying it',
-    async (code) => {
+    async (code, message) => {
       const f = fixture();
       const sender = {
         ...f.sender,
@@ -412,9 +417,7 @@ describe('native durable outbox', () => {
       await outbox.retryAll();
       await outbox.retryAll();
       expect(sender.send).toHaveBeenCalledTimes(1);
-      expect(f.store.getAll()).toMatchObject([
-        { status: 'permanent_failure', lastError: 'Cannot save this entry.' },
-      ]);
+      expect(f.store.getAll()).toMatchObject([{ status: 'permanent_failure', lastError: message }]);
     },
   );
 

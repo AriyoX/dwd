@@ -1,5 +1,7 @@
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Text,
   View,
@@ -13,6 +15,7 @@ import { useTheme } from '@/providers/theme-provider';
 import { radii } from '@/theme/tokens';
 import { PrimaryButton } from './primary-button';
 import { SheetHeading } from './sheet-heading';
+import { DismissibleNotice } from './dismissible-notice';
 
 export function Screen({
   children,
@@ -36,53 +39,60 @@ export function Screen({
     <SafeAreaView
       edges={
         footer
-          ? ['top', 'bottom', 'left', 'right']
+          ? insetTop
+            ? ['top', 'bottom', 'left', 'right']
+            : ['bottom', 'left', 'right']
           : insetTop
             ? ['top', 'left', 'right']
-            : ['left', 'right']
+            : ['bottom', 'left', 'right']
       }
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      {sheetTitle ? <SheetHeading title={sheetTitle} /> : null}
-      <ScrollView
-        ref={scrollRef}
-        automaticallyAdjustKeyboardInsets
-        nestedScrollEnabled
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={[
-          {
-            flexGrow: 1,
-            alignSelf: 'center',
-            width: '100%',
-            maxWidth: 600,
-            paddingHorizontal: 22,
-            paddingTop: 16,
-            paddingBottom: 40,
-            gap: 24,
-          },
-          contentStyle,
-        ]}
-        refreshControl={refreshControl}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' && footer ? 'padding' : undefined}
       >
-        {children}
-      </ScrollView>
-      {footer ? (
-        <View
-          style={{
-            alignSelf: 'center',
-            width: '100%',
-            maxWidth: 600,
-            paddingHorizontal: 22,
-            paddingTop: 12,
-            paddingBottom: 8,
-          }}
+        {sheetTitle ? <SheetHeading title={sheetTitle} /> : null}
+        <ScrollView
+          ref={scrollRef}
+          automaticallyAdjustKeyboardInsets={!footer}
+          nestedScrollEnabled
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[
+            {
+              flexGrow: 1,
+              alignSelf: 'center',
+              width: '100%',
+              maxWidth: 600,
+              paddingHorizontal: 22,
+              paddingTop: 16,
+              paddingBottom: 40,
+              gap: 24,
+            },
+            contentStyle,
+          ]}
+          refreshControl={refreshControl}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {footer}
-        </View>
-      ) : null}
+          {children}
+        </ScrollView>
+        {footer ? (
+          <View
+            style={{
+              alignSelf: 'center',
+              width: '100%',
+              maxWidth: 600,
+              paddingHorizontal: 22,
+              paddingTop: 12,
+              paddingBottom: 8,
+            }}
+          >
+            {footer}
+          </View>
+        ) : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -118,8 +128,17 @@ export function ScreenHeading({ title, leading }: { title: string; leading?: Rea
     </View>
   );
 }
-export function Notice({ message, error = false }: { message: string; error?: boolean }) {
+export function Notice({
+  message,
+  error = false,
+  dismissible = false,
+}: {
+  message: string;
+  error?: boolean;
+  dismissible?: boolean;
+}) {
   const { colors } = useTheme();
+  if (dismissible) return <DismissibleNotice message={message} error={error} />;
   return (
     <Text
       accessibilityRole={error ? 'alert' : 'text'}
@@ -147,7 +166,7 @@ export function RetryPanel({ issue, retry }: { issue: string; retry: () => void 
   return (
     <Panel>
       <Notice error message={issue} />
-      <PrimaryButton label="Retry" variant="secondary" onPress={retry} />
+      <PrimaryButton label="Try again" variant="secondary" onPress={retry} />
     </Panel>
   );
 }

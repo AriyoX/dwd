@@ -20,7 +20,12 @@ export function useNightAction(refresh: () => Promise<void>) {
       mounted.current = false;
     };
   }, []);
-  async function run<T>(action: () => Promise<T>, success?: string, saved?: (value: T) => void) {
+  async function run<T>(
+    action: () => Promise<T>,
+    success?: string,
+    saved?: (value: T) => void,
+    rejected?: (error: unknown) => void,
+  ) {
     if (inFlight.current || !owner || !mounted.current || currentOwner.current !== owner)
       return false;
     inFlight.current = true;
@@ -37,7 +42,10 @@ export function useNightAction(refresh: () => Promise<void>) {
       saved?.(value);
       return true;
     } catch (error) {
-      if (valid()) setIssue(featureError(error));
+      if (valid()) {
+        setIssue(featureError(error));
+        rejected?.(error);
+      }
       return false;
     } finally {
       inFlight.current = false;

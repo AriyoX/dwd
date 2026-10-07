@@ -1,17 +1,22 @@
 import { z } from 'zod';
 import { inviteTokenSchema } from '@dwd/core';
 
+// Postgres JSON timestamps include an offset (+00:00); older saved links do too.
+const inviteDate = z.iso
+  .datetime({ offset: true })
+  .transform((value) => new Date(value).toISOString());
 const operation = z.object({
   kind: z.enum(['create', 'replace', 'revoke']),
   token: inviteTokenSchema,
-  expiresAt: z.iso.datetime(),
+  expiresAt: inviteDate,
 });
 const stateSchema = z.object({
   owner: z.uuid(),
   nightId: z.uuid(),
   token: inviteTokenSchema.nullable(),
-  expiresAt: z.iso.datetime().nullable(),
+  expiresAt: inviteDate.nullable(),
   pending: operation.nullable(),
+  disabled: z.boolean().default(false),
 });
 export type InviteState = z.infer<typeof stateSchema>;
 export type InviteOperation = z.infer<typeof operation>;
@@ -22,7 +27,7 @@ export function readInviteState(
   owner: string,
   nightId: string,
 ): InviteState {
-  const empty = { owner, nightId, token: null, expiresAt: null, pending: null };
+  const empty = { owner, nightId, token: null, expiresAt: null, pending: null, disabled: false };
   const raw = storage.getItem(inviteStateKey(owner, nightId));
   if (!raw) return empty;
   const parsed = stateSchema.safeParse(JSON.parse(raw));
@@ -39,6 +44,7 @@ export function completedInviteOperation(
     ...state,
     pending: null,
     token: operation.kind === 'revoke' ? null : operation.token,
-    expiresAt: operation.kind === 'revoke' ? null : expiresAt,
+    expiresAt: operation.kind === 'revoke' ? null : inviteDate.parse(expiresAt),
+    disabled: operation.kind === 'revoke',
   };
 }

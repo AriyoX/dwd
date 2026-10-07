@@ -29,8 +29,16 @@ export function NotificationInbox({
   const inFlight = useRef(false);
   const request = useRef<AbortController | null>(null);
   const mounted = useRef(false);
+  const suspended = useRef(false);
   const refresh = useCallback(async () => {
-    if (inFlight.current || !navigator.onLine || document.visibilityState === 'hidden') return;
+    const isActive = () => mounted.current && !suspended.current;
+    if (
+      !isActive() ||
+      inFlight.current ||
+      !navigator.onLine ||
+      document.visibilityState === 'hidden'
+    )
+      return;
     inFlight.current = true;
     const controller = new AbortController();
     request.current = controller;
@@ -42,7 +50,7 @@ export function NotificationInbox({
       });
       const result = (await response.json()) as
         { ok: true; data: NotificationEvent[] } | { ok: false; error: string };
-      if (!mounted.current) return;
+      if (!mounted.current || controller.signal.aborted) return;
       if (!result.ok) {
         setError(result.error);
         return;
@@ -91,7 +99,7 @@ export function NotificationInbox({
       }
     } catch {
       if (mounted.current && !controller.signal.aborted)
-        setError('Notifications could not refresh. Retry when connected.');
+        setError("Couldn't load notifications. Try again.");
     } finally {
       inFlight.current = false;
       if (request.current === controller) request.current = null;
@@ -100,20 +108,40 @@ export function NotificationInbox({
 
   useEffect(() => {
     mounted.current = true;
+    suspended.current = false;
     queueMicrotask(() => setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone));
     queueMicrotask(() => void refresh());
     const poll = () => void refresh();
+    const suspend = () => {
+      suspended.current = true;
+      request.current?.abort();
+    };
+    const resume = () => {
+      suspended.current = false;
+      poll();
+    };
+    const visibilityChanged = () => {
+      if (document.visibilityState === 'hidden') suspend();
+      else resume();
+    };
+    const offline = () => request.current?.abort();
     const timer = window.setInterval(poll, 10_000);
     window.addEventListener('focus', poll);
     window.addEventListener('online', poll);
-    document.addEventListener('visibilitychange', poll);
+    window.addEventListener('offline', offline);
+    window.addEventListener('pagehide', suspend);
+    window.addEventListener('pageshow', resume);
+    document.addEventListener('visibilitychange', visibilityChanged);
     return () => {
       mounted.current = false;
       request.current?.abort();
       clearInterval(timer);
       window.removeEventListener('focus', poll);
       window.removeEventListener('online', poll);
-      document.removeEventListener('visibilitychange', poll);
+      window.removeEventListener('offline', offline);
+      window.removeEventListener('pagehide', suspend);
+      window.removeEventListener('pageshow', resume);
+      document.removeEventListener('visibilitychange', visibilityChanged);
     };
   }, [refresh]);
 
@@ -182,7 +210,7 @@ export function NotificationInbox({
         <p className="error-box" role="status">
           {error}{' '}
           <button className="text-link" type="button" onClick={() => void refresh()}>
-            Retry
+            Try again
           </button>
         </p>
       ) : null}

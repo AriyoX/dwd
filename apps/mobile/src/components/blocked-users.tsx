@@ -1,20 +1,21 @@
-import { Text } from 'react-native';
 import { getBlockedUsers, unblockUser } from '@dwd/data';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { useNightAction } from '@/hooks/use-night-action';
 import { useSupabase } from '@/providers/supabase-provider';
-import { useTheme } from '@/providers/theme-provider';
 import { actorClient } from '@/lib/actor-client';
-import { Notice, Panel } from './screen';
+import { Notice, LoadingPanel } from './screen';
+import { Disclosure } from './disclosure';
 import { PrimaryButton } from './primary-button';
 export function BlockedUsers() {
   const query = useAccountQuery(getBlockedUsers);
   const action = useNightAction(query.refresh);
   const { client, session } = useSupabase();
-  const { typography } = useTheme();
   return (
-    <Panel>
-      <Text style={typography.sectionTitle}>Blocked people</Text>
+    <Disclosure
+      title="Blocked people"
+      detail={query.data ? (query.data.length ? String(query.data.length) : 'None') : ''}
+    >
+      {!query.data && !query.issue ? <LoadingPanel /> : null}
       {query.data?.length === 0 ? <Notice message="No blocked people." /> : null}
       {query.data?.map((person) => (
         <PrimaryButton
@@ -31,13 +32,9 @@ export function BlockedUsers() {
         />
       ))}
       {query.issue ? (
-        <PrimaryButton
-          label="Retry blocked people"
-          variant="quiet"
-          onPress={() => void query.refresh()}
-        />
+        <PrimaryButton label="Try again" variant="quiet" onPress={() => void query.refresh()} />
       ) : null}
       {action.issue ? <Notice error message={action.issue} /> : null}
-    </Panel>
+    </Disclosure>
   );
 }

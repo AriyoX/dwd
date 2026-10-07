@@ -1,4 +1,4 @@
-import profiles from './countries.json';
+import profiles from './countries.json' with { type: 'json' };
 
 export type CountryCode = 'UG' | 'KE' | 'TZ' | 'RW' | 'ZA' | 'AE' | 'GB' | 'US' | 'CA';
 export type CalendarRegion = 'national' | 'england-and-wales' | 'scotland' | 'northern-ireland';

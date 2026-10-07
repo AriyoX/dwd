@@ -8,6 +8,10 @@ import {
   type DeletionJob,
 } from '../../supabase/functions/delete-accounts/handler';
 
+// These cases verify uploads and fault recovery against Storage. Keep request
+// interception visible instead of allowing the PWA worker to proxy the request.
+test.use({ serviceWorkers: 'block' });
+
 function backend() {
   const url = process.env['E2E_SUPABASE_URL'] ?? '';
   if (!['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
@@ -163,7 +167,17 @@ test('Storage enforces concurrent photo limits and the worker deletes actual pho
     async claim() {
       const result = await user.admin.rpc('claim_account_deletions');
       if (result.error) throw result.error;
-      return result.data as unknown as DeletionJob[];
+      return (result.data as unknown as DeletionJob[]).filter((job) => job.userId === user.id);
+    },
+    async revokeApple(job) {
+      const result = await user.admin.rpc('get_apple_deletion_token', {
+        p_user_id: job.userId,
+        p_request_id: job.requestId,
+        p_claim_id: job.claimId,
+      });
+      if (result.error) throw result.error;
+      // This fixture uses email; the real revocation gate must report no Apple token.
+      expect(result.data).toBeNull();
     },
     async removePhotos(objects) {
       const result = await user.admin.storage.from('night-memories').remove(objects);
@@ -292,11 +306,12 @@ test('a photo save can retry after both upload slots are occupied', async ({ pag
   await page.goto(`/night/${nightId}/summary`);
   await expect(page.getByRole('button', { name: 'Add photos', exact: true })).toBeEnabled();
   let saves = 0;
+  let blockSecondSave = true;
   await page.route(`**/night/${nightId}/summary`, async (route) => {
     const request = route.request();
     if (request.method() === 'POST' && request.postData()?.includes('"byteSize"')) {
       saves++;
-      if (saves === 2) {
+      if (saves >= 2 && blockSecondSave) {
         await route.abort('failed');
         return;
       }
@@ -312,10 +327,13 @@ test('a photo save can retry after both upload slots are occupied', async ({ pag
     { name: 'two.png', mimeType: 'image/png', buffer },
   ]);
   const retry = page.getByRole('button', { name: 'Retry', exact: true });
+  await expect.poll(() => saves).toBeGreaterThanOrEqual(2);
   await expect(retry).toBeVisible();
+  expect(saves).toBeGreaterThanOrEqual(2);
   expect(
     (await user.admin.storage.from('night-memories').list(`${nightId}/${user.id}`)).data,
   ).toHaveLength(2);
+  blockSecondSave = false;
   await retry.click();
   await expect(
     page.getByRole('img', { name: 'Uploaded by Deletion Test', exact: true }),

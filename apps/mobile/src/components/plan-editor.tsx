@@ -1,17 +1,13 @@
 import { Text, View } from 'react-native';
 import { useState } from 'react';
-import {
-  DRINK_PRESETS,
-  presetToPlanItem,
-  planItemInputSchema,
-  type PlanItemInput,
-  type DrinkCategory,
-} from '@dwd/core';
+import { DRINK_PRESETS, presetToPlanItem, type PlanItemInput } from '@dwd/core';
 import { useTheme } from '@/providers/theme-provider';
+import { Disclosure } from './disclosure';
 import { Choice } from './choice';
 import { Action, PrimaryButton } from './primary-button';
 import { Notice, Panel } from './screen';
-import { TextField } from './text-field';
+import { CustomDrinkForm } from './custom-drink-form';
+import { DrinkQuantity } from './drink-quantity';
 
 export function PlanEditor({
   items,
@@ -19,23 +15,29 @@ export function PlanEditor({
   mode,
   onModeChange,
   disabled = false,
+  onEditingChange,
 }: {
   items: PlanItemInput[];
   onChange: (items: PlanItemInput[]) => void;
   mode: 'unselected' | 'water_only' | 'drinks';
   onModeChange: (mode: 'water_only' | 'drinks') => void;
   disabled?: boolean;
+  onEditingChange?: (editing: boolean) => void;
 }) {
-  const { colors, typography } = useTheme();
+  const { colors } = useTheme();
   const [editing, setEditing] = useState<number | 'new' | null>(null);
-  const controlsDisabled = disabled || editing !== null;
+  const controlsDisabled = disabled;
+  function editItem(value: typeof editing) {
+    setEditing(value);
+    onEditingChange?.(value !== null);
+  }
   function saveItem(index: number | 'new', item: PlanItemInput) {
     onChange(
       index === 'new'
         ? [...items, { ...item, isQuickLog: items.length === 0 }]
         : items.map((p, i) => (i === index ? { ...p, ...item } : p)),
     );
-    setEditing(null);
+    editItem(null);
   }
   function togglePreset(id: string) {
     const preset = DRINK_PRESETS.find((p) => p.id === id);
@@ -68,6 +70,17 @@ export function PlanEditor({
       })),
     );
   }
+  if (editing !== null) {
+    return (
+      <CustomPlanItem
+        key={editing}
+        item={editing === 'new' ? undefined : items[editing]}
+        disabled={disabled}
+        onCancel={() => editItem(null)}
+        onSave={(item) => saveItem(editing, item)}
+      />
+    );
+  }
   return (
     <View style={{ gap: 16 }}>
       <Choice
@@ -84,139 +97,122 @@ export function PlanEditor({
       />
       {mode === 'drinks' ? (
         <>
-          <Text accessibilityRole="header" style={typography.sectionTitle}>
-            Choose drinks
-          </Text>
-          {DRINK_PRESETS.map((preset) => (
-            <Choice
-              key={preset.id}
-              label={preset.label}
-              detail={`${preset.volumeMl} ml · ${preset.abvPercent}% ABV${preset.estimate ? ' · estimate' : ''}`}
-              selected={items.some(
-                (item) =>
-                  !item.sharedBottleId &&
-                  item.label === preset.label &&
-                  item.category === preset.category &&
-                  item.volumeMl === preset.volumeMl &&
-                  item.abvPercent === preset.abvPercent,
-              )}
-              disabled={controlsDisabled}
-              onPress={() => togglePreset(preset.id)}
-            />
-          ))}
-          {items.map((item, index) =>
-            editing === index ? (
-              <CustomPlanItem
-                key={item.id ?? `${item.label}:${index}`}
-                item={item}
-                disabled={disabled}
-                onCancel={() => setEditing(null)}
-                onSave={(saved) => saveItem(index, saved)}
-              />
-            ) : (
-              <Panel key={item.id ?? `${item.label}:${index}`}>
-                <Text style={{ color: colors.text, fontSize: 17, fontWeight: '600' }}>
-                  {item.label}
-                </Text>
-                <View
+          {items.map((item, index) => (
+            <Panel key={item.id ?? `${item.label}:${index}`}>
+              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '600' }}>
+                {item.label}
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}
+              >
+                <Action
+                  label={`Plan fewer ${item.label}`}
+                  disabled={controlsDisabled || item.plannedQuantity <= 1}
+                  onPress={() =>
+                    onChange(
+                      items.map((p, i) =>
+                        i === index ? { ...p, plannedQuantity: p.plannedQuantity - 1 } : p,
+                      ),
+                    )
+                  }
                   style={{
-                    flexDirection: 'row',
+                    minHeight: 48,
+                    minWidth: 48,
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 12,
+                    justifyContent: 'center',
+                    borderRadius: 12,
+                    backgroundColor: colors.surfaceSoft,
                   }}
                 >
-                  <Action
-                    label={`Plan fewer ${item.label}`}
-                    disabled={controlsDisabled || item.plannedQuantity <= 1}
-                    onPress={() =>
-                      onChange(
-                        items.map((p, i) =>
-                          i === index ? { ...p, plannedQuantity: p.plannedQuantity - 1 } : p,
-                        ),
-                      )
-                    }
-                    style={{
-                      minHeight: 48,
-                      minWidth: 48,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 12,
-                      backgroundColor: colors.surfaceSoft,
-                    }}
-                  >
-                    <Text style={{ fontSize: 24, color: colors.text }}>−</Text>
-                  </Action>
-                  <Text
-                    accessibilityLabel={`${item.plannedQuantity} planned`}
-                    style={{ color: colors.text, fontSize: 18, flex: 1, textAlign: 'center' }}
-                  >
-                    {item.plannedQuantity} planned
-                  </Text>
-                  <Action
-                    label={`Plan more ${item.label}`}
-                    disabled={controlsDisabled || item.plannedQuantity >= 50}
-                    onPress={() =>
-                      onChange(
-                        items.map((p, i) =>
-                          i === index ? { ...p, plannedQuantity: p.plannedQuantity + 1 } : p,
-                        ),
-                      )
-                    }
-                    style={{
-                      minHeight: 48,
-                      minWidth: 48,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 12,
-                      backgroundColor: colors.surfaceSoft,
-                    }}
-                  >
-                    <Text style={{ fontSize: 24, color: colors.text }}>+</Text>
-                  </Action>
-                </View>
-                <Choice
-                  label="Main drink"
-                  selected={item.isQuickLog}
-                  disabled={controlsDisabled}
-                  onPress={() => onChange(items.map((p, i) => ({ ...p, isQuickLog: i === index })))}
-                />
-                {!item.sharedBottleId ? (
-                  <PrimaryButton
-                    label={`Edit ${item.label}`}
-                    variant="quiet"
-                    disabled={controlsDisabled}
-                    onPress={() => setEditing(index)}
-                  />
-                ) : null}
-                <Action
-                  label={`Remove ${item.label} from plan`}
-                  disabled={controlsDisabled}
-                  onPress={() => remove(index)}
-                  style={{ minHeight: 48, justifyContent: 'center' }}
-                >
-                  <Text style={{ color: colors.danger, fontSize: 15 }}>Remove from plan</Text>
+                  <Text style={{ fontSize: 24, color: colors.text }}>−</Text>
                 </Action>
-              </Panel>
-            ),
-          )}
-          {editing === 'new' ? (
-            <CustomPlanItem
-              key={editing}
-              item={undefined}
-              disabled={disabled}
-              onCancel={() => setEditing(null)}
-              onSave={(item) => saveItem('new', item)}
-            />
-          ) : (
+                <Text
+                  accessibilityLabel={`${item.plannedQuantity} planned`}
+                  style={{ color: colors.text, fontSize: 18, flex: 1, textAlign: 'center' }}
+                >
+                  {item.plannedQuantity} planned
+                </Text>
+                <Action
+                  label={`Plan more ${item.label}`}
+                  disabled={controlsDisabled || item.plannedQuantity >= 50}
+                  onPress={() =>
+                    onChange(
+                      items.map((p, i) =>
+                        i === index ? { ...p, plannedQuantity: p.plannedQuantity + 1 } : p,
+                      ),
+                    )
+                  }
+                  style={{
+                    minHeight: 48,
+                    minWidth: 48,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 12,
+                    backgroundColor: colors.surfaceSoft,
+                  }}
+                >
+                  <Text style={{ fontSize: 24, color: colors.text }}>+</Text>
+                </Action>
+              </View>
+              <Choice
+                label="Main drink"
+                selected={item.isQuickLog}
+                disabled={controlsDisabled}
+                onPress={() => onChange(items.map((p, i) => ({ ...p, isQuickLog: i === index })))}
+              />
+              {!item.sharedBottleId ? (
+                <PrimaryButton
+                  label={`Edit ${item.label}`}
+                  variant="quiet"
+                  disabled={controlsDisabled}
+                  onPress={() => editItem(index)}
+                />
+              ) : null}
+              <Action
+                label={`Remove ${item.label} from plan`}
+                disabled={controlsDisabled}
+                onPress={() => remove(index)}
+                style={{ minHeight: 48, justifyContent: 'center' }}
+              >
+                <Text style={{ color: colors.danger, fontSize: 15 }}>Remove from plan</Text>
+              </Action>
+            </Panel>
+          ))}
+          <Disclosure
+            title={items.length ? 'Add another drink' : 'Choose drinks'}
+            defaultExpanded={items.length === 0}
+            disabled={controlsDisabled}
+          >
+            {DRINK_PRESETS.map((preset) => (
+              <Choice
+                key={preset.id}
+                label={preset.label}
+                detail={`${preset.volumeMl} ml · ${preset.abvPercent}% ABV${preset.estimate ? ' · estimate' : ''}`}
+                selected={items.some(
+                  (item) =>
+                    !item.sharedBottleId &&
+                    item.label === preset.label &&
+                    item.category === preset.category &&
+                    item.volumeMl === preset.volumeMl &&
+                    item.abvPercent === preset.abvPercent,
+                )}
+                disabled={controlsDisabled}
+                onPress={() => togglePreset(preset.id)}
+              />
+            ))}
             <PrimaryButton
               label="Add custom drink"
               icon="add-outline"
-              variant="secondary"
+              variant="quiet"
               disabled={controlsDisabled || items.length >= 20}
-              onPress={() => setEditing('new')}
+              onPress={() => editItem('new')}
             />
-          )}
+          </Disclosure>
         </>
       ) : null}
     </View>
@@ -234,78 +230,39 @@ function CustomPlanItem({
   onSave: (item: PlanItemInput) => void;
   onCancel: () => void;
 }) {
-  const [label, setLabel] = useState(item?.label ?? '');
-  const [category, setCategory] = useState<DrinkCategory>(item?.category ?? 'other');
-  const [volume, setVolume] = useState(item ? String(item.volumeMl) : '');
-  const [abv, setAbv] = useState(item ? String(item.abvPercent) : '');
   const [quantity, setQuantity] = useState(item ? String(item.plannedQuantity) : '1');
   const [issue, setIssue] = useState<string | null>(null);
   return (
     <Panel>
-      <TextField
-        label="Drink name"
-        value={label}
-        onChangeText={setLabel}
-        maxLength={60}
-        editable={!disabled}
-      />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {(['beer', 'wine', 'spirit', 'cocktail', 'other'] as const).map((value) => (
-          <Choice
-            key={value}
-            compact
-            label={value.charAt(0).toUpperCase() + value.slice(1)}
-            selected={category === value}
-            disabled={disabled}
-            onPress={() => setCategory(value)}
-          />
-        ))}
-      </View>
-      <TextField
-        label="Serving (ml)"
-        value={volume}
-        onChangeText={setVolume}
-        keyboardType="decimal-pad"
-        editable={!disabled}
-      />
-      <TextField
-        label="ABV (%)"
-        value={abv}
-        onChangeText={setAbv}
-        keyboardType="decimal-pad"
-        editable={!disabled}
-      />
-      <TextField
-        label="Planned quantity"
-        value={quantity}
-        onChangeText={setQuantity}
-        keyboardType="number-pad"
-        editable={!disabled}
-      />
-      {issue ? <Notice error message={issue} /> : null}
-      <PrimaryButton
-        label="Save drink"
+      <CustomDrinkForm
+        initial={item}
         disabled={disabled}
-        onPress={() => {
-          if (!abv.trim()) {
-            setIssue('Enter ABV, including 0 for an alcohol-free drink.');
+        onCancel={onCancel}
+        onSave={(drink) => {
+          const count = Number(quantity);
+          if (!Number.isInteger(count) || count < 1 || count > 50) {
+            setIssue('Choose 1 to 50 drinks.');
             return;
           }
-          const parsed = planItemInputSchema.safeParse({
+          onSave({
             ...item,
-            label,
-            category,
-            volumeMl: Number(volume.replace(',', '.')),
-            abvPercent: Number(abv.replace(',', '.')),
-            plannedQuantity: Number(quantity),
+            ...drink,
+            plannedQuantity: count,
             isQuickLog: item?.isQuickLog ?? false,
           });
-          if (!parsed.success)
-            setIssue(parsed.error.issues[0]?.message ?? 'Check the drink details.');
-          else onSave(parsed.data);
         }}
-      />
-      <PrimaryButton label="Cancel edit" variant="quiet" disabled={disabled} onPress={onCancel} />
+      >
+        <DrinkQuantity
+          label="Planned drinks"
+          value={quantity}
+          disabled={disabled}
+          onChange={(value) => {
+            setQuantity(value);
+            setIssue(null);
+          }}
+        />
+        {issue ? <Notice error message={issue} /> : null}
+      </CustomDrinkForm>
     </Panel>
   );
 }

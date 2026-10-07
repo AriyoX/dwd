@@ -18,7 +18,7 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
     rawExtra && typeof rawExtra === 'object' ? (rawExtra as Record<string, unknown>) : {};
   return {
     ...config,
-    name: config.name ?? 'Drink with Desire',
+    name: config.name ?? 'dwd',
     slug: config.slug ?? 'drink-with-desire',
     extra: { ...extra, ...(projectId ? { eas: { projectId } } : {}) },
     ios: {

@@ -9,7 +9,7 @@ export interface LegalDocument {
 export const PRIVACY_POLICY: LegalDocument = {
   title: 'Privacy policy',
   introduction:
-    'Drink with Desire (DWD) is operated by Ariyo Ahumuza. This policy covers the DWD website and mobile app. Contact ahumuzaariyo@gmail.com for privacy questions, access requests, corrections or deletion assistance.',
+    'dwd is operated by Ariyo Ahumuza. This policy covers the DWD website and mobile app. Contact ahumuzaariyo@gmail.com for privacy questions, access requests, corrections or deletion assistance.',
   sections: [
     {
       title: 'Information we use',
@@ -83,7 +83,7 @@ export const PRIVACY_POLICY: LegalDocument = {
 export const TERMS_OF_SERVICE: LegalDocument = {
   title: 'Terms of service',
   introduction:
-    'These terms apply to Drink with Desire (DWD), operated by Ariyo Ahumuza. Contact ahumuzaariyo@gmail.com for support or questions. By creating an account or using DWD, you agree to these terms and acknowledge the privacy policy.',
+    'These terms apply to dwd, operated by Ariyo Ahumuza. Contact ahumuzaariyo@gmail.com for support or questions. By creating an account or using DWD, you agree to these terms and acknowledge the privacy policy.',
   sections: [
     {
       title: 'Who can use DWD',

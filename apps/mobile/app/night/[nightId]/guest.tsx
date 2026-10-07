@@ -53,6 +53,7 @@ function GuestForm({
   const [consent, setConsent] = useState(false);
   const [issue, setIssue] = useState<string | null>(null);
   const [submittedOnce, setSubmittedOnce] = useState(false);
+  const [editing, setEditing] = useState(false);
   const key = useRef(Crypto.randomUUID());
   const submitted = useRef<{
     previousIds: string[];
@@ -61,7 +62,7 @@ function GuestForm({
   } | null>(null);
   const action = useNightAction(refresh);
   async function save() {
-    if (!client || !consent || !nightAccess(snapshot).canAddGuest) return;
+    if (!client || editing || !consent || !nightAccess(snapshot).canAddGuest) return;
     const parsed = materializeGuest(name, mode, items);
     if (!parsed.success) {
       setIssue(parsed.message);
@@ -104,7 +105,7 @@ function GuestForm({
         onChangeText={setName}
       />
       <SettingsRow
-        label="They agreed to be tracked"
+        label="They agreed to me logging their drinks"
         value={consent}
         disabled={action.busy || submittedOnce}
         onChange={setConsent}
@@ -115,14 +116,19 @@ function GuestForm({
         mode={mode}
         onModeChange={setMode}
         disabled={action.busy || submittedOnce}
+        onEditingChange={setEditing}
       />
       {issue || action.issue ? <Notice error message={issue ?? action.issue ?? ''} /> : null}
       <PrimaryButton
-        label={action.issue ? 'Retry adding person' : 'Add person'}
+        label={action.issue ? 'Try again' : 'Add person'}
         icon="person-add-outline"
         busy={action.busy}
         disabled={
-          !consent || !name.trim() || mode === 'unselected' || (mode === 'drinks' && !items.length)
+          editing ||
+          !consent ||
+          !name.trim() ||
+          mode === 'unselected' ||
+          (mode === 'drinks' && !items.length)
         }
         onPress={() => void save()}
       />

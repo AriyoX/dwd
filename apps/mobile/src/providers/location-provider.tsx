@@ -28,9 +28,10 @@ function remember(enabled: boolean) {
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState(DEFAULT_COUNTRY_LOCATION);
   const [permission, setPermission] = useState<LocationValue['permission']>('unknown');
-  const [busy, setBusy] = useState(true);
-  const [enabled, setEnabled] = useState(true);
-  const allowed = useRef(true);
+  const [busy, setBusy] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const allowed = useRef(false);
   const version = useRef(0);
   const { client, session, access } = useSupabase();
   const token = session?.access_token;
@@ -81,11 +82,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }
   useEffect(() => {
     try {
-      allowed.current = localStorage.getItem(preferenceKey) !== 'false';
+      allowed.current = localStorage.getItem(preferenceKey) === 'true';
       setEnabled(allowed.current);
     } catch {
       /* Storage may be unavailable. */
     }
+    setInitialized(true);
     void refresh();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') void refresh();
@@ -101,7 +103,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     };
   }, []);
   useEffect(() => {
-    if (!client || !token || !ready || busy || AppState.currentState !== 'active') return;
+    if (!initialized || !client || !token || !ready || busy || AppState.currentState !== 'active')
+      return;
     let current = true;
     const save = () => {
       if (current)
@@ -117,7 +120,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     return () => {
       current = false;
     };
-  }, [client, token, ready, busy, location]);
+  }, [initialized, client, token, ready, busy, location]);
   function disable() {
     allowed.current = false;
     version.current++;

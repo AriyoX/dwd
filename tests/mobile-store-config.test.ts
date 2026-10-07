@@ -4,6 +4,27 @@ import native from '../apps/mobile/app.json';
 
 afterEach(() => vi.unstubAllEnvs());
 describe('native store configuration', () => {
+  it('declares Android notification permission, the reminder channel and keyboard resize', () => {
+    expect(native.expo.android.permissions).toContain('android.permission.POST_NOTIFICATIONS');
+    expect(native.expo.android.blockedPermissions).not.toContain(
+      'android.permission.POST_NOTIFICATIONS',
+    );
+    expect(native.expo.plugins).toContainEqual([
+      'expo-notifications',
+      { defaultChannel: 'dwd-reminders' },
+    ]);
+    expect(native.expo.android.softwareKeyboardLayoutMode).toBe('resize');
+  });
+  it('passes the EAS Firebase file setting into the Android build', () => {
+    vi.stubEnv('GOOGLE_SERVICES_JSON', '/fixture/google-services.json');
+    const config = appConfig({
+      config: native.expo,
+      projectRoot: '/fixture',
+      staticConfigPath: null,
+      packageJsonPath: '/fixture/package.json',
+    });
+    expect(config.android?.googleServicesFile).toBe('/fixture/google-services.json');
+  });
   it.each(['production', 'testing'])(
     'enforces HTTPS for %s even if an Expo command sets development NODE_ENV',
     (profile) => {

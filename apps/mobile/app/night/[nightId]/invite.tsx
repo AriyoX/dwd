@@ -1,32 +1,21 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Share, Text } from 'react-native';
+import { Linking, Share, Text } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { canUserEndOrExtendNight } from '@dwd/core';
-import {
-  DataAccessError,
-  createNightInvite,
-  getInvitePreview,
-  revokeNightInviteOnce,
-  rotateNightInvite,
-} from '@dwd/data';
+import { Disclosure } from '@/components/disclosure';
 import { PrimaryButton } from '@/components/primary-button';
+import { NavigationRow } from '@/components/navigation-row';
 import { LoadingPanel, Notice, Panel, RetryPanel, Screen } from '@/components/screen';
 import { useNight } from '@/hooks/use-night';
 import { useSupabase } from '@/providers/supabase-provider';
+import { useConnectivity } from '@/providers/connectivity-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { actorClient } from '@/lib/actor-client';
 import { confirmAction } from '@/lib/confirm';
-import { hashInvite, newInviteToken } from '@/lib/invites';
-import {
-  completedInviteOperation,
-  inviteStateKey,
-  readInviteState,
-  type InviteOperation,
-  type InviteState,
-} from '@/lib/invite-state';
+import { refreshNightInvite } from '@/lib/automatic-invite';
+import { readInviteState, type InviteOperation, type InviteState } from '@/lib/invite-state';
 import { siteUrl } from '@/lib/site';
-import { withRequestTimeout } from '@/lib/request-timeout';
 
 export default function InviteScreen() {
   const { nightId } = useLocalSearchParams<{ nightId: string }>();
@@ -35,184 +24,144 @@ export default function InviteScreen() {
     <Invitation key={`${session.user.id}:${nightId}`} owner={session.user.id} nightId={nightId} />
   ) : null;
 }
+
 function Invitation({ owner, nightId }: { owner: string; nightId: string }) {
   const { snapshot, issue, refresh, now } = useNight(nightId);
   const { client, session } = useSupabase();
+  const { online } = useConnectivity();
   const { typography } = useTheme();
+  const [state, setState] = useState<InviteState>(() => {
+    try {
+      return readInviteState(globalThis.localStorage, owner, nightId);
+    } catch {
+      return readInviteState({ getItem: () => null }, owner, nightId);
+    }
+  });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const mounted = useRef(true);
   const currentOwner = useRef(owner);
+  const inFlight = useRef(false);
   useLayoutEffect(() => {
     currentOwner.current = session?.user.id ?? '';
   }, [session]);
-  const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
     };
   }, []);
-  const [state, setState] = useState<InviteState>({
-    owner,
-    nightId,
-    token: null,
-    expiresAt: null,
-    pending: null,
-  });
-  const [ready, setReady] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  const inFlight = useRef(false);
-  const active = () => mounted.current && currentOwner.current === owner;
-  useEffect(() => {
-    let active = true;
-    queueMicrotask(() => {
-      if (!active) return;
-      try {
-        setState(readInviteState(globalThis.localStorage, owner, nightId));
-      } catch {
-        setMessage('Could not restore the local link. Replace or revoke links to regain control.');
-      }
-      setReady(true);
-    });
-    return () => {
-      active = false;
-    };
-  }, [owner, nightId]);
-  const host =
+  const host = Boolean(
     snapshot &&
     canUserEndOrExtendNight(owner, snapshot.night) &&
-    snapshot.night.status === 'active';
+    snapshot.night.status === 'active',
+  );
+  const accessToken = session?.access_token;
+  const change = useCallback(
+    async (kind?: InviteOperation['kind']) => {
+      if (
+        !client ||
+        !accessToken ||
+        !host ||
+        inFlight.current ||
+        !mounted.current ||
+        currentOwner.current !== owner
+      )
+        return;
+      if (online === false) {
+        if (kind) {
+          setFailed(false);
+          setMessage('Connect to the internet to change this invite.');
+          return;
+        }
+        try {
+          const saved = readInviteState(globalThis.localStorage, owner, nightId);
+          setState(saved);
+          const ready =
+            saved.token &&
+            saved.expiresAt &&
+            Date.parse(saved.expiresAt) > Date.now() &&
+            !saved.pending;
+          setFailed(!ready && !saved.disabled);
+          setMessage(
+            ready || saved.disabled
+              ? null
+              : "You're offline. Your invite will be ready when you're back online.",
+          );
+        } catch {
+          setFailed(true);
+          setMessage("Couldn't open your saved invite. Try again.");
+        }
+        return;
+      }
+      inFlight.current = true;
+      setBusy(true);
+      setMessage(null);
+      setFailed(false);
+      const valid = () => mounted.current && currentOwner.current === owner;
+      try {
+        const connection = actorClient(client, accessToken);
+        const next = await refreshNightInvite(
+          globalThis.localStorage,
+          connection,
+          owner,
+          nightId,
+          kind,
+        );
+        if (!valid()) return;
+        setState(next);
+      } catch {
+        if (!valid()) return;
+        setFailed(true);
+        try {
+          const saved = readInviteState(globalThis.localStorage, owner, nightId);
+          setState(saved);
+          setMessage("Couldn't prepare your invite. We'll try again when you're online.");
+        } catch {
+          setMessage("Couldn't save your invite on this phone. Try again.");
+        }
+      } finally {
+        inFlight.current = false;
+        if (valid()) setBusy(false);
+      }
+    },
+    [client, accessToken, host, owner, nightId, online],
+  );
   useFocusEffect(
     useCallback(() => {
-      if (!client || !session || !ready || !state.token || state.pending) return;
-      let active = true;
-      const token = state.token;
-      void withRequestTimeout(async (signal) =>
-        getInvitePreview(
-          actorClient(client, session.access_token, signal),
-          await hashInvite(token),
-        ),
-      )
-        .then((preview) => {
-          if (active && !preview.valid) {
-            setState((value) => ({ ...value, token: null, expiresAt: null }));
-            setMessage('The saved link is no longer active. Create a new link.');
-          }
-        })
-        .catch(() => {
-          if (active)
-            setMessage('Could not verify the saved link. Check your connection before sharing.');
-        });
-      return () => {
-        active = false;
-      };
-    }, [client, session, ready, state.token, state.pending]),
+      void change();
+    }, [change]),
   );
-  function persist(next: InviteState) {
-    globalThis.localStorage.setItem(inviteStateKey(owner, nightId), JSON.stringify(next));
-    setState(next);
-  }
-  async function mutate(kind: InviteOperation['kind']) {
-    if (!client || !session || !host || inFlight.current || !active()) return;
-    inFlight.current = true;
-    setBusy(true);
-    setMessage(null);
-    setFailed(false);
-    try {
-      const operation = state.pending ?? {
-        kind,
-        token: await newInviteToken(),
-        expiresAt: new Date(Date.now() + 24 * 3_600_000).toISOString(),
-      };
-      if (!active()) return;
-      persist({ ...state, pending: operation });
-      const hash = await hashInvite(operation.token);
-      if (!active()) return;
-      const connection = actorClient(client, session.access_token);
-      let expiresAt = operation.expiresAt;
-      if (operation.kind === 'revoke')
-        await withRequestTimeout(() => revokeNightInviteOnce(connection, nightId, hash));
-      else {
-        const input = { nightId, tokenHash: hash, expiresAt, maxUses: null };
-        const result = await withRequestTimeout(() =>
-          operation.kind === 'replace'
-            ? rotateNightInvite(connection, input)
-            : createNightInvite(connection, input),
-        );
-        expiresAt = result.expiresAt;
-      }
-      if (!active()) return;
-      persist(completedInviteOperation(state, operation, expiresAt));
-      setMessage(
-        operation.kind === 'revoke'
-          ? 'Invitation links are off.'
-          : operation.kind === 'replace'
-            ? 'New link ready. Earlier links no longer work.'
-            : 'Your invitation link is ready.',
-      );
-    } catch (error) {
-      if (active()) {
-        setFailed(true);
-        if (
-          error instanceof DataAccessError &&
-          (error.code === '55000' || error.code === '22023')
-        ) {
-          persist({ ...state, pending: null, token: null, expiresAt: null });
-          setMessage('That invitation request is no longer active. Create or replace links again.');
-        } else
-          setMessage('Could not confirm the invitation change. Retry to finish the same request.');
-      }
-    } finally {
-      inFlight.current = false;
-      if (active()) setBusy(false);
-    }
-  }
+  useEffect(() => {
+    if (!state.expiresAt || state.disabled || state.pending || online === false) return;
+    const delay = Math.max(failed ? 30_000 : 0, Date.parse(state.expiresAt) - Date.now());
+    const timer = setTimeout(() => void change(), Math.min(delay, 2_147_483_647));
+    return () => clearTimeout(timer);
+  }, [state.expiresAt, state.disabled, state.pending, online, failed, change]);
   const url =
     state.token && state.expiresAt && Date.parse(state.expiresAt) > now
       ? `${siteUrl()}/join/${state.token}`
       : null;
   async function share(copy: boolean) {
-    if (!url || !state.token || !client || !session || !host || state.pending || inFlight.current)
-      return;
-    inFlight.current = true;
-    setBusy(true);
+    if (!url || busy || state.pending) return;
     setMessage(null);
-    let verified = false;
+    setFailed(false);
     try {
-      const tokenHash = await hashInvite(state.token);
-      const preview = await withRequestTimeout((signal) =>
-        getInvitePreview(actorClient(client, session.access_token, signal), tokenHash),
-      );
-      if (!active()) return;
-      if (!preview.valid) {
-        persist({ ...state, token: null, expiresAt: null });
-        setMessage('This link is no longer active. Create a new link.');
-        return;
-      }
-      verified = true;
       if (copy) {
         await Clipboard.setStringAsync(url);
-        setMessage('Invitation link copied.');
+        setMessage('Invite copied.');
       } else
         await Share.share({
-          title: `Join ${snapshot.night.title}`,
-          message: `Join ${snapshot.night.title} on DWD: ${url}`,
-          url,
+          title: 'Join my night on DWD',
+          message: `Join ${snapshot?.night.title ?? 'my night'} on DWD: ${url}`,
         });
     } catch {
-      if (active())
-        setMessage(
-          verified
-            ? 'Sharing did not complete. Retry or copy the link.'
-            : 'Could not verify this link. Retry sharing when connected.',
-        );
-    } finally {
-      inFlight.current = false;
-      if (active()) setBusy(false);
+      setMessage("Couldn't share your invite. Try again or copy the link.");
     }
   }
   return (
-    <Screen insetTop={false} sheetTitle="Invite people">
+    <Screen insetTop={false} sheetTitle="Invite friends">
       {!snapshot ? (
         issue ? (
           <RetryPanel issue={issue} retry={() => void refresh()} />
@@ -220,23 +169,27 @@ function Invitation({ owner, nightId }: { owner: string; nightId: string }) {
           <LoadingPanel />
         )
       ) : !host ? (
-        <Notice message="Only the host of an active night can manage invitations." />
+        <Notice message="Only the host can share invites for an active night." />
       ) : (
         <>
-          <Notice message="Friends join and log their own drinks. Anyone with this private link can join until it expires." />
+          <Notice message="Anyone with your link can join and log their own drinks." />
           {url && !state.pending ? (
             <Panel>
-              <Text style={typography.sectionTitle}>Your invitation link</Text>
-              <Text selectable style={typography.body}>
-                {url}
-              </Text>
+              <Text style={typography.sectionTitle}>Invite ready</Text>
               <Text style={typography.body}>
-                Expires {new Date(state.expiresAt ?? '').toLocaleString()}
+                Until{' '}
+                {new Date(state.expiresAt ?? '').toLocaleString([], {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
               </Text>
               <PrimaryButton
-                label="Share link"
+                large
+                label="Share invite"
                 icon="share-outline"
-                busy={busy}
+                disabled={busy}
                 onPress={() => void share(false)}
               />
               <PrimaryButton
@@ -247,68 +200,78 @@ function Invitation({ owner, nightId }: { owner: string; nightId: string }) {
                 onPress={() => void share(true)}
               />
             </Panel>
-          ) : null}
-          {state.pending ? (
-            <PrimaryButton
-              label={`Retry ${state.pending.kind === 'replace' ? 'replacement' : state.pending.kind}`}
-              busy={busy}
-              onPress={() => {
-                if (state.pending) void mutate(state.pending.kind);
-              }}
-            />
+          ) : busy ? (
+            <LoadingPanel />
+          ) : state.disabled ? (
+            <Notice message="Invitation links are off." />
           ) : (
-            <>
-              {!url ? (
-                <PrimaryButton
-                  label="Create invitation link"
-                  icon="link-outline"
-                  busy={busy}
-                  disabled={!ready}
-                  onPress={() => void mutate('create')}
+            <Notice message="Preparing your invite…" />
+          )}
+          {message ? <Notice dismissible message={message} /> : null}
+          {failed || state.pending ? (
+            <PrimaryButton
+              label="Try again"
+              variant="secondary"
+              busy={busy}
+              onPress={() => void change()}
+            />
+          ) : null}
+          {!state.pending ? (
+            <Disclosure title="Invite options" defaultExpanded={state.disabled}>
+              <PrimaryButton
+                label={state.disabled ? 'Use a new link' : 'Replace link'}
+                icon="refresh-outline"
+                variant="quiet"
+                disabled={busy || online === false}
+                onPress={() =>
+                  void (async () => {
+                    if (
+                      state.disabled ||
+                      (await confirmAction(
+                        'Replace this invite?',
+                        'The old link will stop working. Friends already joined stay in the night.',
+                        'Replace link',
+                      ))
+                    )
+                      await change('replace');
+                  })()
+                }
+              />
+              {url ? (
+                <NavigationRow
+                  label="Open invitation"
+                  icon="open-outline"
+                  onPress={() =>
+                    void Linking.openURL(url).catch(() =>
+                      setMessage("Couldn't open your invite. Try again."),
+                    )
+                  }
                 />
               ) : null}
-              <PrimaryButton
-                label="Replace invitation links"
-                icon="refresh-outline"
-                variant="secondary"
-                disabled={busy || !ready}
-                onPress={() =>
-                  void (async () => {
-                    if (
-                      await confirmAction(
-                        'Replace invitation links?',
-                        'Earlier links will stop working. People already in the night stay joined.',
-                        'Replace links',
+              {!state.disabled ? (
+                <PrimaryButton
+                  label="Turn off invites"
+                  variant="danger"
+                  disabled={busy || online === false}
+                  onPress={() =>
+                    void (async () => {
+                      if (
+                        await confirmAction(
+                          'Turn off invitations?',
+                          'New friends cannot join with this link. Friends already joined stay in the night.',
+                          'Turn off link',
+                          true,
+                        )
                       )
-                    )
-                      await mutate('replace');
-                  })()
-                }
-              />
-              <PrimaryButton
-                label="Revoke all invitation links"
-                icon="unlink-outline"
-                variant="danger"
-                disabled={busy || !ready}
-                onPress={() =>
-                  void (async () => {
-                    if (
-                      await confirmAction(
-                        'Revoke invitation links?',
-                        'New people cannot join with existing links. People already in the night stay joined.',
-                        'Revoke links',
-                        true,
-                      )
-                    )
-                      await mutate('revoke');
-                  })()
-                }
-              />
-            </>
-          )}
+                        await change('revoke');
+                    })()
+                  }
+                />
+              ) : null}
+            </Disclosure>
+          ) : null}
         </>
       )}
-      {message ? <Notice error={failed} message={message} /> : null}
     </Screen>
   );
 }

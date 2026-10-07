@@ -9,6 +9,7 @@ import BottlesScreen from '../../app/night/[nightId]/bottles';
 const runtime = vi.hoisted(() => ({
   snapshot: null as NightSnapshot | null,
   memberId: undefined as string | undefined,
+  bottleId: undefined as string | undefined,
   replace: vi.fn(),
   push: vi.fn(),
   refresh: vi.fn(),
@@ -17,7 +18,11 @@ const runtime = vi.hoisted(() => ({
 }));
 vi.mock('expo-router', () => ({
   Stack: { Screen: () => null },
-  useLocalSearchParams: () => ({ nightId: 'night', memberId: runtime.memberId }),
+  useLocalSearchParams: () => ({
+    nightId: 'night',
+    memberId: runtime.memberId,
+    bottleId: runtime.bottleId,
+  }),
   useRouter: () => ({ replace: runtime.replace, push: runtime.push }),
 }));
 vi.mock('react-native', () => ({
@@ -133,6 +138,7 @@ beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   runtime.snapshot = fixture();
   runtime.memberId = undefined;
+  runtime.bottleId = undefined;
   runtime.refresh.mockResolvedValue(undefined);
   runtime.plan.mockResolvedValue(runtime.snapshot);
 });
@@ -149,7 +155,7 @@ describe('shared bottle navigation', () => {
       await mount();
       await press('Join bottle');
       expect(runtime.replace).not.toHaveBeenCalled();
-      await press(/^Join (bottle|and start tracking)$/);
+      await press(/^Join (bottle|& use as main)$/);
       expect(runtime.plan).toHaveBeenCalledOnce();
       expect(runtime.refresh).toHaveBeenCalledOnce();
       expect(runtime.replace).toHaveBeenCalledExactlyOnceWith({
@@ -159,11 +165,38 @@ describe('shared bottle navigation', () => {
       expect(runtime.log).not.toHaveBeenCalled();
     },
   );
+  it('opens a bottle offer directly and switches only the chosen member after consent', async () => {
+    runtime.bottleId = 'bottle';
+    const member = runtime.snapshot?.members[0];
+    if (!member) throw new Error('Missing fixture');
+    member.planItems = [
+      { id: 'beer', label: 'Beer', isQuickLog: true, archivedAt: null },
+    ] as typeof member.planItems;
+    await mount();
+    expect(runtime.plan).not.toHaveBeenCalled();
+    const toggle = native('SettingsRow').find(
+      (node) => node.props['label'] === 'Use as my main drink',
+    );
+    expect(toggle?.props['value']).toBe(false);
+    await act(() => (toggle?.props['onChange'] as (value: boolean) => void)(true));
+    await press('Join & use as main');
+    expect(runtime.plan).toHaveBeenCalledExactlyOnceWith(
+      expect.anything(),
+      'bottle',
+      'member',
+      2,
+      30,
+      0,
+      expect.any(String),
+      true,
+    );
+    expect(runtime.log).not.toHaveBeenCalled();
+  });
   it('keeps the join form open when the save fails', async () => {
     runtime.plan.mockRejectedValue(new Error('Disconnected'));
     await mount();
     await press('Join bottle');
-    await press(/^Join (bottle|and start tracking)$/);
+    await press(/^Join (bottle|& use as main)$/);
     expect(runtime.replace).not.toHaveBeenCalled();
     expect(native('Notice').some((node) => node.props['error'] === true)).toBe(true);
   });
@@ -183,7 +216,7 @@ describe('shared bottle navigation', () => {
     ] as typeof member.planItems;
     bottle.joinedMemberIds = ['member'];
     await mount();
-    await press('Adjust drinks');
+    await press('Adjust my plan');
     await press('Save changes');
     expect(runtime.plan).toHaveBeenCalledOnce();
     expect(runtime.replace).not.toHaveBeenCalled();

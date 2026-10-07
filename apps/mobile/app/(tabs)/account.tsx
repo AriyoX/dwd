@@ -4,7 +4,8 @@ import type { Database } from '@dwd/core';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Brand } from '@/components/brand';
+import { Disclosure } from '@/components/disclosure';
+import { SettingsSection } from '@/components/settings-section';
 import { PrimaryButton } from '@/components/primary-button';
 import { Panel, Screen, ScreenHeading } from '@/components/screen';
 import { authHandoff } from '@/lib/auth-state';
@@ -50,7 +51,7 @@ export default function AccountScreen() {
       if (error) setMessage('Could not sign out. Try again.');
       else authHandoff().clear();
     } catch {
-      setMessage('Could not sign out. Check your connection and try again.');
+      setMessage("Couldn't sign out. Try again when you're online.");
     } finally {
       setBusy(false);
     }
@@ -58,25 +59,24 @@ export default function AccountScreen() {
 
   return (
     <Screen>
-      <Brand />
       <ScreenHeading
         title={
           session
-            ? 'Your account'
+            ? 'Settings'
             : status === 'signed-out' || status === 'error'
               ? 'Welcome back'
-              : 'Your account'
+              : 'Settings'
         }
       />
 
       {status === 'unconfigured' ? (
         <Panel>
-          <Text style={styles.body}>Account connection unavailable.</Text>
+          <Text style={styles.body}>DWD is unavailable. Try again.</Text>
         </Panel>
       ) : status === 'loading' ? (
         <Panel style={styles.loadingPanel}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.body}>Restoring session</Text>
+          <Text style={styles.body}>Signing in…</Text>
         </Panel>
       ) : session ? (
         <Panel>
@@ -103,15 +103,13 @@ export default function AccountScreen() {
               <Text accessibilityRole="alert" style={styles.error}>
                 Could not load your account.
               </Text>
-              <PrimaryButton label="Retry" variant="secondary" onPress={refreshProfile} />
+              <PrimaryButton label="Try again" variant="secondary" onPress={refreshProfile} />
             </>
           ) : null}
-          <PrimaryButton
-            busy={busy}
-            busyLabel="Signing out"
-            label="Sign out"
-            variant="quiet"
-            onPress={() => void signOut()}
+          <NavigationRow
+            label="Edit profile"
+            icon="person-outline"
+            onPress={() => router.push('/profile')}
           />
         </Panel>
       ) : (
@@ -129,29 +127,24 @@ export default function AccountScreen() {
           />
         </Panel>
       )}
-      <CampaignCountrySettings />
-      <Panel>
-        {session ? (
-          <NavigationRow
-            label="Practice tour"
-            icon="compass-outline"
-            onPress={() => router.push('/tour?replay=1')}
-          />
-        ) : null}
-        {session ? (
+      {session ? (
+        <SettingsSection title="Your nights">
           <NavigationRow
             label="Notifications"
             icon="notifications-outline"
             onPress={() => router.push('/notifications')}
           />
-        ) : null}
-        {session ? (
           <NavigationRow
-            label="Edit profile"
-            icon="person-outline"
-            onPress={() => router.push('/profile')}
+            label="Night reminders"
+            icon="time-outline"
+            onPress={() => router.push('/reminders')}
           />
-        ) : null}
+        </SettingsSection>
+      ) : null}
+      <SettingsSection title="Appearance">
+        <AppearancePicker />
+      </SettingsSection>
+      <SettingsSection title="Help & privacy">
         {session ? (
           <NavigationRow
             label="Support & feedback"
@@ -159,41 +152,54 @@ export default function AccountScreen() {
             onPress={() => router.push('/support')}
           />
         ) : null}
-        <Text accessibilityRole="header" style={styles.panelTitle}>
-          Appearance
-        </Text>
-        <AppearancePicker />
-      </Panel>
-      <Panel>
-        <PrimaryButton
-          label="Terms"
-          variant="quiet"
-          onPress={() => router.push('/legal?document=terms')}
-        />
-        <PrimaryButton
+        {session ? (
+          <NavigationRow
+            label="Explore DWD"
+            icon="compass-outline"
+            onPress={() => router.push('/tour?replay=1')}
+          />
+        ) : null}
+        <Disclosure title="Local help numbers">
+          <CampaignCountrySettings />
+        </Disclosure>
+        <NavigationRow
           label="Privacy"
-          variant="quiet"
+          icon="shield-checkmark-outline"
           onPress={() => router.push('/legal?document=privacy')}
         />
-        {session ? (
+        <NavigationRow
+          label="Terms"
+          icon="document-text-outline"
+          onPress={() => router.push('/legal?document=terms')}
+        />
+        {session ? <BlockedUsers key={session.user.id} /> : null}
+      </SettingsSection>
+      {session ? (
+        <Disclosure title="Account options">
+          <PrimaryButton
+            busy={busy}
+            busyLabel="Signing out"
+            label="Sign out"
+            variant="quiet"
+            onPress={() => void signOut()}
+          />
           <NavigationRow
             label="Delete account"
             icon="trash-outline"
             onPress={() => router.push('/delete-account')}
           />
-        ) : null}
-      </Panel>
-      {session ? <BlockedUsers key={session.user.id} /> : null}
+        </Disclosure>
+      ) : null}
     </Screen>
   );
 }
 
 const createStyles = (colors: ThemeColors, typography: ReturnType<typeof makeTypography>) =>
   StyleSheet.create({
-    panelTitle: typography.sectionTitle,
+    panelTitle: { ...typography.sectionTitle, fontSize: 20 },
     avatar: {
-      width: 62,
-      height: 62,
+      width: 48,
+      height: 48,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 20,

@@ -16,13 +16,10 @@ import {
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
-import { PendingLogs } from '@/components/pending-logs';
-import { TourEntry } from '@/components/tour-entry';
-import { CampaignCountrySettings } from '@/components/campaign-country-settings';
 
 export default function TonightScreen() {
   const router = useRouter();
-  const { status, session } = useSupabase();
+  const { status } = useSupabase();
   const { colors, typography } = useTheme();
   const {
     data: nights,
@@ -57,9 +54,6 @@ export default function TonightScreen() {
         </Text>
       </View>
       <ScreenHeading title="Tonight" />
-      <CampaignCountrySettings />
-      <PendingLogs key={session?.user.id} />
-      {session ? <TourEntry key={session.user.id} owner={session.user.id} /> : null}
       {status === 'signed-in' ? (
         <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>
@@ -85,7 +79,7 @@ export default function TonightScreen() {
             nights?.map((night) => (
               <Action
                 key={night.id}
-                label={`Open ${night.title}`}
+                label={`Open ${night.title} to log a drink`}
                 onPress={() => router.push(`/night/${night.id}`)}
                 style={{
                   padding: 20,
@@ -131,6 +125,9 @@ export default function TonightScreen() {
                       minute: '2-digit',
                     })}
                   </Text>
+                  <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>
+                    Open night
+                  </Text>
                 </View>
                 <Ionicons
                   name="chevron-forward"
@@ -145,28 +142,37 @@ export default function TonightScreen() {
       ) : null}
       {status === 'signed-in' ? (
         <View style={{ gap: 14 }}>
-          <Panel
-            style={{ backgroundColor: colors.surface, padding: 24, gap: 8, overflow: 'hidden' }}
-          >
-            <Text
-              accessibilityRole="header"
-              style={{
-                color: colors.text,
-                fontSize: 28,
-                lineHeight: 33,
-                letterSpacing: -0.8,
-                fontWeight: '600',
-              }}
-            >
-              A night of your own.
-            </Text>
-            <NightArtwork compact={Boolean(nights?.length)} />
+          {nights?.length ? (
             <PrimaryButton
-              label="Start a night"
+              label="Start another night"
               icon="add"
+              variant="secondary"
               onPress={() => router.push('/night/new')}
             />
-          </Panel>
+          ) : (
+            <Panel
+              style={{ backgroundColor: colors.surface, padding: 24, gap: 8, overflow: 'hidden' }}
+            >
+              <Text
+                accessibilityRole="header"
+                style={{
+                  color: colors.text,
+                  fontSize: 28,
+                  lineHeight: 33,
+                  letterSpacing: -0.8,
+                  fontWeight: '600',
+                }}
+              >
+                Ready for tonight?
+              </Text>
+              <NightArtwork compact={Boolean(nights?.length)} />
+              <PrimaryButton
+                label="Start a night"
+                icon="add"
+                onPress={() => router.push('/night/new')}
+              />
+            </Panel>
+          )}
           <Action
             label="Join with an invite"
             onPress={() => router.push('/join')}
@@ -181,7 +187,7 @@ export default function TonightScreen() {
           >
             <Ionicons name="people-outline" size={24} color={colors.primary} accessible={false} />
             <Text style={{ flex: 1, color: colors.primary, fontSize: 17, fontWeight: '600' }}>
-              Join your mates
+              Join with an invite
             </Text>
             <Ionicons name="arrow-forward" size={20} color={colors.primary} accessible={false} />
           </Action>
@@ -194,7 +200,7 @@ export default function TonightScreen() {
           <Notice
             message={
               status === 'unconfigured'
-                ? 'Account connection unavailable.'
+                ? 'DWD is unavailable. Try again.'
                 : 'Sign in to start or join a night.'
             }
           />

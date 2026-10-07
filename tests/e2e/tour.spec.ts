@@ -1,12 +1,68 @@
 import { test, expect, type Page, type Request } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+function blockedPeopleReadActions(): Set<string> {
+  // Account mounts read the block list through a Server Action (HTTP POST).
+  // Resolve that specific read from this build; never exempt arbitrary actions.
+  const folder = process.env['E2E_PRODUCTION'] === '1' ? '' : 'dev/';
+  const manifest: unknown = JSON.parse(
+    readFileSync(`apps/web/.next-e2e/${folder}server/server-reference-manifest.json`, 'utf8'),
+  );
+  if (!manifest || typeof manifest !== 'object' || !('node' in manifest)) return new Set();
+  const entries = manifest.node;
+  if (!entries || typeof entries !== 'object') return new Set();
+  return new Set(
+    Object.entries(entries)
+      .filter(
+        ([, entry]: [string, unknown]) =>
+          entry !== null &&
+          typeof entry === 'object' &&
+          'exportedName' in entry &&
+          entry.exportedName === 'getBlockedUsersAction' &&
+          'filename' in entry &&
+          entry.filename === 'apps/web/src/features/support/moderation-actions.ts',
+      )
+      .map(([id]) => id),
+  );
+}
+
+function isDefaultCountryPreference(request: Request): boolean {
+  if (!request.headers()['next-action']) return false;
+  try {
+    const payload: unknown = JSON.parse(request.postData() ?? '');
+    if (!Array.isArray(payload) || payload.length !== 1) return false;
+    const value: unknown = payload[0];
+    return (
+      value !== null &&
+      typeof value === 'object' &&
+      Object.keys(value).length === 3 &&
+      'countryCode' in value &&
+      typeof value.countryCode === 'string' &&
+      'calendarRegion' in value &&
+      typeof value.calendarRegion === 'string' &&
+      'source' in value &&
+      value.source === 'default'
+    );
+  } catch {
+    return false;
+  }
+}
 
 async function signup(page: Page, email: string) {
   await page.goto('/signup');
   await page.getByLabel('Display name', { exact: true }).fill('Tour Test');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('New password', { exact: true }).fill('local-test-password-123');
-  await page.getByLabel('I am 18 or older.').check();
+  await page.getByRole('checkbox', { name: /I am 18 or older/ }).check();
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
+}
+
+async function tabThroughControls(page: Page, project: string, reverse = false) {
+  // WebKit follows Safari's keyboard preference: Option-Tab includes links and
+  // buttons. Dialog/tour focus traps still receive the standard Tab key.
+  await page.keyboard.press(
+    `${reverse ? 'Shift+' : ''}${project === 'webkit-mobile' ? 'Alt+' : ''}Tab`,
+  );
 }
 
 async function coach(page: Page, id: string) {
@@ -51,16 +107,18 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   await expect(page).toHaveURL(/\/home\?tour=start$/);
   await expect(page.getByRole('complementary', { name: 'Install dwd' })).toHaveCount(0);
   await expect(card.getByRole('button', { name: 'Close tour' })).toBeFocused();
-  await page.keyboard.press('Shift+Tab');
+  await tabThroughControls(page, info.project.name, true);
   await expect(page.locator('[data-tour="start"]')).toBeFocused();
-  await page.keyboard.press('Tab');
+  await tabThroughControls(page, info.project.name);
   await expect(card.getByRole('button', { name: 'Close tour' })).toBeFocused();
   await page.screenshot({ path: `.tmp/tour-${info.project.name}-home.png` });
   const localStepRequests: string[] = [];
+  let observeLocalSteps = true;
   page.on('request', (request) => {
     const url = new URL(request.url());
     const headers = request.headers();
     if (
+      observeLocalSteps &&
       headers['rsc'] === '1' &&
       !headers['next-router-prefetch'] &&
       ['join', 'choices', 'bottles', 'group', 'help'].includes(url.searchParams.get('tour') ?? '')
@@ -82,6 +140,9 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   page.on('request', (request) => {
     if (
       request.method() === 'POST' &&
+      // Country preferences can save again after the explicit reload; they do
+      // not create or change the isolated tour's nights, entries or photos.
+      !isDefaultCountryPreference(request) &&
       (new URL(request.url()).pathname.startsWith('/night/') || request.url().includes('/rest/v1/'))
     )
       writes.push(request.url());
@@ -96,7 +157,11 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   await expect(page.locator('[data-tour="plan"]')).toContainText('2 chasers');
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.locator('[data-tour="plan"]')).toContainText('1 chaser');
-  await page.getByRole('button', { name: 'Choose another drink' }).click();
+  const chooseDrink = page.getByRole('button', { name: 'Choose another drink' });
+  // Safari does not focus buttons on a pointer click. Set the keyboard return
+  // point explicitly before exercising the dialog's Escape/Enter interaction.
+  if (info.project.name === 'webkit-mobile') await chooseDrink.press('Enter');
+  else await chooseDrink.click();
   const chooser = page.getByRole('dialog', { name: 'Log for You' });
   await expect(chooser).toBeVisible();
   await expect(page.locator('[data-tour-coach]')).toBeHidden();
@@ -109,21 +174,27 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   }
   await expect(chooser.getByRole('button', { name: 'Close dialog' })).toBeFocused();
   await page.keyboard.press('Escape');
+  card = await coach(page, 'choices');
   await expect(page.getByRole('button', { name: 'Choose another drink' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(chooser).toBeVisible();
   await expect(chooser).toHaveCSS('animation-name', 'none');
-  await page.keyboard.press('Shift+Tab');
+  await tabThroughControls(page, info.project.name, true);
   await expect(chooser.getByRole('button', { name: /Beer.*330/ })).toBeFocused();
-  await page.keyboard.press('Tab');
+  await tabThroughControls(page, info.project.name);
   await expect(chooser.getByRole('button', { name: 'Close dialog' })).toBeFocused();
   await chooser.getByRole('button', { name: /Beer.*330/ }).click();
   await chooser.getByRole('button', { name: 'Log Beer', exact: true }).click();
   card = await coach(page, 'choices');
   await expect(page.locator('[data-testid="drink-count"]')).toHaveText('3');
+  expect(localStepRequests, 'Local steps before reload need no server render').toEqual([]);
+  // An explicit reload may fetch the current route to restore the tour. Count
+  // step changes separately from this deliberate document/route refresh.
+  observeLocalSteps = false;
   await page.reload();
   card = await coach(page, 'choices');
   await expect(page.locator('[data-testid="drink-count"]')).toHaveText('1');
+  observeLocalSteps = true;
   await card.getByRole('button', { name: 'Next', exact: true }).click();
   card = await coach(page, 'bottles');
   await page.locator('[data-tour="shared-bottles"]').click();
@@ -196,9 +267,15 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   await expect(page.getByText('Friday with friends')).toHaveCount(0);
 
   await page.goto('/account');
+  const accountReads = blockedPeopleReadActions();
   const replayWrites: string[] = [];
   const listener = (request: Request) => {
-    if (request.method() === 'POST') replayWrites.push(request.url());
+    if (
+      request.method() === 'POST' &&
+      !isDefaultCountryPreference(request) &&
+      !accountReads.has(request.headers()['next-action'] ?? '')
+    )
+      replayWrites.push(request.url());
   };
   page.on('request', listener);
   await page.getByRole('button', { name: 'Take a tour' }).click();
@@ -236,7 +313,10 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   await card.getByRole('button', { name: 'Skip tour' }).click();
   await expect(page).toHaveURL(/\/home$/);
   await expect(page.getByRole('complementary', { name: 'Install dwd' })).toBeVisible();
-  await page.getByRole('button', { name: 'Not now' }).click();
+  await page
+    .getByRole('complementary', { name: 'Install dwd', exact: true })
+    .getByRole('button', { name: 'Not now', exact: true })
+    .click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Your evening, Tour.' })).toBeVisible();
   await expect(page.locator('[data-tour-coach], .install-hint')).toHaveCount(0);
@@ -245,7 +325,7 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   await page.keyboard.press('Enter');
   await expect(page.locator('.account-popover')).toBeVisible();
   await expect(page.locator('.account-popover')).toHaveCSS('transition-duration', '0s');
-  await page.keyboard.press('Tab');
+  await tabThroughControls(page, info.project.name);
   await expect(
     page
       .getByRole('navigation', { name: 'Your account' })
@@ -255,7 +335,7 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   await expect(accountMenu).toBeFocused();
   await expect(page.locator('.account-popover')).toBeHidden();
   await page.keyboard.press('Enter');
-  await page.keyboard.press('Shift+Tab');
+  await tabThroughControls(page, info.project.name, true);
   await expect(page.locator('.account-popover')).toBeHidden();
   await page.getByRole('button', { name: 'Use dark mode' }).click();
   await page.getByLabel('Account menu').click();

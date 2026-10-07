@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@dwd/core';
 import { useSupabase } from '@/providers/supabase-provider';
+import { useConnectivity } from '@/providers/connectivity-provider';
 import { withRequestTimeout } from '@/lib/request-timeout';
 import { actorClient } from '@/lib/actor-client';
 import {
@@ -21,6 +22,7 @@ export function useAccountQuery<T>(
   allowIncompleteAccount = false,
 ) {
   const { client, session, status } = useSupabase();
+  const { online } = useConnectivity();
   const [data, setData] = useState<{ owner: string; scope: string; value: T } | null>(null);
   const [loading, setLoading] = useState(false);
   const [issue, setIssue] = useState<string | null>(null);
@@ -40,6 +42,7 @@ export function useAccountQuery<T>(
     const request = ++version.current;
     setLoading(true);
     try {
+      if (online === false) throw new Error('offline');
       const value = await withRequestTimeout((signal) =>
         load(actorClient(client, accessToken, signal)),
       );
@@ -59,19 +62,23 @@ export function useAccountQuery<T>(
         if (saved !== null) {
           setData({ owner, scope, value: saved });
           setCached(true);
-          setIssue('Showing saved activity. New entries will sync when connected.');
+          setIssue("You're offline. Showing saved entries.");
         } else {
           if (cache && !connectionFailure) {
             clearOfflineCache(globalThis.localStorage, owner, scope);
             setData(null);
           }
-          setIssue('Could not refresh. Check your connection and retry.');
+          setIssue(
+            connectionFailure
+              ? 'Connect to the internet to continue.'
+              : "Couldn't load this. Try again.",
+          );
         }
       }
     } finally {
       if (focused.current && request === version.current) setLoading(false);
     }
-  }, [client, owner, accessToken, status, load, scope, cache, allowIncompleteAccount]);
+  }, [client, owner, accessToken, status, load, scope, cache, allowIncompleteAccount, online]);
   useFocusEffect(
     useCallback(() => {
       focused.current = true;

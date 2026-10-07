@@ -74,7 +74,7 @@ function Support({ owner }: { owner: string }) {
       globalThis.localStorage.setItem(supportDraftKey(owner), JSON.stringify(draft));
     } catch {
       queueMicrotask(() =>
-        setIssue('Could not save this message on the device. Keep this screen open.'),
+        setIssue("Couldn't save your message. Keep this screen open and try again."),
       );
     }
   }, [ready, draft, owner, storageBlocked]);
@@ -111,8 +111,8 @@ function Support({ owner }: { owner: string }) {
       if (mounted.current)
         setIssue(
           error instanceof DataAccessError && error.code === '54000'
-            ? 'You have reached today’s request limit. Retry tomorrow.'
-            : 'Could not confirm delivery. Retry to send the same message.',
+            ? 'You’ve sent several messages today. Try again tomorrow.'
+            : "Couldn't send your message. Try again when you're online.",
         );
     } finally {
       inFlight.current = false;
@@ -153,9 +153,7 @@ function Support({ owner }: { owner: string }) {
         editable={!locked}
         onChangeText={(message) => setDraft({ ...draft, message })}
       />
-      {draft.attempt ? (
-        <Notice message="This message is waiting for confirmation. Retry to avoid sending it twice." />
-      ) : null}
+      {draft.attempt ? <Notice message="Your message hasn’t finished sending. Try again." /> : null}
       {issue ? <Notice error message={issue} /> : null}
       {storageBlocked ? (
         <PrimaryButton
@@ -167,14 +165,14 @@ function Support({ owner }: { owner: string }) {
               setStorageBlocked(false);
               setIssue(null);
             } catch {
-              setIssue('Device storage is unavailable. Retry discarding the draft.');
+              setIssue("Couldn't clear your message. Try again.");
             }
           }}
         />
       ) : null}
-      {notice ? <Notice message={notice} /> : null}
+      {notice ? <Notice dismissible message={notice} /> : null}
       <PrimaryButton
-        label={draft.attempt ? 'Retry message' : 'Send message'}
+        label={draft.attempt ? 'Try again' : 'Send message'}
         icon="send-outline"
         busy={busy}
         busyLabel="Sending"

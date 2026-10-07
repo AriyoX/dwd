@@ -16,22 +16,29 @@ import { OnboardingProvider } from '@/providers/onboarding-provider';
 import { OfflineProvider } from '@/providers/offline-provider';
 import { NotificationsProvider } from '@/providers/notifications-provider';
 import { LocationProvider } from '@/providers/location-provider';
+import { ConnectivityProvider } from '@/providers/connectivity-provider';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { TourNavigation } from '@/components/tour-navigation';
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <SupabaseProvider>
-        <OfflineProvider>
-          <OnboardingProvider>
-            <NotificationsProvider>
-              <LocationProvider>
-                <Navigation />
-              </LocationProvider>
-            </NotificationsProvider>
-          </OnboardingProvider>
-        </OfflineProvider>
-      </SupabaseProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <SupabaseProvider>
+          <ConnectivityProvider>
+            <OfflineProvider>
+              <OnboardingProvider>
+                <NotificationsProvider>
+                  <LocationProvider>
+                    <Navigation />
+                  </LocationProvider>
+                </NotificationsProvider>
+              </OnboardingProvider>
+            </OfflineProvider>
+          </ConnectivityProvider>
+        </SupabaseProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -73,6 +80,7 @@ function Navigation() {
     >
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <AuthNavigation />
+      <TourNavigation />
       <Stack
         screenOptions={{
           headerTintColor: colors.primary,
@@ -100,7 +108,7 @@ function Navigation() {
           <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
         </Stack.Protected>
         <Stack.Protected guard={access === 'ready'}>
-          <Stack.Screen name="tour" options={{ title: 'Practice tour' }} />
+          <Stack.Screen name="tour" options={{ title: 'Explore DWD' }} />
           <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
           <Stack.Screen name="profile" options={{ ...sheet, title: 'Edit profile' }} />
           <Stack.Screen name="support" options={{ title: 'Support & feedback' }} />
@@ -110,7 +118,7 @@ function Navigation() {
           <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
           <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
           <Stack.Screen name="night/[nightId]/report" options={{ title: 'Report or block' }} />
-          <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log a drink' }} />
+          <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log drink' }} />
           <Stack.Screen
             name="night/[nightId]/catch-up"
             options={{ ...sheet, title: 'Add missed entries' }}
@@ -121,7 +129,7 @@ function Navigation() {
           />
           <Stack.Screen
             name="night/[nightId]/invite"
-            options={{ ...sheet, title: 'Invite people' }}
+            options={{ ...sheet, title: 'Invite friends' }}
           />
           <Stack.Screen name="night/[nightId]/plan" options={{ ...sheet, title: 'Your plan' }} />
           <Stack.Screen name="night/[nightId]/guest" options={{ ...sheet, title: 'Add person' }} />

@@ -29,11 +29,12 @@ export default function NotificationsScreen() {
     if (push.version) void refresh();
   }, [push.version, refresh]);
   const labels = {
-    ready: 'On for this device',
-    off: 'Off for this device',
-    denied: 'Permission needed',
-    unavailable: 'Not connected',
-    connecting: 'Connecting',
+    ready: 'On',
+    off: 'Off',
+    denied: 'Not allowed',
+    unavailable: 'Unavailable',
+    connecting: 'Turning on…',
+    pending: push.enabled ? 'Waiting to turn on' : 'Waiting to turn off',
   };
   return (
     <Screen
@@ -57,13 +58,13 @@ export default function NotificationsScreen() {
             />
           </View>
           <View style={{ flex: 1, gap: 5 }}>
-            <Text style={typography.sectionTitle}>Device notifications</Text>
+            <Text style={typography.sectionTitle}>Notifications</Text>
             <Text style={typography.body}>{labels[push.state]}</Text>
           </View>
         </View>
         {push.state === 'ready' ? (
           <PrimaryButton
-            label="Turn off on this device"
+            label="Turn off notifications"
             variant="quiet"
             busy={push.busy}
             busyLabel="Turning off"
@@ -71,9 +72,16 @@ export default function NotificationsScreen() {
           />
         ) : push.state === 'denied' ? (
           <>
-            <Notice message="Allow notifications for DWD in Settings, then return here." />
+            <Notice message="Allow notifications for DWD in your phone settings." />
+            {push.canAskAgain ? (
+              <PrimaryButton
+                label="Try again"
+                busy={push.busy}
+                onPress={() => void push.enable()}
+              />
+            ) : null}
             <PrimaryButton
-              label="Open Settings"
+              label="Open phone settings"
               variant="secondary"
               onPress={() => {
                 setSettingsIssue(null);
@@ -83,7 +91,7 @@ export default function NotificationsScreen() {
               }}
             />
             <PrimaryButton
-              label="Turn off on this device"
+              label="Turn off notifications"
               variant="quiet"
               busy={push.busy}
               busyLabel="Turning off"
@@ -92,19 +100,21 @@ export default function NotificationsScreen() {
           </>
         ) : (
           <>
-            <Notice message="Enable night reminders, check-ins and weekend/holiday planning pushes when DWD is closed. You can turn planning pushes off in Reminders. Personal details stay in your inbox." />
+            <Notice message="Get reminders and check-ins when DWD is closed." />
             <PrimaryButton
               label={
-                push.state === 'unavailable' ? 'Retry device connection' : 'Enable notifications'
+                push.state === 'unavailable' || push.state === 'pending'
+                  ? 'Try again'
+                  : 'Turn on notifications'
               }
               icon="notifications-outline"
               busy={push.busy}
-              busyLabel="Connecting"
-              onPress={() => void push.enable()}
+              busyLabel={push.state === 'pending' && !push.enabled ? 'Turning off' : 'Turning on'}
+              onPress={() => void (push.state === 'pending' ? push.retry() : push.enable())}
             />
-            {push.state === 'unavailable' ? (
+            {push.state === 'unavailable' || push.state === 'pending' ? (
               <PrimaryButton
-                label="Turn off on this device"
+                label="Turn off notifications"
                 variant="quiet"
                 disabled={push.busy}
                 onPress={() => void push.disable()}
@@ -115,7 +125,7 @@ export default function NotificationsScreen() {
         {push.issue ? <Notice error message={push.issue} /> : null}
         {settingsIssue ? <Notice error message={settingsIssue} /> : null}
         <NavigationRow
-          label="Reminder preferences"
+          label="Night reminders"
           icon="options-outline"
           onPress={() => router.push('/reminders')}
         />

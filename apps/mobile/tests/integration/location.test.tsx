@@ -79,7 +79,7 @@ async function foreground(state: string) {
   runtime.state = state;
   await act(() => runtime.foreground?.(state));
 }
-describe('automatic native location', () => {
+describe('opt-in native location', () => {
   it('keeps location off across foreground refreshes and remounts', async () => {
     runtime.permission.mockResolvedValue(granted);
     await mount();
@@ -96,6 +96,7 @@ describe('automatic native location', () => {
     expect(value.enabled).toBe(true);
   });
   it('ignores an in-flight fix after turning location off', async () => {
+    localStorage.setItem('dwd.location.enabled', 'true');
     let resolve: (position: typeof kenya) => void = () => {};
     runtime.permission.mockResolvedValue(granted);
     runtime.position.mockReturnValue(
@@ -115,9 +116,12 @@ describe('automatic native location', () => {
     expect(value.location.countryCode).toBe('UG');
     expect(runtime.request).not.toHaveBeenCalled();
     expect(runtime.position).not.toHaveBeenCalled();
+    expect(runtime.permission).not.toHaveBeenCalled();
+    expect(value.enabled).toBe(false);
     expect(runtime.save).toHaveBeenLastCalledWith({ owner: 'signed-in' }, 'UG', 'national');
   });
-  it('uses existing permission automatically and requests only a low-accuracy fix', async () => {
+  it('uses existing permission only after a saved opt-in and requests a low-accuracy fix', async () => {
+    localStorage.setItem('dwd.location.enabled', 'true');
     runtime.permission.mockResolvedValue(granted);
     await mount();
     expect(value.location.countryCode).toBe('KE');
@@ -135,6 +139,7 @@ describe('automatic native location', () => {
     expect(value.location.countryCode).toBe('KE');
   });
   it('refreshes on return and falls back after permission is revoked', async () => {
+    localStorage.setItem('dwd.location.enabled', 'true');
     runtime.permission.mockResolvedValue(granted);
     await mount();
     await foreground('background');
@@ -144,6 +149,7 @@ describe('automatic native location', () => {
     expect(runtime.request).not.toHaveBeenCalled();
   });
   it('ignores a stale location result after leaving the foreground', async () => {
+    localStorage.setItem('dwd.location.enabled', 'true');
     let resolve: (position: typeof kenya) => void = () => {};
     runtime.permission.mockResolvedValue(granted);
     runtime.position.mockReturnValue(
@@ -158,6 +164,7 @@ describe('automatic native location', () => {
     expect(runtime.save).not.toHaveBeenCalled();
   });
   it('keeps Uganda when location is unavailable or outside supported countries', async () => {
+    localStorage.setItem('dwd.location.enabled', 'true');
     runtime.permission.mockResolvedValue(granted);
     runtime.position.mockRejectedValue(new Error('Unavailable'));
     await mount();

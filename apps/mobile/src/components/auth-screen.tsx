@@ -254,7 +254,7 @@ function AuthForm({
         }
       />
       {status === 'unconfigured' ? (
-        <Notice error message="Account connection unavailable." />
+        <Notice error message="DWD is unavailable. Try again." />
       ) : status === 'loading' || profilePending ? (
         <LoadingPanel />
       ) : mode === 'reset' && passwordSaved ? (
@@ -286,7 +286,7 @@ function AuthForm({
       ) : session && profileStatus === 'error' && mode !== 'reset' ? (
         <Panel>
           <Notice error message="Could not load your account." />
-          <PrimaryButton label="Retry" variant="secondary" onPress={refreshProfile} />
+          <PrimaryButton label="Try again" variant="secondary" onPress={refreshProfile} />
           <PrimaryButton
             label="Sign out"
             variant="quiet"
@@ -295,7 +295,7 @@ function AuthForm({
               void run(async () => {
                 if (!client) return;
                 const result = await client.auth.signOut();
-                if (result.error) throw new AuthFlowError('Could not sign out. Retry.');
+                if (result.error) throw new AuthFlowError("Couldn't sign out. Try again.");
                 handoff.clear();
               })
             }
@@ -492,7 +492,7 @@ function AuthForm({
                 void run(async () => {
                   if (client) {
                     const result = await client.auth.signOut();
-                    if (result.error) throw new AuthFlowError('Could not sign out. Retry.');
+                    if (result.error) throw new AuthFlowError("Couldn't sign out. Try again.");
                     handoff.clear();
                     switchMode('login');
                   }

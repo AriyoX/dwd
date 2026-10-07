@@ -1,4 +1,4 @@
-import { useLayoutEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { Text, View, type ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ import {
   practiceTotals,
   readTourProgress,
   saveTourProgress,
+  rememberTourSeen,
   TOUR_STEPS,
 } from '@/lib/practice-tour';
 
@@ -42,6 +43,13 @@ function Practice({ owner, replay }: { owner: string; replay: boolean }) {
   const [glass, setGlass] = useState<30 | 45>(30);
   const [issue, setIssue] = useState<string | null>(null);
   const totals = practiceTotals(state);
+  useEffect(() => {
+    try {
+      rememberTourSeen(globalThis.localStorage, owner);
+    } catch {
+      /* The tour still works. */
+    }
+  }, [owner]);
   useLayoutEffect(() => {
     scroll.current?.scrollTo({ y: 0, animated: false });
   }, [step]);
@@ -137,7 +145,7 @@ function Practice({ owner, replay }: { owner: string; replay: boolean }) {
           >
             {totals.remainingMl} ml left
           </Text>
-          <Notice message="Each person's glass comes off the same bottle. Real bottle pours need a connection to check what remains." />
+          <Notice message="Each glass comes from the same bottle. Connect to the internet to log shared drinks." />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {([30, 45] as const).map((amount) => (
               <View key={amount} style={{ flex: 1 }}>
@@ -206,7 +214,7 @@ function Practice({ owner, replay }: { owner: string; replay: boolean }) {
           <Text style={typography.body}>Started · 9:00 pm</Text>
           <Text style={typography.body}>Planned finish · 11:00 pm</Text>
           <Text style={typography.body}>Wrapped up · 10:45 pm</Text>
-          <Notice message="Finished nights appear in History. Open a recap for drink details, times and photos." />
+          <Notice message="Finished nights appear in Entries. Open a recap for drink details, times and photos." />
         </Panel>
       ) : step === 7 ? (
         <Panel>
@@ -232,7 +240,7 @@ function Practice({ owner, replay }: { owner: string; replay: boolean }) {
             value={state.reminders}
             onChange={() => dispatch({ type: 'reminders' })}
           />
-          <Notice message="To receive real reminders, open Account → Notifications and enable them for this device. Permission is only requested there." />
+          <Notice message="Turn on reminders in Settings → Notifications." />
         </Panel>
       )}
       {state.warning ? (

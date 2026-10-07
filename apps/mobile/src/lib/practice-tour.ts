@@ -21,6 +21,26 @@ const progressSchema = z.object({
 });
 export type TourProgress = z.infer<typeof progressSchema>;
 export const tourKey = (owner: string) => `dwd.mobile.tour.v1:${owner}`;
+export const tourSeenKey = (owner: string) => `dwd-tour-seen:${owner}`;
+
+export function shouldStartTour(
+  storage: Pick<Storage, 'getItem'>,
+  owner: string,
+  accountSeen: boolean,
+) {
+  if (accountSeen) return false;
+  try {
+    if (storage.getItem(tourSeenKey(owner)) === 'true') return false;
+  } catch {
+    /* The account preference and session guard still apply. */
+  }
+  const progress = readTourProgress(storage, owner);
+  return !progress || progress.status === 'active';
+}
+
+export function rememberTourSeen(storage: Pick<Storage, 'setItem'>, owner: string) {
+  storage.setItem(tourSeenKey(owner), 'true');
+}
 export function readTourProgress(
   storage: Pick<Storage, 'getItem'>,
   owner: string,

@@ -6,6 +6,8 @@ import type { FinishedNight } from '@dwd/core';
 import { getFinishedNights } from '@dwd/data';
 import { Brand } from '@/components/brand';
 import { NightArtwork } from '@/components/night-artwork';
+import { NightActivity } from '@/components/night-activity';
+import { useOffline } from '@/providers/offline-provider';
 import { PrimaryButton } from '@/components/primary-button';
 import { Panel, RetryPanel, Screen, ScreenHeading } from '@/components/screen';
 import { useSupabase } from '@/providers/supabase-provider';
@@ -19,6 +21,7 @@ import type { Database } from '@dwd/core';
 export default function HistoryScreen() {
   const router = useRouter();
   const { status } = useSupabase();
+  const offline = useOffline();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const [page, setPage] = useState(0);
@@ -26,7 +29,7 @@ export default function HistoryScreen() {
     (client: SupabaseClient<Database>) => getFinishedNights(client, page),
     [page],
   );
-  const { data, loading, issue, refresh } = useAccountQuery(load, String(page));
+  const { data, loading, issue, refresh } = useAccountQuery(load, `finished-nights:${page}`, true);
   const nights = data?.nights ?? [];
   const hasMore = data?.hasMore ?? false;
 
@@ -43,11 +46,14 @@ export default function HistoryScreen() {
       }
     >
       <Brand />
-      <ScreenHeading title="Night history" />
+      <ScreenHeading title="Entries" />
+      {status === 'signed-in' && (offline.records.length || offline.issue) ? (
+        <NightActivity title="Saved entries" timezone="UTC" />
+      ) : null}
 
       {status === 'unconfigured' ? (
         <Panel>
-          <Text style={styles.body}>Account connection unavailable.</Text>
+          <Text style={styles.body}>DWD is unavailable. Try again.</Text>
         </Panel>
       ) : status === 'loading' || (!data && loading) ? (
         <Panel style={styles.loadingPanel}>
@@ -64,7 +70,7 @@ export default function HistoryScreen() {
           <Text accessibilityRole="alert" style={styles.body}>
             {issue}
           </Text>
-          <PrimaryButton label="Retry history" variant="secondary" onPress={() => void refresh()} />
+          <PrimaryButton label="Try again" variant="secondary" onPress={() => void refresh()} />
         </Panel>
       ) : nights.length === 0 ? (
         <Panel style={styles.emptyPanel}>

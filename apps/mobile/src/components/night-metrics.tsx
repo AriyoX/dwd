@@ -2,7 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 import { useTheme } from '@/providers/theme-provider';
 
-export function NightMetrics({ drinks, water }: { drinks: number; water: number }) {
+export function NightMetrics({
+  drinks,
+  water,
+  compact = false,
+}: {
+  drinks: number;
+  water: number;
+  compact?: boolean;
+}) {
   const { colors } = useTheme();
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
@@ -29,20 +37,22 @@ export function NightMetrics({ drinks, water }: { drinks: number; water: number 
           style={{
             flex: 1,
             minWidth: 110,
-            padding: 18,
+            padding: compact ? 12 : 18,
             borderRadius: 22,
             backgroundColor: metric.fill,
-            gap: 8,
+            gap: compact ? 4 : 8,
           }}
         >
-          <Ionicons name={metric.icon} size={22} color={metric.ink} accessible={false} />
+          {!compact ? (
+            <Ionicons name={metric.icon} size={22} color={metric.ink} accessible={false} />
+          ) : null}
           <Text
             style={{
               color: metric.ink,
-              fontSize: 44,
-              lineHeight: 52,
+              fontSize: compact ? 28 : 44,
+              lineHeight: compact ? 34 : 52,
               fontWeight: '600',
-              letterSpacing: -2,
+              letterSpacing: compact ? -0.5 : -2,
               fontVariant: ['tabular-nums'],
             }}
           >

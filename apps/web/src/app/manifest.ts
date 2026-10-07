@@ -3,8 +3,8 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: 'DWD — Drink with Desire',
-    short_name: 'DWD',
+    name: 'dwd',
+    short_name: 'dwd',
     description: 'Track your drinks and look out for your friends.',
     start_url: '/home',
     scope: '/',

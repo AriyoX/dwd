@@ -1,5 +1,10 @@
 # React Native mobile development
 
+The implementation notes below record the original native baseline. For current shipped
+features and remaining device checks, use [Mobile release readiness](mobile-release-readiness.md);
+for the signed iPhone build, use [Build and test dwd on iPhone](ios-testflight.md).
+The Live Activities/widgets and ads sections below are the future roadmap.
+
 The native client lives in `apps/mobile`, using Expo SDK 57, React Native, Expo Router, and the existing `@dwd/core`, `@dwd/contracts`, and `@dwd/data` packages. The web app remains the reference for product behavior. This mobile update does not change its UI or database.
 
 ## Implemented
@@ -54,6 +59,12 @@ Implementation sequence:
 7. For remote background updates, add APNs ActivityKit token registration/cleanup and a server-side sender. Remote push-to-start requires the appropriate OS support. This is separate from local updates; delivery is not guaranteed and the user may disable Live Activities.
 
 The activity/widget extension is planned, not installed or shipped in this update.
+
+## Planned: Ads
+
+Add advertising as a future monetization option alongside the Live Activities/widget roadmap. Start by evaluating clearly labeled placements on recaps or history, away from active-night logging. Ads must not block logging, help, invitations or offline recovery, and should reserve stable space so content does not jump as an ad loads.
+
+Before implementation, choose the provider and formats, review age/region eligibility and consent requirements, and update store privacy disclosures and the privacy policy for the actual data collected. Request tracking permission only if the chosen implementation requires it. Keep ad loading independent from the night and avoid targeting based on personal drink logs. No ad SDK, tracking permission or advertising UI is included in the current build.
 
 ## Remaining mobile work
 

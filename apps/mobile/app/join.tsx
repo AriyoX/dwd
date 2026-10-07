@@ -66,7 +66,7 @@ function JoinForm({ linkedToken }: { linkedToken: string | undefined }) {
       if (!result.valid) setIssue('This invite is unavailable or the night has ended.');
     } catch {
       if (mounted.current && version.current === request)
-        setIssue('Could not check this invite. Retry.');
+        setIssue("Couldn't open this invite. Try again when you're online.");
     } finally {
       inFlight.current = false;
       if (mounted.current) setBusy(false);
@@ -87,9 +87,7 @@ function JoinForm({ linkedToken }: { linkedToken: string | undefined }) {
       );
     } catch {
       if (!mounted.current || version.current !== request) return;
-      setIssue(
-        'Could not join. The invite may have expired. Retry or ask the host for a new link.',
-      );
+      setIssue("Couldn't join this night. Try again or ask the host for a new link.");
     } finally {
       inFlight.current = false;
       if (mounted.current) setBusy(false);
@@ -144,7 +142,7 @@ function JoinForm({ linkedToken }: { linkedToken: string | undefined }) {
             </>
           ) : (
             <PrimaryButton
-              label="Check invite"
+              label={issue ? 'Try again' : 'Open invitation'}
               busy={busy}
               disabled={!input.trim()}
               onPress={() => void review()}
