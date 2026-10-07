@@ -9,7 +9,11 @@ export async function GET(request: NextRequest) {
   try {
     if (code && !request.nextUrl.searchParams.has('error')) {
       const client = await createServerSupabaseClient();
-      const { data, error } = await client.auth.exchangeCodeForSession(code);
+      const flowId = request.nextUrl.searchParams.get('sb_flow_id');
+      const { data, error } = await client.auth.exchangeCodeForSession(
+        code,
+        flowId ? { flowId } : undefined,
+      );
       if (!error) {
         const profile = await client
           .from('profiles')

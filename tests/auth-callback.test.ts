@@ -13,13 +13,24 @@ import { GET } from '../apps/web/src/app/auth/callback/route';
 
 beforeEach(() => vi.resetAllMocks());
 describe('Google callback', () => {
+  it('uses the verifier associated with this callback rather than a newer signup', async () => {
+    mocks.exchangeCodeForSession.mockResolvedValue({ data: { user: { id: 'id' } }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data: { id: 'id' }, error: null });
+    const response = await GET(
+      new NextRequest(
+        'https://dwd.example/auth/callback?code=google&sb_flow_id=google-flow&next=%2Fjoin%2Fsaved',
+      ),
+    );
+    expect(mocks.exchangeCodeForSession).toHaveBeenCalledWith('google', { flowId: 'google-flow' });
+    expect(response.headers.get('location')).toBe('https://dwd.example/join/saved');
+  });
   it('establishes a session and returns an existing account to the invitation', async () => {
     mocks.exchangeCodeForSession.mockResolvedValue({ data: { user: { id: 'id' } }, error: null });
     mocks.maybeSingle.mockResolvedValue({ data: { id: 'id' }, error: null });
     const response = await GET(
       new NextRequest('https://dwd.example/auth/callback?code=single-use&next=%2Fjoin%2Fsaved'),
     );
-    expect(mocks.exchangeCodeForSession).toHaveBeenCalledWith('single-use');
+    expect(mocks.exchangeCodeForSession).toHaveBeenCalledWith('single-use', undefined);
     expect(response.headers.get('location')).toBe('https://dwd.example/join/saved');
     expect(response.headers.get('cache-control')).toContain('no-store');
   });
