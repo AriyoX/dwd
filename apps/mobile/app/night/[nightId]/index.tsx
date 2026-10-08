@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { invalidateAccountQuery } from '@/lib/account-query-state';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -163,6 +164,7 @@ export default function NightScreen() {
   async function finish() {
     if (
       !client ||
+      !snapshot ||
       !(await confirmAction(
         'End this night?',
         'Everyone will move to the night recap.',
@@ -173,6 +175,7 @@ export default function NightScreen() {
       return;
     await mutate(async () => {
       await endNight(client, nightId);
+      invalidateAccountQuery(snapshot.currentUserId, 'finished-nights');
       router.replace(`/night/${nightId}/summary`);
     }, 'Night ended.');
   }

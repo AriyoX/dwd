@@ -35,7 +35,14 @@ export default function AccountScreen() {
     },
     [userId],
   );
-  const { data: profileName, loading: profileLoading } = useAccountQuery(loadProfile);
+  const { data: profileName, loading: profileLoading } = useAccountQuery(
+    loadProfile,
+    'profile-name',
+    false,
+    false,
+    undefined,
+    5 * 60_000,
+  );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -83,7 +90,7 @@ export default function AccountScreen() {
               <Text style={styles.initial}>{(profileName || 'You').slice(0, 1).toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1, gap: 4 }}>
-              {profileLoading ? (
+              {profileLoading && profileName === null ? (
                 <ActivityIndicator color={colors.primary} />
               ) : (
                 <Text style={styles.panelTitle}>{profileName ?? 'Signed in'}</Text>

@@ -34,6 +34,9 @@ export default function HistoryScreen() {
     load,
     `finished-nights:${page}`,
     true,
+    false,
+    undefined,
+    60_000,
   );
   const nights = data?.nights ?? [];
   const hasMore = data?.hasMore ?? false;

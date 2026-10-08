@@ -150,4 +150,10 @@ describe('tour targets on real screens', () => {
         .findAll((node) => String(node.type) === 'AppearancePicker'),
     ).toHaveLength(1);
   });
+  it('keeps the account name visible during a background refresh', async () => {
+    runtime.loading = true;
+    await mount(AccountScreen, 'Alex');
+    expect(root?.root.findAllByProps({ children: 'Alex' })).toHaveLength(1);
+    expect(root?.root.findAll((node) => String(node.type) === 'ActivityIndicator')).toHaveLength(0);
+  });
 });

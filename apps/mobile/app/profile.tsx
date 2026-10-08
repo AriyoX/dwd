@@ -11,6 +11,7 @@ import { LoadingPanel, Notice, Panel, RetryPanel, Screen } from '@/components/sc
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { useNightAction } from '@/hooks/use-night-action';
 import { actorClient } from '@/lib/actor-client';
+import { invalidateAccountQuery } from '@/lib/account-query-state';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 
@@ -71,7 +72,10 @@ function ProfileForm({ name, refresh }: { name: string; refresh: () => Promise<v
           }
           if (client && session)
             void action.run(
-              () => updateDisplayName(actorClient(client, session.access_token), parsed.data),
+              async () => {
+                await updateDisplayName(actorClient(client, session.access_token), parsed.data);
+                invalidateAccountQuery(session.user.id, 'profile-name');
+              },
               undefined,
               () => router.back(),
             );
