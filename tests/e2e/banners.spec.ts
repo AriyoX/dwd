@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { test, expect, type Page } from '@playwright/test';
+import { parseBannerAds } from '@dwd/core';
 
 async function login(page: Page) {
   const backend = process.env['E2E_SUPABASE_URL'] ?? '';
@@ -105,4 +106,61 @@ test('sponsor feed renders labels and destinations, survives bad artwork, and ca
   );
   await page.reload();
   await expect(placement).toHaveCount(0);
+});
+
+test('published campaigns serve their artwork and open their configured destinations', async ({
+  page,
+}, info) => {
+  test.skip(
+    !process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] || !process.env['E2E_ADS_URL'],
+    'Local backend and test feed required.',
+  );
+  const response = await page.request.get('/tonight-ads.json');
+  expect(response.ok()).toBe(true);
+  const feed: unknown = await response.json();
+  const ads = parseBannerAds(feed);
+  expect(ads?.length).toBeGreaterThan(0);
+  if (!ads) throw new Error('Published sponsor feed is invalid.');
+  // Serve the actual repository artwork through the allowed test origin.
+  const campaigns = ads.map((ad) => ({
+    ...ad,
+    imageUrl: ad.imageUrl ? `https://ads.example.test${new URL(ad.imageUrl).pathname}` : undefined,
+  }));
+  await page.route(process.env['E2E_ADS_URL'] ?? '', (route) =>
+    route.fulfill({ contentType: 'application/json', json: { ads: campaigns } }),
+  );
+  await page.route('https://ads.example.test/ads/**', async (route) => {
+    const artwork = await page.request.get(new URL(route.request().url()).pathname);
+    expect(artwork.ok()).toBe(true);
+    expect(artwork.headers()['content-type']).toMatch(/^image\//);
+    await route.fulfill({ response: artwork });
+  });
+  await login(page);
+  await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
+  const placement = page.getByRole('region', { name: 'Featured', exact: true });
+  await expect(placement.getByRole('link')).toHaveCount(ads.length);
+  for (const [index, ad] of ads.entries()) {
+    if (ads.length > 1)
+      await placement
+        .getByRole('button', { name: `Show banner ${index + 1} of ${ads.length}` })
+        .click();
+    const banner = placement.getByRole('link').nth(index);
+    await expect(banner).toHaveAttribute('href', ad.url ?? '');
+    if (ad.imageUrl)
+      await expect
+        .poll(() => banner.locator('img').evaluate((image: HTMLImageElement) => image.naturalWidth))
+        .toBeGreaterThan(0);
+    await banner.screenshot({ path: `.tmp/ads-review/${info.project.name}-${ad.id}.png` });
+    if (!ad.url) throw new Error('Published campaign destination is missing.');
+    await page
+      .context()
+      .route(ad.url, (route) =>
+        route.fulfill({ contentType: 'text/html', body: '<title>Campaign destination</title>' }),
+      );
+    const opened = page.waitForEvent('popup');
+    await banner.click();
+    const destination = await opened;
+    await expect(destination).toHaveURL(ad.url);
+    await destination.close();
+  }
 });

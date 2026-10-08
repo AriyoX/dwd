@@ -1,0 +1,40 @@
+{
+  "ads": [
+    {
+      "id": "sundiata-independence-2026",
+      "advertiser": "Sundiata Beach Resort",
+      "title": "Independence Oct 7–12: 30% off your 3rd night",
+      "cta": "Book your stay",
+      "url": "https://sundiataresort.com/",
+      "imageUrl": "https://dwdug.vercel.app/ads/sundiata.jpg",
+      "tone": "blue"
+    },
+    {
+      "id": "baby-steps-waitlist",
+      "advertiser": "Baby Steps",
+      "title": "Little games. Big roots. Learn Luganda with Baby Steps.",
+      "cta": "Join the waitlist",
+      "url": "https://www.babystepslearn.com/waitlist",
+      "imageUrl": "https://dwdug.vercel.app/ads/baby-steps.jpg",
+      "tone": "amber"
+    },
+    {
+      "id": "kuri-sunset-2026-10-10",
+      "advertiser": "Kuri Hotel",
+      "title": "Sunset at Kuri · Oct 10: Topia Twins, DJ Miracle & Chef Simples",
+      "cta": "Visit Kuri Hotel",
+      "url": "https://kurihotel.com/",
+      "imageUrl": "https://dwdug.vercel.app/ads/kuri-hotel.jpg",
+      "tone": "plum"
+    },
+    {
+      "id": "super-badass-records-studio",
+      "advertiser": "Super Badass Records",
+      "title": "Record your next hit at Super Badass Records.",
+      "cta": "Book a session",
+      "url": "https://sbr-website-git-main-ariyoxs-projects.vercel.app/contact",
+      "imageUrl": "https://dwdug.vercel.app/ads/sbr.jpg",
+      "tone": "plum"
+    }
+  ]
+}
