@@ -28,7 +28,9 @@ Supported markets are Uganda, Kenya, Tanzania, Rwanda, South Africa, UAE (includ
 
 This is not a store-approval claim. Apple readiness returns HTTP 503 until its server credentials are configured. Production SMTP, signing/push credentials, leaked-password protection, moderation coverage, final store declarations and real-device acceptance remain release gates. See [mobile release setup](docs/mobile-release-readiness.md), [Google Play audit](docs/google-play-readiness.md) and [App Store audit](docs/app-store-readiness.md).
 
-The product has no marketing site, PIN or delegated account editing, spending, food logging, advertising analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation.
+The mobile Tonight page and web home page include a swipeable banner placement with DWD house banners and an optional shared sponsor feed. See [connecting ads](docs/ads.md) for configuration and the separate AdMob integration path.
+
+The product has no marketing site, PIN or delegated account editing, spending, food logging, advertising analytics, achievements, public rankings, AI recommendations, BAC or sobriety estimation.
 
 ## Self-service onboarding
 

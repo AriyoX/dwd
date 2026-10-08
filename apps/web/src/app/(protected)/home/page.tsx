@@ -6,6 +6,7 @@ import { Wordmark } from '@/components/layout/wordmark';
 import { NightIllustration } from '@/components/layout/night-illustration';
 import { AccountMenu } from '@/components/layout/account-menu';
 import { JoinCodeForm } from '@/features/nights/join-code-form';
+import { TonightBanners } from '@/features/ads/tonight-banners';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export default async function HomePage() {
@@ -70,7 +71,7 @@ export default async function HomePage() {
               <ArrowRight aria-hidden="true" size={18} />
             </Link>
           </Card>
-          <Card className="join-card">
+          <Card className="join-card" id="join-night">
             <header>
               <span className="card-icon">
                 <Users aria-hidden="true" size={23} />
@@ -92,6 +93,7 @@ export default async function HomePage() {
           </section>
         ) : null}
       </div>
+      <TonightBanners />
       <footer className="app-footer">
         <p>DWD cannot determine sobriety or driving safety.</p>
         <nav aria-label="Legal">

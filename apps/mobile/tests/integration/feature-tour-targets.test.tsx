@@ -29,6 +29,7 @@ vi.mock('@/components/primary-button', () => ({ PrimaryButton: 'Button', Action:
 vi.mock('@/components/navigation-row', () => ({ NavigationRow: 'NavigationRow' }));
 vi.mock('@/components/brand', () => ({ Brand: 'Brand' }));
 vi.mock('@/components/night-artwork', () => ({ NightArtwork: 'NightArtwork' }));
+vi.mock('@/components/tonight-banners', () => ({ TonightBanners: 'TonightBanners' }));
 vi.mock('@/components/night-activity', () => ({ NightActivity: 'NightActivity' }));
 vi.mock('@/components/appearance-picker', () => ({ AppearancePicker: 'AppearancePicker' }));
 vi.mock('@/components/disclosure', () => ({ Disclosure: 'Disclosure' }));

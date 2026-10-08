@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getActiveNights } from '@dwd/data';
 import { TourScreen, TourTarget } from '@/components/tour-screen';
-import { NavigationRow } from '@/components/navigation-row';
+import { TonightBanners } from '@/components/tonight-banners';
 import { Brand } from '@/components/brand';
 import { NightArtwork } from '@/components/night-artwork';
 import { Action, PrimaryButton } from '@/components/primary-button';
@@ -229,7 +229,8 @@ export default function TonightScreen() {
           ) : null}
         </Panel>
       )}
-      <View style={{ marginTop: 'auto', paddingTop: 12 }}>
+      <View style={{ marginTop: 'auto', paddingTop: 12, gap: 20 }}>
+        {status === 'signed-in' ? <TonightBanners /> : null}
         <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 19 }}>
           DWD cannot determine sobriety or driving safety.
         </Text>
