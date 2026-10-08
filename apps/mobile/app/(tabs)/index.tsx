@@ -194,7 +194,7 @@ export default function TonightScreen() {
               <Ionicons name="arrow-forward" size={20} color={colors.primary} accessible={false} />
             </Action>
           </TourTarget>
-          <Panel style={{ paddingVertical: 4, gap: 0 }}>
+          {/* <Panel style={{ paddingVertical: 4, gap: 0 }}>
             <NavigationRow
               label="Notifications"
               icon="notifications-outline"
@@ -210,7 +210,7 @@ export default function TonightScreen() {
               icon="settings-outline"
               onPress={() => router.push('/account')}
             />
-          </Panel>
+          </Panel> */}
         </View>
       ) : status === 'loading' ? (
         <LoadingPanel />
