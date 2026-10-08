@@ -2,7 +2,9 @@
 
 The mobile home tab and web home page have a horizontal banner carousel below the main actions and above the safety footer. Cards snap when swiped, show part of the next banner, and have tappable page dots. The web carousel also has previous/next controls for mouse and keyboard users. Banners scroll with the page.
 
-Multiple banners advance every five seconds and repeat from the first banner after the last. Both clients have a pause/resume control. Rotation pauses during touch interaction, when the mobile screen loses focus or the app is backgrounded, and on web hover, keyboard focus, hidden tabs, or when the carousel is offscreen. Reduced-motion settings disable automatic rotation; manual navigation still works.
+Mobile cards share a fixed height, with headlines limited to three lines and images cropped to fill the card. Larger accessibility text increases every card's height together, so the carousel stays consistent across campaigns.
+
+Multiple banners advance every five seconds and repeat from the first banner after the last. Rotation pauses during touch interaction, when the mobile screen loses focus or the app is backgrounded, and on web hover, keyboard focus, hidden tabs, or when the carousel is offscreen. Reduced-motion settings disable automatic rotation; manual navigation still works.
 
 The web defaults to the repository's `/tonight-ads.json`, with DWD-hosted artwork served from the current deployment. Merging the feed and `public/ads` files into main and deploying publishes all four current campaigns. An external `NEXT_PUBLIC_DWD_ADS_URL` overrides that default. Mobile defaults to `https://dwdug.vercel.app/tonight-ads.json` when its feed variable is unset, so those campaigns become available after the website deployment. Installed mobile apps need a build containing this carousel code.
 

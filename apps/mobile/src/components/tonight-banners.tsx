@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  AppState,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -9,6 +18,9 @@ import { Action } from './primary-button';
 import { Notice } from './screen';
 
 const GAP = 12;
+const CARD_HEIGHT = 184;
+// One advertiser line, three headline lines, and one action line.
+const TEXT_HEIGHT = 16 + 27 * 3 + 18;
 const palette = {
   plum: { background: '#482039', accent: '#E9B8CD', text: '#FFF5FA' },
   blue: { background: '#252F4C', accent: '#BCCDF7', text: '#F5F7FF' },
@@ -18,6 +30,7 @@ const palette = {
 export function TonightBanners() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { fontScale } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const [ads, setAds] = useState(HOUSE_BANNERS);
   const [width, setWidth] = useState(0);
@@ -27,6 +40,8 @@ export function TonightBanners() {
   const [issue, setIssue] = useState<string | null>(null);
   const scroll = useRef<ScrollView>(null);
   const cardWidth = Math.max(1, width - 28);
+  // Every card reserves the same space, including when accessibility text grows.
+  const cardHeight = Math.ceil(CARD_HEIGHT + TEXT_HEIGHT * (Math.max(1, fontScale) - 1));
   const interval = cardWidth + GAP;
 
   useEffect(() => {
@@ -111,7 +126,7 @@ export function TonightBanners() {
           nestedScrollEnabled
           directionalLockEnabled
           showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0 }}
+          style={{ flexGrow: 0, height: cardHeight }}
           snapToInterval={interval}
           snapToAlignment="start"
           decelerationRate="fast"
@@ -139,6 +154,7 @@ export function TonightBanners() {
               key={`${ad.id}:${ad.imageUrl ?? ''}`}
               ad={ad}
               width={cardWidth}
+              height={cardHeight}
               position={`${index + 1} of ${ads.length}`}
               onPress={() => {
                 setIssue(null);
@@ -191,11 +207,13 @@ export function TonightBanners() {
 function BannerCard({
   ad,
   width,
+  height,
   position,
   onPress,
 }: {
   ad: BannerAd;
   width: number;
+  height: number;
   position: string;
   onPress: () => void;
 }) {
@@ -206,9 +224,9 @@ function BannerCard({
     <Action
       label={`${ad.sponsored ? `Sponsored by ${ad.advertiser}` : ad.advertiser}. ${ad.title}. ${ad.cta}. Banner ${position}`}
       onPress={onPress}
-      containerStyle={{ width }}
+      containerStyle={{ width, height }}
       style={{
-        minHeight: 152,
+        height,
         padding: 18,
         borderRadius: 20,
         backgroundColor: tone.background,
@@ -262,10 +280,16 @@ function BannerCard({
           />
         </View>
       )}
-      <Text style={{ color: tone.text, fontSize: 11, lineHeight: 16, fontWeight: '600' }}>
+      <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        style={{ color: tone.text, fontSize: 11, lineHeight: 16, fontWeight: '600' }}
+      >
         {ad.sponsored ? `Sponsored · ${ad.advertiser}` : ad.advertiser}
       </Text>
       <Text
+        numberOfLines={3}
+        ellipsizeMode="tail"
         style={{
           color: tone.text,
           fontSize: 22,
@@ -273,13 +297,22 @@ function BannerCard({
           letterSpacing: -0.5,
           fontWeight: '700',
           maxWidth: '90%',
+          flexShrink: 1,
         }}
       >
         {ad.title}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
         <Text
-          style={{ color: hasImage ? tone.text : tone.accent, fontSize: 13, fontWeight: '600' }}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          style={{
+            color: hasImage ? tone.text : tone.accent,
+            fontSize: 13,
+            lineHeight: 18,
+            fontWeight: '600',
+            flexShrink: 1,
+          }}
         >
           {ad.cta}
         </Text>
