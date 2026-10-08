@@ -1,8 +1,22 @@
 # Content review and blocking
 
-DWD is an adult planning/tracking app with private shared-night content. The legal terms prohibit threats, exploitation, harassment, unlawful content and unsafe drinking challenges. Users can report night content, participants and photos; reports enter the existing authenticated support queue. Contact is also available without signing in at `/support`. Blocking removes the blocked participant from a host's active nights, or leaves shared active nights when the blocker is a participant. Future joins/reactivation across a blocked pair are refused on the server. Unblocking is in Account and does not rejoin a night automatically.
+DWD is an adult planning/tracking app with private shared-night content. The legal terms prohibit threats, exploitation, harassment, unlawful content and unsafe drinking challenges. Users can report night content, participants and photos; reports enter the existing authenticated support queue. Contact is also available without signing in at `/support`. Blocking removes the blocked participant from a host's active nights, or leaves shared active nights when the blocker is a participant. Future joins/reactivation across a blocked pair are refused on the server. Unblocking is under Settings → Blocked people on mobile and Account → Blocked people on web, and does not rejoin a night automatically.
 
 Shared text has a narrow server filter for explicit threats/exploitation. This is not comprehensive automated moderation. Review the report queue regularly and act promptly; an unattended queue is a release blocker. Assign a named operator and a response cadence before opening registration broadly. Ariyo Ahumuza / ahumuzaariyo@gmail.com is the current contact, supplied by the owner and intended to be replaced later.
+
+## Blocking verification and store requirements
+
+Verified on 2026-10-08:
+
+- All 26 checks in `supabase/tests/store_moderation_and_location.sql` passed against an isolated database with the repository migrations. These cover blocking as a host or participant, blocking privacy, refused joins/reactivation, unblocking, and photo visibility.
+- `tests/e2e/blocking.spec.ts` exercises the actual web controls on desktop Chromium, mobile Chromium, and mobile WebKit against a disposable local Supabase backend. It checks cancellation, confirmed blocking, persistence after reload, a private blocked list, refused access/rejoining, and unblocking without automatic rejoining.
+- A read-only migration/schema inspection of the linked DWD backend confirmed that the blocking RPCs and `night_members_blocked_join` trigger are deployed. No production accounts were blocked as part of verification.
+
+Blocking is already implemented; the dedicated mobile page exposes the existing server-backed list and unblock action. Browser automation covers web, while database tests cover the rules shared by both clients. This verification does not substitute for testing an installed iOS/Android release.
+
+[Apple App Review Guideline 1.2](https://developer.apple.com/app-store/review/guidelines/#user-generated-content) requires apps with user-generated content or social networking to filter objectionable material, provide reporting with timely responses, block abusive users, and publish contact information. [Google Play's user-generated content policy](https://support.google.com/googleplay/android-developer/answer/9876937) requires ongoing moderation and in-app reporting/blocking appropriate to the interactions; one-to-one interactions specifically require user blocking. Its definition of UGC includes content visible to a subset of users.
+
+DWD's shared names, night titles, and photos are user-generated content, so private nights do not remove the need for moderation. Keep functional blocking for DWD's user-to-user interactions. Neither policy specifies a dedicated blocked-list page; the effective ability to block matters. Blocking alone does not establish compliance with the other moderation requirements or guarantee approval.
 
 ## Photos
 
