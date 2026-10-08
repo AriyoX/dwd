@@ -36,7 +36,7 @@ export function RecapTimeline({ snapshot }: { snapshot: NightSnapshot }) {
                 width: 8,
                 height: 8,
                 borderRadius: 4,
-                backgroundColor: index === times.length - 1 ? colors.primary : colors.muted,
+                backgroundColor: colors.muted,
                 marginTop: 7,
               }}
             />
@@ -125,12 +125,12 @@ function MemberRecap({
             width: 44,
             height: 44,
             borderRadius: 16,
-            backgroundColor: colors.primarySoft,
+            backgroundColor: colors.surfaceSoft,
             justifyContent: 'center',
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: colors.primary, fontSize: 20, fontWeight: '600' }}>
+          <Text style={{ color: colors.muted, fontSize: 20, fontWeight: '600' }}>
             {member.displayName.slice(0, 1).toUpperCase()}
           </Text>
         </View>

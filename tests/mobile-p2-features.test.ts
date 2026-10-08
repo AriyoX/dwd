@@ -268,7 +268,7 @@ describe('notifications and invitations', () => {
     };
     device.setItem(inviteStateKey(owner, id(3)), JSON.stringify(state));
     const restored = readInviteState(device, owner, id(3));
-    expect(restored).toEqual(state);
+    expect(restored).toEqual({ ...state, disabled: false });
     expect(readInviteState(device, id(99), id(3)).token).toBeNull();
     expect(completedInviteOperation(restored, state.pending).token).toBe('b'.repeat(43));
     expect(completedInviteOperation(restored, { ...state.pending, kind: 'revoke' })).toMatchObject({

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { PendingDrinkLog } from '@dwd/contracts';
 import { withRequestTimeout } from './request-timeout';
+import { entryFailureMessage } from './entry-message';
 import {
   calculateEthanolGrams,
   calculatePlanTotal,
@@ -9,6 +10,7 @@ import {
   determinePlanStatus,
   requiredLogConfirmations,
   type CustomDrinkInput,
+  type AlcoholLog,
   type DrinkLogResult,
   type NightSnapshot,
   type WaterLogResult,
@@ -105,10 +107,17 @@ export class NativePendingLogStore {
 type SendResult = DrinkLogResult | WaterLogResult;
 export type NativeSyncOutcome =
   'synced' | 'queued' | 'needs_confirmation' | 'rejected' | 'inactive';
-const RETRY_MESSAGE = 'Saved on this device. Will retry when connected.';
+const RETRY_MESSAGE = "We'll save this and sync it when you're back online.";
 
 export class NativeLogOutbox {
   private active = true;
+  // Bridge the interval between the write response and the next read snapshot.
+  // Reads started after a write are authoritative, including an omitted/undone row.
+  private revision = 0;
+  private readonly accepted = new Map<
+    string,
+    { actor: string; revision: number; log: Extract<SendResult, { status: 'created' }>['log'] }
+  >();
   private readonly inFlight = new Map<string, Promise<NativeSyncOutcome>>();
   private replay: Promise<void> | null = null;
   private readonly removing = new Set<string>();
@@ -124,6 +133,45 @@ export class NativeLogOutbox {
 
   public dispose(): void {
     this.active = false;
+    this.accepted.clear();
+  }
+  public withAccepted(snapshot: NightSnapshot): NightSnapshot {
+    const logs = [...this.accepted.values()].filter(
+      ({ actor, log }) => actor === snapshot.currentUserId && log.nightId === snapshot.night.id,
+    );
+    if (!logs.length) return snapshot;
+    return {
+      ...snapshot,
+      members: snapshot.members.map((member) => {
+        const known = new Set(
+          [...member.drinkLogs, ...member.waterLogs].map((log) => log.idempotencyKey),
+        );
+        const missing = logs
+          .filter(({ log }) => log.nightMemberId === member.id && !known.has(log.idempotencyKey))
+          .map(({ log }) => log);
+        return {
+          ...member,
+          drinkLogs: [
+            ...member.drinkLogs,
+            ...missing.filter((log): log is AlcoholLog => 'ethanolGrams' in log),
+          ],
+          waterLogs: [...member.waterLogs, ...missing.filter((log) => !('ethanolGrams' in log))],
+        };
+      }),
+    };
+  }
+  public acceptedVersion(): number {
+    return this.revision;
+  }
+  public reconcileAccepted(snapshot: NightSnapshot, readVersion: number): void {
+    for (const [key, entry] of this.accepted) {
+      if (
+        entry.actor === snapshot.currentUserId &&
+        entry.log.nightId === snapshot.night.id &&
+        entry.revision <= readVersion
+      )
+        this.accepted.delete(key);
+    }
   }
   public current(): boolean {
     return this.active && this.sender.current();
@@ -166,6 +214,11 @@ export class NativeLogOutbox {
       const result = await withRequestTimeout((signal) => this.sender.send(record, signal));
       if (!this.current()) return 'inactive';
       if (result.status === 'created' || result.status === 'duplicate') {
+        this.accepted.set(key, {
+          actor: record.actorUserId,
+          revision: ++this.revision,
+          log: result.log,
+        });
         try {
           this.store.remove(key);
         } catch {
@@ -186,7 +239,10 @@ export class NativeLogOutbox {
       this.store.update(key, {
         status: result.status === 'permanently_rejected' ? 'permanent_failure' : 'failed',
         retryCount: record.retryCount + 1,
-        lastError: result.message,
+        lastError:
+          result.status === 'permanently_rejected'
+            ? entryFailureMessage(result.code)
+            : RETRY_MESSAGE,
       });
       this.changed(false);
       return result.status === 'permanently_rejected' ? 'rejected' : 'queued';
@@ -237,7 +293,7 @@ export class NativeLogOutbox {
     }
   }
 
-  public async confirm(key: string): Promise<NativeSyncOutcome> {
+  public async confirm(key: string, send = true): Promise<NativeSyncOutcome> {
     if (!this.current()) return 'inactive';
     const record = this.store.getAll().find((item) => item.idempotencyKey === key);
     if (!record || record.status !== 'needs_confirmation') return 'inactive';
@@ -249,7 +305,7 @@ export class NativeLogOutbox {
       acknowledgeAfterEnd: record.acknowledgeAfterEnd || warnings.includes('after_end'),
     });
     this.changed(false);
-    return this.syncOne(key);
+    return send ? this.syncOne(key) : 'queued';
   }
 
   public async remove(key: string): Promise<void> {
@@ -260,7 +316,7 @@ export class NativeLogOutbox {
       if (!this.current()) return;
       const record = this.store.getAll().find((item) => item.idempotencyKey === key);
       // A concurrent sync may already have saved it. Refresh activity for its normal Undo action.
-      if (!record) throw new Error('Entry saved. Refresh activity to undo it.');
+      if (!record) throw new Error('Entry saved. Open Entries to undo it.');
       if (
         record.attempted &&
         record.status !== 'needs_confirmation' &&
@@ -273,8 +329,9 @@ export class NativeLogOutbox {
             this.sender.delete(result.log.id, record.kind, signal),
           );
           if (!this.current()) return;
+          this.accepted.delete(key);
         } else if (result.status === 'temporarily_failed') {
-          throw new Error('Reconnect to check whether this entry saved before removing it.');
+          throw new Error('Connect to the internet so we can check and remove this entry.');
         }
       }
       this.store.remove(key);

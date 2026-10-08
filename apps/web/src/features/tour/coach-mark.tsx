@@ -62,6 +62,7 @@ export function CoachMark({
     let disposed = false;
     let focused = false;
     let modalOpen = false;
+    let returningFromModal = false;
     const inertElements = new Map<HTMLElement, boolean>();
     const restore = () => {
       inertElements.forEach((value, element) => {
@@ -90,6 +91,7 @@ export function CoachMark({
       modalOpen = modal !== null;
       setSuspended(modalOpen);
       if (modalOpen) {
+        returningFromModal = true;
         restore();
         setGeometry(null);
         focused = false;
@@ -166,8 +168,16 @@ export function CoachMark({
       if (overlay) isolate(document.body, step?.interactive ? [target, overlay] : [overlay]);
       if (!focused) {
         if (getComputedStyle(panel).visibility === 'visible') {
-          panel.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+          // The dialog restores its trigger. Keep that keyboard position when
+          // the tour resumes instead of moving focus back to Close tour.
+          if (
+            !returningFromModal ||
+            !(document.activeElement instanceof HTMLElement) ||
+            !target.contains(document.activeElement)
+          )
+            panel.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
           focused = true;
+          returningFromModal = false;
         } else schedule();
       }
     };

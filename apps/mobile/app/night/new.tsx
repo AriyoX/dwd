@@ -11,9 +11,12 @@ import {
   type StartNightInput,
 } from '@dwd/core';
 import { DataAccessError, startNightOut } from '@dwd/data';
+import { Disclosure } from '@/components/disclosure';
 import { Choice } from '@/components/choice';
 import { DateTimeField } from '@/components/date-time-field';
 import { PlanEditor } from '@/components/plan-editor';
+import { SharedBottleFields } from '@/components/shared-bottle-fields';
+import { newBottleDraft } from '@/lib/night-features';
 import { Action, PrimaryButton } from '@/components/primary-button';
 import { Notice, Panel, Screen, ScreenHeading } from '@/components/screen';
 import { SettingsRow } from '@/components/settings-row';
@@ -24,11 +27,14 @@ import {
   materializeNightDraft,
   newNightDraft,
   nightDraftKey,
-  readNightDraft,
+  recoverNightSetup,
+  completeNightSetup,
   type NightDraft,
 } from '@/lib/night-draft';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { useConnectivity } from '@/providers/connectivity-provider';
+import { ensureNightInvite } from '@/lib/automatic-invite';
 
 export default function NewNightScreen() {
   const { session } = useSupabase();
@@ -36,6 +42,7 @@ export default function NewNightScreen() {
 }
 function Setup({ owner }: { owner: string }) {
   const { client, session } = useSupabase();
+  const { online } = useConnectivity();
   const currentOwner = useRef(owner);
   useLayoutEffect(() => {
     currentOwner.current = session?.user.id ?? '';
@@ -57,6 +64,16 @@ function Setup({ owner }: { owner: string }) {
   const [storageIssue, setStorageIssue] = useState<string | null>(null);
   const [unreadable, setUnreadable] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [editors, setEditors] = useState(new Set<string>());
+  const editing = editors.size > 0;
+  function editorChanged(id: string, open: boolean) {
+    setEditors((previous) => {
+      const next = new Set(previous);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
   const now = useNow();
   const inFlight = useRef(false);
   const attempt = useRef<StartNightInput | null>(null);
@@ -68,7 +85,7 @@ function Setup({ owner }: { owner: string }) {
     queueMicrotask(() => {
       if (!active) return;
       try {
-        const saved = readNightDraft(globalThis.localStorage, owner);
+        const saved = recoverNightSetup(globalThis.localStorage, owner);
         if (saved) {
           setDraft(saved);
           setRestored(true);
@@ -76,7 +93,7 @@ function Setup({ owner }: { owner: string }) {
         }
       } catch {
         setUnreadable(true);
-        setStorageIssue('Could not restore setup. Your saved draft has been kept.');
+        setStorageIssue("Couldn't open your unfinished night. Try again.");
       }
       setReady(true);
     });
@@ -85,12 +102,12 @@ function Setup({ owner }: { owner: string }) {
     };
   }, [owner]);
   useEffect(() => {
-    if (!ready || storageIssue) return;
+    if (!ready || storageIssue || !draft.attempt) return;
     try {
       globalThis.localStorage.setItem(nightDraftKey(owner), JSON.stringify(draft));
     } catch {
       queueMicrotask(() =>
-        setStorageIssue('Could not save setup on this device. Keep this screen open.'),
+        setStorageIssue("Couldn't save your night. Keep this screen open and try again."),
       );
     }
   }, [draft, ready, owner, storageIssue]);
@@ -109,10 +126,11 @@ function Setup({ owner }: { owner: string }) {
       setUnreadable(false);
       setIssue(null);
     } catch {
-      setStorageIssue('Could not discard the draft. Retry when device storage is available.');
+      setStorageIssue("Couldn't clear setup. Try again.");
     }
   }
   function review() {
+    if (editing) return;
     try {
       materializeNightDraft(draft);
       edit({ step: 3 });
@@ -122,6 +140,10 @@ function Setup({ owner }: { owner: string }) {
   }
   async function start() {
     if (!client || !session || inFlight.current || storageIssue) return;
+    if (online === false) {
+      setIssue('Connect to the internet to start your night.');
+      return;
+    }
     inFlight.current = true;
     setBusy(true);
     setIssue(null);
@@ -134,13 +156,26 @@ function Setup({ owner }: { owner: string }) {
       const result = await withRequestTimeout((signal) =>
         startNightOut(actorClient(client, session.access_token, signal), command, true),
       );
-      if (currentOwner.current !== owner || !mounted.current) return;
       try {
-        globalThis.localStorage.removeItem(nightDraftKey(owner));
+        completeNightSetup(globalThis.localStorage, next, result.nightId);
       } catch {
         /* Replaying the key returns the same night. */
       }
-      router.replace(`/night/${result.nightId}${command.withPeople ? '/invite' : ''}`);
+      if (command.withPeople && result.snapshot.night.status === 'active') {
+        // The night already exists if invitation delivery fails. Its saved
+        // operation resumes automatically when Invite opens again.
+        void ensureNightInvite(
+          globalThis.localStorage,
+          actorClient(client, session.access_token),
+          owner,
+          result.nightId,
+        ).catch(() => undefined);
+      }
+      if (currentOwner.current !== owner || !mounted.current) return;
+      attempt.current = null;
+      router.replace(
+        `/night/${result.nightId}${result.snapshot.night.status === 'ended' ? '/summary' : command.withPeople ? '/invite' : ''}`,
+      );
     } catch (error) {
       if (
         currentOwner.current === owner &&
@@ -150,11 +185,16 @@ function Setup({ owner }: { owner: string }) {
       ) {
         attempt.current = null;
         setDraft((value) => ({ ...value, attempt: null, step: 1 }));
+        try {
+          globalThis.localStorage.removeItem(nightDraftKey(owner));
+        } catch {
+          setStorageIssue("Couldn't clear setup. Try again.");
+        }
         setIssue('The night could not start. Update its details and try again.');
         return;
       }
       if (currentOwner.current === owner && mounted.current)
-        setIssue('Could not confirm your night. Retry to recover the same start request.');
+        setIssue("Couldn't start your night. Try again when you're online.");
     } finally {
       inFlight.current = false;
       if (currentOwner.current === owner && mounted.current) setBusy(false);
@@ -168,7 +208,7 @@ function Setup({ owner }: { owner: string }) {
   }
   const zone = safeTimeZone(draft.timezone);
   const frozen = busy || Boolean(draft.attempt);
-  const steps = ['Night details', 'People & plans', 'Review your night'];
+  const steps = ['Your night', 'People & plans', 'Ready to start?'];
   const updateGuest = (clientId: string, patch: Partial<NightDraft['guests'][number]>) =>
     edit({ guests: draft.guests.map((g) => (g.clientId === clientId ? { ...g, ...patch } : g)) });
   return (
@@ -181,11 +221,11 @@ function Setup({ owner }: { owner: string }) {
       </View>
       {restored || storageIssue ? (
         <Panel>
-          {restored ? <Notice message="Unfinished setup restored on this device." /> : null}
+          {restored ? <Notice message="Your night hasn't finished starting." /> : null}
           {storageIssue ? <Notice error message={storageIssue} /> : null}
           {storageIssue && !unreadable ? (
             <PrimaryButton
-              label="Retry saving setup"
+              label="Try again"
               variant="secondary"
               disabled={busy}
               onPress={() => {
@@ -193,7 +233,7 @@ function Setup({ owner }: { owner: string }) {
                   globalThis.localStorage.setItem(nightDraftKey(owner), JSON.stringify(draft));
                   setStorageIssue(null);
                 } catch {
-                  setStorageIssue('Device storage is unavailable. Retry saving your setup.');
+                  setStorageIssue("Couldn't save your night. Try again.");
                 }
               }}
             />
@@ -206,9 +246,7 @@ function Setup({ owner }: { owner: string }) {
           />
         </Panel>
       ) : null}
-      {draft.attempt ? (
-        <Notice message="A start request is waiting for confirmation. Retry it before changing this setup." />
-      ) : null}
+      {draft.attempt ? <Notice message="Try again to finish starting your night." /> : null}
       {draft.step === 1 ? (
         <>
           <Panel>
@@ -218,26 +256,6 @@ function Setup({ owner }: { owner: string }) {
               maxLength={80}
               editable={!frozen}
               onChangeText={(title) => edit({ title })}
-            />
-            <DateTimeField
-              label="End date"
-              mode="date"
-              value={end}
-              timezone={zone}
-              disabled={frozen}
-              onChange={(date) =>
-                edit({ ...wallClockFromInstant(date, zone), durationHours: null })
-              }
-            />
-            <DateTimeField
-              label="End time"
-              mode="time"
-              value={end}
-              timezone={zone}
-              disabled={frozen}
-              onChange={(date) =>
-                edit({ ...wallClockFromInstant(date, zone), durationHours: null })
-              }
             />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {([1, 2, 3, 4] as const).map((hours) => (
@@ -260,7 +278,8 @@ function Setup({ owner }: { owner: string }) {
                       justifyContent: 'center',
                       borderRadius: 14,
                       borderWidth: 1,
-                      borderColor: draft.durationHours === hours ? colors.primary : colors.border,
+                      borderColor:
+                        draft.durationHours === hours ? colors.selectedBorder : colors.outline,
                       backgroundColor:
                         draft.durationHours === hours ? colors.primarySoft : colors.surface,
                     }}
@@ -272,20 +291,46 @@ function Setup({ owner }: { owner: string }) {
                 </View>
               ))}
             </View>
-            <TextField
-              label="Time zone"
-              value={draft.timezone}
-              maxLength={80}
-              editable={!frozen}
-              autoCapitalize="none"
-              autoCorrect={false}
-              onChangeText={(timezone) => edit({ timezone, durationHours: null })}
-            />
+            <Disclosure
+              title="Choose end time"
+              detail={formatNightDateTime(end, zone)}
+              disabled={frozen}
+            >
+              <DateTimeField
+                label="End date"
+                mode="date"
+                value={end}
+                timezone={zone}
+                disabled={frozen}
+                onChange={(date) =>
+                  edit({ ...wallClockFromInstant(date, zone), durationHours: null })
+                }
+              />
+              <DateTimeField
+                label="End time"
+                mode="time"
+                value={end}
+                timezone={zone}
+                disabled={frozen}
+                onChange={(date) =>
+                  edit({ ...wallClockFromInstant(date, zone), durationHours: null })
+                }
+              />
+              <TextField
+                label="Time zone"
+                value={draft.timezone}
+                maxLength={80}
+                editable={!frozen}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={(timezone) => edit({ timezone, durationHours: null })}
+              />
+            </Disclosure>
           </Panel>
           <View style={{ gap: 10 }}>
             <Choice
               label="With people"
-              detail="Invite friends or log for consenting guests"
+              detail="Share an invite when you start"
               selected={draft.withPeople}
               disabled={frozen}
               onPress={() => edit({ withPeople: true })}
@@ -306,76 +351,105 @@ function Setup({ owner }: { owner: string }) {
       ) : draft.step === 2 ? (
         <>
           <Text style={typography.sectionTitle}>Your plan</Text>
-          <PlanEditor
-            mode={draft.mode}
-            items={draft.items}
-            disabled={frozen}
-            onModeChange={(mode) => edit({ mode })}
-            onChange={(items) => edit({ items })}
-          />
+          {draft.withPeople ? (
+            <SettingsRow
+              label="Start with a shared bottle"
+              value={Boolean(draft.bottle)}
+              disabled={frozen || editing}
+              onChange={(value) =>
+                edit({ bottle: value ? newBottleDraft(Crypto.randomUUID()) : null })
+              }
+            />
+          ) : null}
+          {draft.withPeople && draft.bottle ? (
+            <SharedBottleFields
+              draft={draft.bottle}
+              disabled={frozen}
+              error={Boolean(issue)}
+              onChange={(patch) => {
+                if (draft.bottle) edit({ bottle: { ...draft.bottle, ...patch } });
+              }}
+            />
+          ) : (
+            <PlanEditor
+              mode={draft.mode}
+              items={draft.items}
+              disabled={frozen || (editing && !editors.has('host'))}
+              onEditingChange={(open) => editorChanged('host', open)}
+              onModeChange={(mode) => edit({ mode })}
+              onChange={(items) => edit({ items })}
+            />
+          )}
           {draft.withPeople ? (
             <>
-              <Text style={typography.sectionTitle}>Guests you log for</Text>
-              <Notice message="Friends with DWD can join by invitation and log for themselves. Only add guests who agree to you recording their drinks." />
-              {draft.guests.map((guest) => (
-                <Panel key={guest.clientId}>
-                  <TextField
-                    label="Guest name"
-                    value={guest.displayName}
-                    maxLength={60}
-                    editable={!frozen}
-                    onChangeText={(displayName) => updateGuest(guest.clientId, { displayName })}
-                  />
-                  <PlanEditor
-                    mode={guest.mode}
-                    items={guest.items}
-                    disabled={frozen}
-                    onModeChange={(mode) => updateGuest(guest.clientId, { mode })}
-                    onChange={(items) => updateGuest(guest.clientId, { items })}
-                  />
-                  <SettingsRow
-                    label="They agreed to me recording their drinks"
-                    value={guest.consent}
-                    disabled={frozen}
-                    onChange={(consent) => updateGuest(guest.clientId, { consent })}
-                  />
-                  <PrimaryButton
-                    label="Remove guest"
-                    variant="danger"
-                    disabled={frozen}
-                    onPress={() =>
-                      edit({ guests: draft.guests.filter((g) => g.clientId !== guest.clientId) })
-                    }
-                  />
-                </Panel>
-              ))}
-              <PrimaryButton
-                label="Add guest"
-                icon="person-add-outline"
-                variant="secondary"
-                disabled={frozen || draft.guests.length >= 20}
-                onPress={() =>
-                  edit({
-                    guests: [
-                      ...draft.guests,
-                      {
-                        clientId: Crypto.randomUUID(),
-                        displayName: '',
-                        mode: 'unselected',
-                        items: [],
-                        consent: false,
-                      },
-                    ],
-                  })
-                }
-              />
+              <Disclosure
+                title="Log for a guest"
+                {...(draft.guests.length ? { detail: `${draft.guests.length} added` } : {})}
+                defaultExpanded={draft.guests.length > 0}
+                disabled={frozen || editing}
+              >
+                <Notice message="Only add guests who agree to you recording their drinks. Friends with DWD can join by invite." />
+                {draft.guests.map((guest) => (
+                  <Panel key={guest.clientId}>
+                    <TextField
+                      label="Guest name"
+                      value={guest.displayName}
+                      maxLength={60}
+                      editable={!frozen}
+                      onChangeText={(displayName) => updateGuest(guest.clientId, { displayName })}
+                    />
+                    <PlanEditor
+                      mode={guest.mode}
+                      items={guest.items}
+                      disabled={frozen || (editing && !editors.has(guest.clientId))}
+                      onEditingChange={(open) => editorChanged(guest.clientId, open)}
+                      onModeChange={(mode) => updateGuest(guest.clientId, { mode })}
+                      onChange={(items) => updateGuest(guest.clientId, { items })}
+                    />
+                    <SettingsRow
+                      label="They agreed to me recording their drinks"
+                      value={guest.consent}
+                      disabled={frozen}
+                      onChange={(consent) => updateGuest(guest.clientId, { consent })}
+                    />
+                    <PrimaryButton
+                      label="Remove guest"
+                      variant="danger"
+                      disabled={frozen || editing}
+                      onPress={() =>
+                        edit({ guests: draft.guests.filter((g) => g.clientId !== guest.clientId) })
+                      }
+                    />
+                  </Panel>
+                ))}
+                <PrimaryButton
+                  label="Add guest"
+                  icon="person-add-outline"
+                  variant="secondary"
+                  disabled={frozen || editing || draft.guests.length >= 20}
+                  onPress={() =>
+                    edit({
+                      guests: [
+                        ...draft.guests,
+                        {
+                          clientId: Crypto.randomUUID(),
+                          displayName: '',
+                          mode: 'unselected',
+                          items: [],
+                          consent: false,
+                        },
+                      ],
+                    })
+                  }
+                />
+              </Disclosure>
             </>
           ) : null}
-          <PrimaryButton label="Review night" disabled={frozen} onPress={review} />
+          <PrimaryButton label="Review night" disabled={frozen || editing} onPress={review} />
           <PrimaryButton
             label="Back to details"
             variant="quiet"
-            disabled={frozen}
+            disabled={frozen || editing}
             onPress={() => edit({ step: 1 })}
           />
         </>
@@ -388,7 +462,7 @@ function Setup({ owner }: { owner: string }) {
               {draft.withPeople
                 ? draft.guests.length
                   ? `With people · ${draft.guests.length} ${draft.guests.length === 1 ? 'guest' : 'guests'} you log for`
-                  : 'With people · invite friends next'
+                  : 'With people · invite ready when you start'
                 : 'Solo night'}
             </Text>
             <PrimaryButton
@@ -398,8 +472,22 @@ function Setup({ owner }: { owner: string }) {
               onPress={() => edit({ step: 1 })}
             />
           </Panel>
+          {draft.withPeople && draft.bottle ? (
+            <Panel>
+              <Text style={typography.sectionTitle}>{draft.bottle.label}</Text>
+              <Text style={typography.body}>
+                {draft.bottle.volumeMl} ml · {draft.bottle.abvPercent}% · {draft.bottle.pourMl} ml
+                per drink
+              </Text>
+              <Text style={typography.body}>
+                {draft.bottle.defaultQuantity} planned for you · friends choose their own drinks
+              </Text>
+            </Panel>
+          ) : null}
           {[
-            { displayName: 'Your plan', mode: draft.mode, items: draft.items },
+            ...(draft.withPeople && draft.bottle
+              ? []
+              : [{ displayName: 'Your plan', mode: draft.mode, items: draft.items }]),
             ...(draft.withPeople ? draft.guests : []),
           ].map((person, index) => (
             <Panel key={index}>
@@ -417,7 +505,7 @@ function Setup({ owner }: { owner: string }) {
             </Panel>
           ))}
           <PrimaryButton
-            label={draft.attempt ? 'Retry start request' : 'Start night'}
+            label={draft.attempt ? 'Try again' : 'Start night'}
             icon="moon-outline"
             busy={busy}
             busyLabel="Starting night"

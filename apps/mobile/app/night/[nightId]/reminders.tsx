@@ -39,7 +39,7 @@ export default function RemindersScreen() {
         <ReminderControls key={session?.user.id} initial={query.data} refresh={query.refresh} />
       )}
       <PrimaryButton
-        label="Device notifications & inbox"
+        label="Notifications & inbox"
         icon="notifications-outline"
         variant="quiet"
         onPress={() => router.push('/notifications')}
@@ -66,7 +66,7 @@ function PreplotControls() {
         Before you head out
       </Text>
       <SettingsRow
-        label="Pre-plot reminders"
+        label="Night reminders"
         value={preferences.enabled}
         disabled={action.busy}
         onChange={(enabled) => {
@@ -164,32 +164,32 @@ function ReminderControls({
           Other reminders
         </Text>
         <SettingsRow
-          label="Group attention"
+          label="Group check-ins"
           value={preferences.groupAttentionEnabled}
           disabled={action.busy}
           onChange={(groupAttentionEnabled) => save({ groupAttentionEnabled })}
         />
         <SettingsRow
-          label="Direct check-ins"
+          label="Check-ins from friends"
           value={preferences.directCheckinsEnabled}
           disabled={action.busy}
           onChange={(directCheckinsEnabled) => save({ directCheckinsEnabled })}
         />
         <SettingsRow
-          label="Personal pace"
+          label="Pace reminders"
           value={preferences.personalPaceEnabled}
           disabled={action.busy}
           onChange={(personalPaceEnabled) => save({ personalPaceEnabled })}
         />
         <SettingsRow
-          label="Planned end"
+          label="End-of-night reminder"
           value={preferences.plannedEndEnabled}
           disabled={action.busy}
           onChange={(plannedEndEnabled) => save({ plannedEndEnabled })}
         />
       </Panel>
       {action.issue ? <Notice error message={action.issue} /> : null}
-      {action.notice ? <Notice message={action.notice} /> : null}
+      {action.notice ? <Notice dismissible message={action.notice} /> : null}
     </>
   );
 }

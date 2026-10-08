@@ -56,7 +56,7 @@ function AuthCallbackAttempt({ query }: { query: string }) {
     <Screen insetTop={false}>
       {issue || !client ? (
         <Panel>
-          <Notice error message={issue ?? 'Account connection unavailable.'} />
+          <Notice error message={issue ?? 'DWD is unavailable. Try again.'} />
           <PrimaryButton
             label={recovery ? 'Request a new reset link' : 'Confirmation help'}
             onPress={() => router.replace(recovery ? '/auth/forgot-password' : '/auth/confirm')}

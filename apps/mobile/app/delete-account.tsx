@@ -113,8 +113,8 @@ function Deletion() {
       if (!active()) return;
       setIssue(
         cancel
-          ? 'Could not cancel deletion. Retry when connected.'
-          : 'Could not complete the request. Retry when connected; scheduling the same deletion is safe.',
+          ? "Couldn't cancel deletion. Try again when you're online."
+          : "Couldn't schedule deletion. Try again when you're online.",
       );
       await query.refresh();
     } finally {
@@ -174,7 +174,7 @@ function Deletion() {
                       },
                       () => {
                         if (active())
-                          setIssue('Could not reconnect Apple. Try again when connected.');
+                          setIssue("Couldn't sign in with Apple. Try again when you're online.");
                       },
                     )
                     .finally(() => {
@@ -199,9 +199,9 @@ function Deletion() {
                 message={`${waiting} unsaved entries will be discarded when you delete your account. You can review them first.`}
               />
               <PrimaryButton
-                label="Review pending entries"
+                label="View entries"
                 variant="secondary"
-                onPress={() => router.replace('/')}
+                onPress={() => router.replace('/history')}
               />
             </Panel>
           ) : null}
@@ -221,7 +221,7 @@ function Deletion() {
         </>
       )}
       {issue ? <Notice error message={issue} /> : null}
-      {notice ? <Notice message={notice} /> : null}
+      {notice ? <Notice dismissible message={notice} /> : null}
     </Screen>
   );
 }

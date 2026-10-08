@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Drink with Desire",
+    "name": "dwd",
     "slug": "drink-with-desire",
     "version": "0.1.0",
     "scheme": "dwd",
@@ -9,14 +9,27 @@
     "userInterfaceStyle": "automatic",
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F8F4EF",
+          "image": "./assets/splash-light.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#160B12",
+            "image": "./assets/splash-dark.png"
+          }
+        }
+      ],
       "expo-sqlite",
       "expo-status-bar",
       "expo-apple-authentication",
-      "expo-notifications",
+      ["expo-notifications", { "defaultChannel": "dwd-reminders" }],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Use location for local emergency numbers.",
+          "locationWhenInUsePermission": "Use your location for local emergency numbers and country-specific reminders.",
           "locationAlwaysPermission": false,
           "locationAlwaysAndWhenInUsePermission": false,
           "motionUsagePermission": false,
@@ -35,7 +48,8 @@
           "microphonePermission": false
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "./plugins/with-brand-theme.cjs"
     ],
     "ios": {
       "bundleIdentifier": "com.dwd.app",
@@ -140,6 +154,8 @@
     },
     "android": {
       "package": "com.dwd.app",
+      "permissions": ["android.permission.POST_NOTIFICATIONS"],
+      "softwareKeyboardLayoutMode": "resize",
       "blockedPermissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",

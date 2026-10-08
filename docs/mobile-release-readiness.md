@@ -2,6 +2,12 @@
 
 Use this document for the current release; earlier implementation notes describe the state before hosted deployment. The app is ready for a signed testing build after credentials are configured, but physical push, authentication, deep links and server-writing journeys still need acceptance testing.
 
+For the owner-facing Windows-to-iPhone build steps, see [Build and test dwd on iPhone](ios-testflight.md). The October 7 update sets the installed name to **dwd** and adds a light/dark native logo splash. Both require a new native build. See [UX refinements](mobile-ux-refinement.md) for the active-night, invitation and Settings fixes; ads are now on the future roadmap alongside Live Activities in [the mobile baseline](mobile-ios-baseline.md).
+
+## Mobile QA update — 6 October
+
+The [mobile QA implementation report](mobile-qa-implementation.md) covers the 14 usability findings, regression coverage and rollout steps. The [8 October native follow-up](native-ios-qa-followup.md) supersedes its original startup behavior: notification and foreground location prompts run on first launch, and the automatic feature tour uses a native account/device dismissal preference with Settings replay. Entries contains saved offline work, and logging/custom-drink/bottle flows use larger controls and shared forms. Android push includes the Expo rejected-token retry patch and graceful offline registration. Deploy the bottle start recovery and native notification content migrations, redeploy `dispatch-notifications`, and install a rebuilt native app for device acceptance; Firebase/EAS credentials remain an external setup requirement.
+
 ## Store audit update — 6 October
 
 The [Google Play audit](google-play-readiness.md) records policy requirements, fixes, Data Safety mapping and remaining signed-build/owner steps. Location now uses optional foreground permission on both clients, with on-device boundary lookup, no country picker and Uganda fallback. Help shares that country. Public privacy, terms, support and account-deletion resources use the supplied legal contact; native legal documents work offline. Native sessions migrate to encrypted SecureStore. Personal activity is erased during account deletion. Reports, blocking and approval-only photo sharing are implemented; a human moderation operator remains necessary.
@@ -123,12 +129,14 @@ Keep the additive migration during any app rollback; use forward migrations for 
 
 The three gaps from the source comparison now have native implementations. This is not physical-device acceptance of every shared behavior.
 
-| Area                 | Native implementation                                                                                                             | References                                                                                     |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Photo memories       | System photo picker, JPEG resize, durable upload recovery, two-photo quota, gallery/viewer and owner-only deletion                | `apps/mobile/app/night/[nightId]/photos.tsx`; shared Storage/RPC authorization                 |
-| Guided practice tour | Nine isolated sample steps, warning/undo and bottle practice, skip/replay and account-scoped progress                             | `apps/mobile/app/tour.tsx`; completion is local to each device, not synced with the web tour   |
-| Recap detail         | Original/current/actual end timeline, per-person drink breakdown, alcohol/plan amounts, after-end counts and catch-up annotations | `apps/mobile/src/components/recap-details.tsx`; preserves server-supplied personal/group scope |
+| Area                   | Native implementation                                                                                                             | References                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Photo memories         | System photo picker, JPEG resize, durable upload recovery, two-photo quota, gallery/viewer and owner-only deletion                | `apps/mobile/app/night/[nightId]/photos.tsx`; shared Storage/RPC authorization                                           |
+| Feature-highlight tour | Six highlights over actual Home controls, automatic first display, skip/back/next and Settings replay                             | `apps/mobile/src/components/feature-tour.tsx`; native dismissal is account/device-scoped and independent of the web tour |
+| Recap detail           | Original/current/actual end timeline, per-person drink breakdown, alcohol/plan amounts, after-end counts and catch-up annotations | `apps/mobile/src/components/recap-details.tsx`; preserves server-supplied personal/group scope                           |
 
 No new migration is needed for these additions. Rebuild the native binary for the new photo modules. Focused tests cover account isolation, Storage/RPC token pinning, lost upload responses, deletion and isolated practice state. The Android export passed; photo permissions, native file handling, accessibility and layouts still require installed-build acceptance. Signed URLs are renewed while the gallery is visible and are not persisted for offline viewing.
 
 The five P2 areas and earlier auth/offline/help/guest/bottle work have native implementations. Credentials, real-device QA and HTTPS links are integration gaps, not missing screens. Live Activities/widgets remain separate native roadmap work, not web parity requirements.
+
+8 October native QA verification: notification content requires the native_notification_content migration and a dispatch-notifications redeploy. First-launch permissions, floating notices, query refresh behavior and the tour have changed; see [native-ios-qa-followup.md](native-ios-qa-followup.md) for current test results, rollout and device checks.

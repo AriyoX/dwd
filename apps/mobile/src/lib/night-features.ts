@@ -12,7 +12,9 @@ import {
   type NotificationEvent,
   type PlanItemInput,
   type PlanSetupMode,
+  drinkCategorySchema,
 } from '@dwd/core';
+import { z } from 'zod';
 
 export function nightAccess(snapshot: NightSnapshot, targetId = snapshot.currentMemberId) {
   const actor = snapshot.members.find((m) => m.id === snapshot.currentMemberId) ?? null;
@@ -113,9 +115,43 @@ export interface BottleDraft {
   allowedMemberIds: string[];
 }
 
+export const bottleDraftSchema = z.object({
+  id: z.uuid(),
+  label: z.string().max(60),
+  category: drinkCategorySchema,
+  volumeMl: z.string(),
+  abvPercent: z.string(),
+  pourMl: z.string(),
+  defaultQuantity: z.string(),
+  access: z.enum(['everyone', 'selected']),
+  allowedMemberIds: z.array(z.uuid()).max(100),
+});
+
+export function newBottleDraft(id: string): BottleDraft {
+  return {
+    id,
+    label: '',
+    category: 'spirit',
+    volumeMl: '750',
+    abvPercent: '40',
+    pourMl: '30',
+    defaultQuantity: '1',
+    access: 'everyone',
+    allowedMemberIds: [],
+  };
+}
+
+export function bottleInputIssue(path: PropertyKey | undefined) {
+  if (path === 'label') return 'Give the bottle a name.';
+  if (path === 'volumeMl') return 'Use a bottle size from 1 to 10,000 ml.';
+  if (path === 'abvPercent') return 'Use an alcohol strength over 0% and up to 95%.';
+  if (path === 'defaultQuantity') return 'Plan 1 to 50 drinks.';
+  return 'Use a serving from 1 to 2,000 ml, no bigger than the bottle.';
+}
+
 export const decimal = (value: string) => Number(value.replace(',', '.'));
 
-export function materializeBottle(draft: BottleDraft, memberId: string, creatorId: string) {
+export function materializeBottle(draft: BottleDraft, memberId?: string, creatorId?: string) {
   return sharedBottleInputSchema.safeParse({
     ...draft,
     volumeMl: decimal(draft.volumeMl),
@@ -124,7 +160,12 @@ export function materializeBottle(draft: BottleDraft, memberId: string, creatorI
     defaultQuantity: decimal(draft.defaultQuantity),
     allowedMemberIds:
       draft.access === 'selected'
-        ? [...new Set([...draft.allowedMemberIds, creatorId, memberId])]
+        ? [
+            ...new Set([
+              ...draft.allowedMemberIds,
+              ...[creatorId, memberId].filter((id): id is string => Boolean(id)),
+            ]),
+          ]
         : [],
   });
 }
@@ -204,5 +245,5 @@ export function featureError(error: unknown) {
     return 'The plan must cover drinks already logged. Increase the plan or undo an incorrect entry.';
   if (message.includes('between 0 and 20 items'))
     return 'The plan is full. Remove a drink before adding another bottle.';
-  return 'Could not confirm the change. Check your connection and retry safely.';
+  return "Couldn't save this. Try again when you're online.";
 }

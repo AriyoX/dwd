@@ -7,6 +7,11 @@ export default function TabLayout() {
     <NativeTabs
       tintColor={colors.primary}
       backgroundColor={colors.surface}
+      indicatorColor={colors.secondaryContainer}
+      rippleColor={colors.primarySoft}
+      badgeBackgroundColor={colors.primaryFill}
+      badgeTextColor={colors.onPrimary}
+      shadowColor={colors.border}
       blurEffect={reduceTransparency ? 'none' : 'systemChromeMaterial'}
       disableTransparentOnScrollEdge={reduceTransparency}
       minimizeBehavior="never"
@@ -15,18 +20,18 @@ export default function TabLayout() {
     >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon sf={{ default: 'moon', selected: 'moon.fill' }} md="dark_mode" />
-        <NativeTabs.Trigger.Label>Tonight</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
         <NativeTabs.Trigger.Icon sf="clock" md="history" />
-        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Activity</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="account">
         <NativeTabs.Trigger.Icon
           sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }}
           md="account_circle"
         />
-        <NativeTabs.Trigger.Label>Account</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>My account</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

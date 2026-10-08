@@ -60,7 +60,7 @@ export function NightFrame({
       </header>
 
       {children}
-      <Button type="button" variant="danger" full data-tour="help" onClick={onHelp}>
+      <Button type="button" variant="secondary" full data-tour="help" onClick={onHelp}>
         <HeartHandshake aria-hidden="true" size={21} /> Get help
       </Button>
 

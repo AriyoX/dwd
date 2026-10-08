@@ -4,9 +4,10 @@ import type { Database } from '@dwd/core';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Brand } from '@/components/brand';
+import { SettingsSection } from '@/components/settings-section';
 import { PrimaryButton } from '@/components/primary-button';
-import { Panel, Screen, ScreenHeading } from '@/components/screen';
+import { Panel, ScreenHeading } from '@/components/screen';
+import { TourScreen, TourTarget } from '@/components/tour-screen';
 import { authHandoff } from '@/lib/auth-state';
 import { AppearancePicker } from '@/components/appearance-picker';
 import { useSupabase } from '@/providers/supabase-provider';
@@ -14,8 +15,6 @@ import { useTheme, useThemedStyles } from '@/providers/theme-provider';
 import type { ThemeColors, makeTypography } from '@/theme/tokens';
 import { NavigationRow } from '@/components/navigation-row';
 import { useNotifications } from '@/providers/notifications-provider';
-import { BlockedUsers } from '@/components/blocked-users';
-import { CampaignCountrySettings } from '@/components/campaign-country-settings';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -36,7 +35,14 @@ export default function AccountScreen() {
     },
     [userId],
   );
-  const { data: profileName, loading: profileLoading } = useAccountQuery(loadProfile);
+  const { data: profileName, loading: profileLoading } = useAccountQuery(
+    loadProfile,
+    'profile-name',
+    false,
+    false,
+    undefined,
+    5 * 60_000,
+  );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -50,33 +56,32 @@ export default function AccountScreen() {
       if (error) setMessage('Could not sign out. Try again.');
       else authHandoff().clear();
     } catch {
-      setMessage('Could not sign out. Check your connection and try again.');
+      setMessage("Couldn't sign out. Try again when you're online.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Screen>
-      <Brand />
+    <TourScreen route="/account">
       <ScreenHeading
         title={
           session
-            ? 'Your account'
+            ? 'Settings'
             : status === 'signed-out' || status === 'error'
               ? 'Welcome back'
-              : 'Your account'
+              : 'Settings'
         }
       />
 
       {status === 'unconfigured' ? (
         <Panel>
-          <Text style={styles.body}>Account connection unavailable.</Text>
+          <Text style={styles.body}>DWD is unavailable. Try again.</Text>
         </Panel>
       ) : status === 'loading' ? (
         <Panel style={styles.loadingPanel}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.body}>Restoring session</Text>
+          <Text style={styles.body}>Signing in…</Text>
         </Panel>
       ) : session ? (
         <Panel>
@@ -85,7 +90,7 @@ export default function AccountScreen() {
               <Text style={styles.initial}>{(profileName || 'You').slice(0, 1).toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1, gap: 4 }}>
-              {profileLoading ? (
+              {profileLoading && profileName === null ? (
                 <ActivityIndicator color={colors.primary} />
               ) : (
                 <Text style={styles.panelTitle}>{profileName ?? 'Signed in'}</Text>
@@ -103,15 +108,13 @@ export default function AccountScreen() {
               <Text accessibilityRole="alert" style={styles.error}>
                 Could not load your account.
               </Text>
-              <PrimaryButton label="Retry" variant="secondary" onPress={refreshProfile} />
+              <PrimaryButton label="Try again" variant="secondary" onPress={refreshProfile} />
             </>
           ) : null}
-          <PrimaryButton
-            busy={busy}
-            busyLabel="Signing out"
-            label="Sign out"
-            variant="quiet"
-            onPress={() => void signOut()}
+          <NavigationRow
+            label="Edit profile"
+            icon="person-outline"
+            onPress={() => router.push('/profile')}
           />
         </Panel>
       ) : (
@@ -129,29 +132,28 @@ export default function AccountScreen() {
           />
         </Panel>
       )}
-      <CampaignCountrySettings />
-      <Panel>
-        {session ? (
-          <NavigationRow
-            label="Practice tour"
-            icon="compass-outline"
-            onPress={() => router.push('/tour?replay=1')}
-          />
-        ) : null}
-        {session ? (
+      {session ? (
+        <SettingsSection title="Your nights">
           <NavigationRow
             label="Notifications"
             icon="notifications-outline"
             onPress={() => router.push('/notifications')}
           />
-        ) : null}
-        {session ? (
-          <NavigationRow
-            label="Edit profile"
-            icon="person-outline"
-            onPress={() => router.push('/profile')}
-          />
-        ) : null}
+          <TourTarget id="reminders">
+            <NavigationRow
+              label="Night reminders"
+              icon="time-outline"
+              onPress={() => router.push('/reminders')}
+            />
+          </TourTarget>
+        </SettingsSection>
+      ) : null}
+      <TourTarget id="settings">
+        <SettingsSection title="Appearance">
+          <AppearancePicker />
+        </SettingsSection>
+      </TourTarget>
+      <SettingsSection title="Help & privacy">
         {session ? (
           <NavigationRow
             label="Support & feedback"
@@ -159,50 +161,75 @@ export default function AccountScreen() {
             onPress={() => router.push('/support')}
           />
         ) : null}
-        <Text accessibilityRole="header" style={styles.panelTitle}>
-          Appearance
-        </Text>
-        <AppearancePicker />
-      </Panel>
-      <Panel>
-        <PrimaryButton
-          label="Terms"
-          variant="quiet"
-          onPress={() => router.push('/legal?document=terms')}
+        {session ? (
+          <NavigationRow
+            label="Explore DWD"
+            icon="compass-outline"
+            onPress={() => router.push('/tour?replay=1')}
+          />
+        ) : null}
+        <NavigationRow
+          label="Local help numbers"
+          icon="call-outline"
+          onPress={() => router.push('/local-help')}
         />
-        <PrimaryButton
+        <NavigationRow
           label="Privacy"
-          variant="quiet"
+          tone="neutral"
+          icon="shield-checkmark-outline"
           onPress={() => router.push('/legal?document=privacy')}
+        />
+        <NavigationRow
+          label="Terms"
+          tone="neutral"
+          icon="document-text-outline"
+          onPress={() => router.push('/legal?document=terms')}
         />
         {session ? (
           <NavigationRow
+            label="Blocked people"
+            icon="person-remove-outline"
+            onPress={() => router.push('/blocked-people')}
+          />
+        ) : null}
+      </SettingsSection>
+      {session ? (
+        <SettingsSection title="Account options">
+          <NavigationRow
+            busy={busy}
+            busyLabel="Signing out"
+            label="Sign out"
+            icon="log-out-outline"
+            showChevron={false}
+            onPress={() => void signOut()}
+          />
+          <NavigationRow
             label="Delete account"
+            tone="danger"
             icon="trash-outline"
             onPress={() => router.push('/delete-account')}
           />
-        ) : null}
-      </Panel>
-      {session ? <BlockedUsers key={session.user.id} /> : null}
-    </Screen>
+        </SettingsSection>
+      ) : null}
+    </TourScreen>
   );
 }
 
 const createStyles = (colors: ThemeColors, typography: ReturnType<typeof makeTypography>) =>
   StyleSheet.create({
-    panelTitle: typography.sectionTitle,
+    panelTitle: { ...typography.sectionTitle, fontSize: 20 },
     avatar: {
-      width: 62,
-      height: 62,
+      width: 48,
+      height: 48,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 20,
-      backgroundColor: colors.primarySoft,
+      backgroundColor: colors.surfaceSoft,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    initial: { color: colors.primary, fontSize: 26, fontWeight: '600' },
+    initial: { color: colors.muted, fontSize: 26, fontWeight: '600' },
     body: { ...typography.body, flexShrink: 1 },
     loadingPanel: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    error: { color: colors.danger, fontSize: 14, lineHeight: 20 },
+    error: { color: colors.error, fontSize: 14, lineHeight: 20 },
   });

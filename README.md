@@ -1,4 +1,4 @@
-# DWD — Drink with Desire
+# dwd
 
 Code name: **dwd**. Shared packages use the `@dwd` scope.
 
@@ -6,9 +6,9 @@ See the [September 28 product update](docs/product-update-2026-09-28.md) for nig
 
 Live app: **https://dwdug.vercel.app** (the original address remains available). Public email delivery is deferred until SMTP setup.
 
-Drink with Desire is a web and Expo Android/iOS app for adults who want a shared, factual record of drinks during a night out. Account participants keep ownership of their own plans and logs; a host can separately manage guests who do not have accounts.
+dwd is a web and Expo Android/iOS app for adults who want a shared, factual record of drinks during a night out. Account participants keep ownership of their own plans and logs; a host can separately manage guests who do not have accounts.
 
-Drink with Desire is not a drinking game, competition, medical device, BAC calculator, sobriety detector, or driving-safety tool. A personal plan is an intention, never a medically safe allowance. Do not use this product to decide whether anyone should drive.
+dwd is not a drinking game, competition, medical device, BAC calculator, sobriety detector, or driving-safety tool. A personal plan is an intention, never a medically safe allowance. Do not use this product to decide whether anyone should drive.
 
 ## MVP scope
 
@@ -28,7 +28,9 @@ Supported markets are Uganda, Kenya, Tanzania, Rwanda, South Africa, UAE (includ
 
 This is not a store-approval claim. Apple readiness returns HTTP 503 until its server credentials are configured. Production SMTP, signing/push credentials, leaked-password protection, moderation coverage, final store declarations and real-device acceptance remain release gates. See [mobile release setup](docs/mobile-release-readiness.md), [Google Play audit](docs/google-play-readiness.md) and [App Store audit](docs/app-store-readiness.md).
 
-The product has no marketing site, PIN or delegated account editing, spending, food logging, advertising analytics, ads, achievements, public rankings, AI recommendations, BAC or sobriety estimation.
+The mobile Tonight page and web home page include a swipeable banner placement with DWD house banners and an optional shared sponsor feed. See [connecting ads](docs/ads.md) for configuration and the separate AdMob integration path.
+
+The product has no marketing site, PIN or delegated account editing, spending, food logging, advertising analytics, achievements, public rankings, AI recommendations, BAC or sobriety estimation.
 
 ## Self-service onboarding
 
@@ -56,7 +58,7 @@ The npm workspaces are `@dwd/web`, `@dwd/mobile`, `@dwd/core`, `@dwd/contracts`,
 - npm 10 or newer (implemented with npm 10.9.2)
 - Supabase CLI 2.111.0 or newer (the installed global CLI was 2.75.0; the final type-generation pass used 2.111.0 through `npx`)
 - Docker Desktop or another Docker-compatible runtime for local Supabase
-- A completely separate Supabase project named for Drink with Desire for remote use
+- A completely separate Supabase project named for dwd for remote use
 
 ## Local installation
 
@@ -145,7 +147,7 @@ npx playwright test tests/e2e/handoff.spec.ts --project=webkit-mobile --grep "a 
 
 | Variable                               | Exposure                   | Purpose                                                                 |
 | -------------------------------------- | -------------------------- | ----------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | Browser and server         | Dedicated Drink with Desire Supabase URL                                |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Browser and server         | Dedicated dwd Supabase URL                                              |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser and server         | Supabase publishable key                                                |
 | `NEXT_PUBLIC_SITE_URL`                 | Browser-safe configuration | Canonical application origin used for auth and invite links             |
 | `NEXT_PUBLIC_DWD_VAPID_PUBLIC_KEY`     | Browser and server         | Optional public Web Push key; leave unset for in-app-only notifications |
@@ -157,7 +159,7 @@ Never use a Baby Steps project credential. Never prefix a Supabase secret or ser
 
 The dedicated project `kdplbebaotvgcvjggacz` is linked and migrated. See [deployment status](docs/deployment.md). For a future separate environment, use this sequence:
 
-1. In the Supabase Dashboard, create a new project specifically for Drink with Desire. Do not select or reuse Baby Steps.
+1. In the Supabase Dashboard, create a new project specifically for dwd. Do not select or reuse Baby Steps.
 2. Copy the new project reference from **Project Settings → General** and record the project name, organization, and reference in the deployment change record.
 3. Run `supabase projects list` and compare all three values with the Dashboard.
 4. Only after that comparison, run `supabase link --project-ref YOUR_DWD_PROJECT_REF`.
@@ -190,7 +192,7 @@ Pending email signups use a one-hour HttpOnly cookie so confirmation survives re
 
 1. Use the existing Vercel project `ariyoxs-projects/dwd` with **Root Directory `apps/web`**, **Framework Next.js**, and **Node.js 22.x**. Keep files outside the root directory enabled so the shared workspaces can build.
 2. Use the checked-in `apps/web/vercel.json`. It installs dependencies from the repository root, checks deployment environment variables, builds shared packages and Next.js, and uses `.next` as output relative to `apps/web`.
-3. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the dedicated Drink with Desire backend. Set `NEXT_PUBLIC_SITE_URL` to the HTTPS production origin. Preview links automatically use `VERCEL_URL`.
+3. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the dedicated dwd backend. Set `NEXT_PUBLIC_SITE_URL` to the HTTPS production origin. Preview links automatically use `VERCEL_URL`.
 4. Configure Supabase email confirmation, recovery templates, SMTP, and allowed redirects as described in [the deployment guide](docs/deployment.md).
 5. Run `npm run deploy:check` with deployment values in `apps/web/.env.production.local`, then deploy and run the four-session QA checklist. The check rejects local backends, placeholders, and known Baby Steps projects.
 

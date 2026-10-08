@@ -29,7 +29,7 @@ export function EmergencyPanel({
       <div className="warning-signs">
         {EMERGENCY_SIGNS.map((sign) => (
           <div className="row" key={sign}>
-            <TriangleAlert aria-hidden="true" size={18} color="var(--red)" />
+            <TriangleAlert aria-hidden="true" size={18} color="var(--muted)" />
             <span>{sign}</span>
           </div>
         ))}
@@ -52,12 +52,12 @@ export function EmergencyPanel({
       <div className="field-grid">
         {profile?.emergency.map(({ number, service }) =>
           practice ? (
-            <button className="button button-danger" type="button" disabled key={number}>
+            <button className="button button-primary" type="button" disabled key={number}>
               <Phone aria-hidden="true" size={20} /> Call {number} · {service}
             </button>
           ) : (
             <a
-              className="button button-danger"
+              className="button button-primary"
               href={emergencyDialUri(country, number) ?? undefined}
               key={number}
             >

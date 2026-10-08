@@ -1,5 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { format } from 'prettier';
+import sharp from 'sharp';
 import prettierConfig from '../prettier.config.mjs';
 
 // Reuse the supplied vector, including its trimmed viewBox. Never stretch or redraw the mark.
@@ -27,7 +29,7 @@ const paths = ${JSON.stringify(paths, null, 2)};
 export function Brand() {
   const { colors } = useTheme();
   return <View style={{ alignItems: 'flex-start', paddingVertical: 6 }}>
-    <Svg accessible accessibilityLabel="dwd, Drink with Desire" accessibilityRole="image"
+    <Svg accessible accessibilityLabel="dwd" accessibilityRole="image"
       width={96} height={96 * 412 / 1063} viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet">
       <G transform="${transform}" fill={colors.brand}>
         {paths.map((path, index) => <Path key={index} d={path} />)}
@@ -39,3 +41,20 @@ export function Brand() {
     { ...prettierConfig, parser: 'typescript' },
   ),
 );
+
+// Keep the existing mark inside Android's splash safe area; iOS uses the same assets.
+for (const [appearance, color] of [
+  ['light', '#4A102F'],
+  ['dark', '#F8F4EF'],
+]) {
+  const logo = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+    <svg x="192" y="388" width="640" height="248" viewBox="${viewBox}">
+      <g transform="${transform}" fill="${color}">${paths.map((path) => `<path d="${path}"/>`).join('')}</g>
+    </svg>
+  </svg>`;
+  await sharp(Buffer.from(logo))
+    .png()
+    .toFile(
+      fileURLToPath(new URL(`../apps/mobile/assets/splash-${appearance}.png`, import.meta.url)),
+    );
+}

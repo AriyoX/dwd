@@ -55,12 +55,10 @@ export default function CatchUpScreen() {
     } catch (error) {
       if (saved) {
         setPartial(true);
-        setMessage(
-          `${saved} entries saved on this device. Review Pending entries before adding the rest.`,
-        );
+        setMessage(`${saved} entries saved. Open Entries before adding the rest.`);
       } else
         setMessage(
-          error instanceof Error ? error.message : 'Could not save entries on this device.',
+          error instanceof Error ? error.message : "Couldn't save these entries. Try again.",
         );
     } finally {
       inFlight.current = false;
@@ -80,7 +78,7 @@ export default function CatchUpScreen() {
       ) : (
         <>
           <Text style={typography.sectionTitle}>{target.displayName}</Text>
-          <Notice message="Times are approximate. Any entries outside your plan will wait in Pending entries for your review." />
+          <Notice message="Times are approximate. Review entries outside your plan in Entries." />
           <Panel>
             <Counter
               label="Drinks"
@@ -97,7 +95,7 @@ export default function CatchUpScreen() {
           </Panel>
           {main ? (
             <Notice
-              message={`Missed drinks use ${main.label}, ${main.volumeMl} ml at ${main.abvPercent}% ABV.${main.sharedBottleId ? ' They do not change shared bottle inventory.' : ''}`}
+              message={`Uses ${main.label}, ${main.volumeMl} ml at ${main.abvPercent}%.${main.sharedBottleId ? ' Missed drinks won’t use up the shared bottle.' : ''}`}
             />
           ) : (
             <Notice message="Set a main drink in your plan to add missed drinks." />
@@ -120,7 +118,7 @@ export default function CatchUpScreen() {
           ))}
           {message ? <Notice error message={message} /> : null}
           {partial ? (
-            <PrimaryButton label="Review pending entries" onPress={() => router.back()} />
+            <PrimaryButton label="View entries" onPress={() => router.replace('/history')} />
           ) : (
             <PrimaryButton
               label="Add missed entries"

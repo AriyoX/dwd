@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { lightTheme } from '@dwd/core';
 import './globals.css';
+import { themeCss } from '@/lib/theme';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 
 export const metadata: Metadata = {
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light dark',
-  themeColor: '#f8f4ef',
+  themeColor: lightTheme.background,
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -37,6 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
+        <style>{themeCss}</style>
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('dwd-theme');document.documentElement.dataset.theme=t==='dark'||t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){document.documentElement.dataset.theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}})();`,

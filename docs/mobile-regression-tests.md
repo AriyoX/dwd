@@ -88,13 +88,13 @@ Use accounts A (host), B (member), C (unrelated), a consenting managed guest, a 
 
 Notification checks must include Android and iOS; an Android emulator pass does not establish APNs behavior. Test denied permission and account switching before considering delivery complete.
 
-### Memories, detailed recaps and practice tour
+### Memories, detailed recaps and feature tour
 
 - **M1 — upload recovery:** choose an image, force-stop before upload, reopen and upload. Drop the response after Storage upload and again after registration; retry the saved task. Assert one object/row with the original ID. Check the two-photo quota, unsupported images and preparation errors. Run with staging fixtures and the proxy described below.
 - **M2 — privacy and removal:** A uploads, B views, C is denied. B has no delete control and cannot delete through the API. A deletes from web; mobile refresh removes the photo. Fail Storage deletion: keep the row and offer retry. Switch accounts during preparation/upload; never show the old account's task or signed URLs. Schedule deletion on a disposable account and verify only its local photo files are cleared.
 - **M3 — viewer:** open, close, previous/next, rotation, failed/expired URL, light/dark, large text and screen reader. On iOS check pinch zoom. Check limited/denied photo access and JPEG conversion on installed Android and iOS builds. No camera/microphone permission should be requested.
 - **R2 — detailed recap:** use a fixture with an extended end, actual end, after-end and catch-up entries, removed logs, archived plans and a managed guest. Compare displayed quantities/grams with the shared calculations and web recap. A personal-scope recap must not expose other members.
-- **T1 — practice isolation:** exercise all nine steps, exceed the sample plan, cancel/confirm, undo a bottle serving, skip, restart and replay from Account. No real night/log/invitation/check-in/photo/permission/call mutation may occur. Progress belongs to the signed-in account on that device; sample entries reset on remount. Verify this with network/DB assertions alongside a Maestro UI flow.
+- **T1 - feature highlights:** advance/back through the six real Home targets, skip, restart and replay from Settings. The tour must perform no product mutations or require practice actions. Verify a new native account gets the tour even after seeing the web or old practice tour, while a dismissed native tour stays dismissed. Check target measurements, scrolling and large text on device.
 
 The 14 focused tests cover protocol/reducer boundaries; M1–M3, R2 and T1 installed-device journeys are still manual until their Maestro and staging fixture flows are added.
 

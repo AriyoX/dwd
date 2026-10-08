@@ -135,7 +135,7 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
         setIssue(
           code === '54000'
             ? 'You can save up to 2 photos per night. Remove an upload before adding another.'
-            : 'Could not finish. Retry when connected; your saved upload keeps the same photo ID.',
+            : "Couldn't upload your photo. Try again when you're online.",
         );
       }
     } finally {
@@ -228,8 +228,8 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
       insetTop={false}
       refreshControl={
         <RefreshControl
-          refreshing={query.loading}
-          onRefresh={() => void query.refresh()}
+          refreshing={query.refreshing}
+          onRefresh={() => void query.refresh(true)}
           tintColor={colors.primary}
         />
       }
@@ -252,7 +252,7 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
                 globalThis.localStorage.removeItem(photoTaskKey(owner, nightId));
                 setUnreadable(false);
               } catch {
-                setIssue('Device storage is unavailable. Retry discarding the upload.');
+                setIssue("Couldn't clear this upload. Try again.");
               }
             }}
           />
@@ -310,7 +310,7 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
           }
         />
       ) : null}
-      {notice ? <Notice message={notice} /> : null}
+      {notice ? <Notice dismissible message={notice} /> : null}
       {busy === 'Removing photo' ? <Notice message="Removing photo…" /> : null}
       {query.data && !query.issue && !photos.length ? (
         <View style={{ alignItems: 'center', gap: 12, paddingVertical: 28 }}>

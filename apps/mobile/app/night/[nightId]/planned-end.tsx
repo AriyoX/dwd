@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { invalidateAccountQuery } from '@/lib/account-query-state';
 import { Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { canUserEndOrExtendNight, canUserLeaveNight, formatNightDateTime } from '@dwd/core';
@@ -94,7 +95,10 @@ export default function PlannedEndScreen() {
                       ))
                     )
                       void action.run(
-                        () => endNight(connection, nightId),
+                        async () => {
+                          await endNight(connection, nightId);
+                          invalidateAccountQuery(snapshot.currentUserId, 'finished-nights');
+                        },
                         undefined,
                         () => router.replace(`/night/${nightId}/summary`),
                       );

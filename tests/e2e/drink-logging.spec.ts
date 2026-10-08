@@ -13,7 +13,7 @@ test('main drink, simple alternate logging, notices and offline plan checks', as
     .getByLabel('Email address')
     .fill(`drink-ux-${info.project.name}-${Date.now()}@example.test`);
   await page.getByLabel('New password', { exact: true }).fill('local-test-password-123');
-  await page.getByLabel('I am 18 or older.').check();
+  await page.getByRole('checkbox', { name: /I am 18 or older/ }).check();
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await page.getByRole('button', { name: 'Skip tour', exact: true }).click();
   await page.getByRole('link', { name: /Start a night/ }).click();

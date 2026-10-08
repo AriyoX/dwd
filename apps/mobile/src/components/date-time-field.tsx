@@ -48,6 +48,8 @@ export function DateTimeField({
           if (Platform.OS === 'android')
             DateTimePickerAndroid.open({
               ...props,
+              positiveButton: { textColor: colors.primary },
+              negativeButton: { textColor: colors.muted },
               onValueChange: (_, date) => onChange(date),
             });
           else setOpen(!open);
@@ -74,6 +76,8 @@ export function DateTimeField({
           disabled={disabled}
           display="spinner"
           themeVariant={scheme}
+          textColor={colors.text}
+          accentColor={colors.primary}
           onValueChange={(_, date) => onChange(date)}
         />
       ) : null}

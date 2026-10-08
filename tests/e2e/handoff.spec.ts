@@ -573,7 +573,11 @@ test('two accounts: setup refresh, drink confirmations, live check-ins, guest ro
     await expect(page.getByTestId('drink-count')).toHaveText('3');
 
     await page.getByRole('button', { name: 'Group', exact: true }).click();
-    await expect(page.getByText('3 wines', { exact: false })).toBeVisible();
+    const hostCard = page
+      .locator('.card')
+      .filter({ has: page.getByRole('heading', { name: 'Review Host (you)', exact: true }) });
+    await hostCard.getByText('View drinks', { exact: true }).click();
+    await expect(hostCard.getByText('3 × Wine · 150 ml · 12%', { exact: true })).toBeVisible();
     const memberCard = page
       .locator('.card')
       .filter({ has: page.getByText('Review Member', { exact: true }) });
@@ -612,7 +616,7 @@ test('two accounts: setup refresh, drink confirmations, live check-ins, guest ro
     await recipient.getByRole('button', { name: 'Save name', exact: true }).click();
     await expect(recipient.getByText('Saved', { exact: true })).toBeVisible();
     await page.bringToFront();
-    await expect(page.getByText('Renamed Member', { exact: true })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Renamed Member', exact: true })).toBeVisible({
       timeout: 25_000,
     });
     await recipient.goto(`/night/${nightId}`);
@@ -626,7 +630,7 @@ test('two accounts: setup refresh, drink confirmations, live check-ins, guest ro
     expect((await host.client.rpc('end_night', { p_night_id: nightId })).error).toBeNull();
     await recipient.goto('/history');
     await recipient.getByRole('link').filter({ hasText: title }).click();
-    await expect(recipient.getByRole('heading', { name: 'Your activity' })).toBeVisible();
+    await expect(recipient.getByRole('heading', { name: 'Your night in drinks' })).toBeVisible();
     await expect(recipient.getByText('Renamed Member', { exact: true })).toBeVisible();
     await expect(recipient.getByText('Casey Guest', { exact: true })).toHaveCount(0);
     await expect(recipient.getByText('Review Host', { exact: true })).toHaveCount(0);

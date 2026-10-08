@@ -7,6 +7,8 @@ const job: NativePushJob = {
   eventId: 'event',
   recipientUserId: 'owner',
   nightId: 'night',
+  title: 'Time for a chaser',
+  body: 'Pause for a glass of water.',
 };
 function fixture(result: unknown, status = 200) {
   const completed: unknown[][] = [];
@@ -27,17 +29,16 @@ function fixture(result: unknown, status = 200) {
   };
   return { deps, requests, completed };
 }
-Deno.test(
-  'native payload has a canonical account/event reference and generic lock-screen copy',
-  () => {
-    const message = nativePushMessage(job);
-    deepStrictEqual(message.data, { eventId: 'event', recipientUserId: 'owner', nightId: 'night' });
-    equal(message.to, job.token);
-    equal(message.ttl, 120);
-    equal(message.channelId, 'dwd-reminders');
-    ok(!JSON.stringify(message).includes('Private check-in'));
-  },
-);
+Deno.test('native payload has a canonical account/event reference and event-specific copy', () => {
+  const message = nativePushMessage(job);
+  deepStrictEqual(message.data, { eventId: 'event', recipientUserId: 'owner', nightId: 'night' });
+  equal(message.to, job.token);
+  ok('ttl' in message);
+  equal(message.ttl, 120);
+  equal(message.channelId, 'dwd-reminders');
+  equal(message.title, job.title);
+  equal(message.body, job.body);
+});
 Deno.test('accepted Expo ticket is recorded with the original attempt', async () => {
   const f = fixture({ data: { status: 'ok', id: 'ticket' } });
   deepStrictEqual(await createNativeDispatcher(f.deps)(), {
@@ -50,17 +51,53 @@ Deno.test('accepted Expo ticket is recorded with the original attempt', async ()
   ok(f.requests[0]?.init?.signal);
 });
 Deno.test('pre-plot pushes use the campaign copy and expire with the window', () => {
-  const message = nativePushMessage({
-    ...job,
-    preplot: true,
-    title: 'Ofuluma leero? 👀',
-    body: 'Set up your Night before you head out.',
-    expiresAt: '2026-10-09T13:00:00Z',
-  });
+  const message = nativePushMessage(
+    {
+      ...job,
+      preplot: true,
+      title: 'Ofuluma leero? 👀',
+      body: 'Set up your Night before you head out.',
+      expiresAt: '2026-10-09T13:00:00Z',
+    },
+    Date.parse('2026-10-09T12:59:30Z'),
+  );
   equal(message.title, 'Ofuluma leero? 👀');
   equal(message.body, 'Set up your Night before you head out.');
+  ok('expiration' in message);
   equal(message.expiration, Date.parse('2026-10-09T13:00:00Z') / 1000);
+  ok(!('ttl' in message), 'ttl must not override the campaign expiry');
 });
+Deno.test('campaign delivery retains the two-minute freshness limit for longer windows', () => {
+  const now = Date.parse('2026-10-09T12:00:00Z');
+  const message = nativePushMessage(
+    { ...job, preplot: true, expiresAt: '2026-10-09T13:00:00Z' },
+    now,
+  );
+  ok('expiration' in message);
+  equal(message.expiration, now / 1000 + 120);
+  ok(!('ttl' in message));
+});
+Deno.test(
+  'reminders, pace, planned-end and direct check-ins retain distinct notification copy',
+  () => {
+    for (const [title, body] of [
+      ['Time for a chaser', 'Pause for a glass of water.'],
+      ['A moment to pause', 'You have logged drinks fairly quickly.'],
+      ['Night check-in', 'Your planned night has ended.'],
+      ['Alex checked in', 'How are you feeling?'],
+      ['Check on your friend', 'Open your night to check in with Alex.'],
+    ]) {
+      const message = nativePushMessage({ ...job, title, body });
+      equal(message.title, title);
+      equal(message.body, body);
+      deepStrictEqual(message.data, {
+        eventId: 'event',
+        recipientUserId: 'owner',
+        nightId: 'night',
+      });
+    }
+  },
+);
 Deno.test('a Night starting after claim suppresses the send', async () => {
   const f = fixture({ data: { status: 'ok', id: 'ticket' } });
   const result = await createNativeDispatcher({

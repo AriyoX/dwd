@@ -1,5 +1,34 @@
 # Product tour
 
+## Native tour
+
+The mobile tour is read-only and follows the real screens: Start and Join on
+Tonight, the first recap (or empty state) on Entries, notification status on
+Notifications, then Night reminders and Appearance in Settings. It never opens
+a live night or creates sample product data. Its route/target definitions live in
+`apps/mobile/src/lib/feature-tour.ts`.
+
+`FeatureTourProvider` keeps progress across routes. `TourScreen` owns each page's
+scroll view and target refs; `TourTarget` wraps the actual control with a
+non-collapsible native view. The overlay is a sibling of the screen, outside its
+scroll view, in the same native window. Target and viewport measurements subtract
+that common parent's origin, avoiding Android Modal/status-bar offsets. It waits
+for matching measurements after navigation or scrolling, and keeps tracking data,
+font-size and viewport changes. Missing targets never borrow the previous outline;
+the card offers recovery after a short wait. Large text uses a scrollable card.
+
+Back and Next navigate to the step's page. Hardware Back moves to the previous
+step, or exits the first step. Skip and Done return to Tonight for initial onboarding
+and Settings for replay. Leaving through a tab, header Back or a deep link discards
+the tour; returning to that page does not reopen it. The existing local seen
+preference remains intact.
+
+Native regression tests cover real screen target registration (including empty
+history and active-night changes), cross-page navigation, shared-window offsets,
+scrolling, delayed/missing measurements, dismissal and constrained card layouts.
+
+## Web tour
+
 The tour uses the same `NightFrame`, `TonightView`, `DrinkChooser`, `ParticipantCard`,
 `HistoryScreen`, and `SummaryScreen` components as normal app use. It does not render
 miniature copies of controls in its explanation cards.

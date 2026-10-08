@@ -31,11 +31,24 @@ const runtime = vi.hoisted(() => ({
   events: vi.fn(),
   acknowledge: vi.fn(),
   preplotOpen: vi.fn(),
+  channel: vi.fn(),
+  permissions: vi.fn(),
+  online: null as boolean | null,
+  platform: 'ios',
+  environment: 'standalone',
+}));
+vi.mock('@/providers/connectivity-provider', () => ({
+  useConnectivity: () => ({ online: runtime.online }),
 }));
 vi.mock('@/providers/supabase-provider', () => ({ useSupabase: () => runtime.auth }));
 vi.mock('react-native', () => ({
-  Platform: { OS: 'ios' },
+  Platform: {
+    get OS() {
+      return runtime.platform;
+    },
+  },
   AppState: {
+    currentState: 'active',
     addEventListener: (_event: string, fn: (state: string) => void) => {
       runtime.foreground.add(fn);
       return { remove: () => runtime.foreground.delete(fn) };
@@ -44,7 +57,13 @@ vi.mock('react-native', () => ({
 }));
 vi.mock('expo-router', () => ({ useRouter: () => runtime.router }));
 vi.mock('expo-constants', () => ({
-  default: { easConfig: { projectId: '00000000-0000-4000-8000-000000000080' } },
+  default: {
+    easConfig: { projectId: '00000000-0000-4000-8000-000000000080' },
+    get executionEnvironment() {
+      return runtime.environment;
+    },
+  },
+  ExecutionEnvironment: { StoreClient: 'storeClient' },
 }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => '00000000-0000-4000-8000-000000000010' }));
 vi.mock('@dwd/data', () => ({
@@ -58,7 +77,10 @@ vi.mock('@dwd/data', () => ({
   acknowledgeNotification: runtime.acknowledge,
 }));
 vi.mock('expo-notifications', () => ({
-  getPermissionsAsync: () => Promise.resolve(runtime.permission),
+  getPermissionsAsync: runtime.permissions,
+  setNotificationChannelAsync: runtime.channel,
+  AndroidImportance: { DEFAULT: 3 },
+  AndroidNotificationVisibility: { PRIVATE: 0 },
   requestPermissionsAsync: runtime.request,
   getExpoPushTokenAsync: runtime.token,
   dismissAllNotificationsAsync: () => Promise.resolve(),
@@ -137,6 +159,11 @@ beforeEach(() => {
     access: 'ready',
   };
   runtime.permission = { granted: true, canAskAgain: true };
+  runtime.permissions.mockImplementation(() => Promise.resolve(runtime.permission));
+  runtime.channel.mockResolvedValue(undefined);
+  runtime.online = null;
+  runtime.platform = 'ios';
+  runtime.environment = 'standalone';
   runtime.last = null;
   runtime.request.mockResolvedValue({ granted: true, canAskAgain: true });
   runtime.token.mockResolvedValue({ data: 'ExpoPushToken[fixture]' });
@@ -149,6 +176,7 @@ beforeEach(() => {
 afterEach(async () => {
   if (root) await update(() => root?.unmount());
   root = undefined;
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 describe('native permission and token lifecycle', () => {
@@ -244,10 +272,12 @@ describe('native permission and token lifecycle', () => {
     runtime.register.mockRejectedValueOnce(new Error('offline'));
     await mount();
     await update(() => state.enable());
-    expect(state.state).toBe('unavailable');
-    expect(state.issue).toMatch('Retry');
-    await update(() => state.enable());
+    expect(state.state).toBe('pending');
+    expect(state.issue).toContain("You're offline");
+    expect(globalThis.localStorage.getItem(pushRegistrationKey(owner))).toBe('pending');
+    await update(() => state.retry());
     expect(state.state).toBe('ready');
+    expect(globalThis.localStorage.getItem(pushRegistrationKey(owner))).toBe('registered');
   });
   it('keeps a failed disable visible and retries unregistering on foreground return', async () => {
     await mount();
@@ -255,12 +285,12 @@ describe('native permission and token lifecycle', () => {
     runtime.remove.mockRejectedValueOnce(new Error('offline'));
     runtime.remove.mockRejectedValueOnce(new Error('still offline'));
     await update(() => state.disable());
-    expect(state.state).toBe('unavailable');
+    expect(state.state).toBe('pending');
     expect(globalThis.localStorage.getItem(pushRegistrationKey(owner))).not.toBeNull();
     await update(() => {
       for (const listener of runtime.foreground) listener('active');
     });
-    expect(state.state).toBe('unavailable');
+    expect(state.state).toBe('pending');
     expect(state.issue).toMatch('turn off');
     await update(() => {
       for (const listener of runtime.foreground) listener('active');
@@ -330,9 +360,139 @@ describe('native permission and token lifecycle', () => {
       throw new Error('Device storage unavailable');
     });
     await mount();
-    expect(state.state).toBe('unavailable');
+    expect(state.state).toBe('pending');
     expect(state.busy).toBe(false);
-    expect(state.issue).toMatch('Retry');
+    expect(state.issue).toMatch('Try again');
     expect(runtime.request).not.toHaveBeenCalled();
+  });
+  it('creates the Android channel before asking for permission or obtaining a push token', async () => {
+    runtime.platform = 'android';
+    runtime.permission = { granted: false, canAskAgain: true };
+    await mount();
+    expect(runtime.channel).not.toHaveBeenCalled();
+    await update(() => state.enable());
+    expect(state.state).toBe('ready');
+    expect(runtime.channel).toHaveBeenCalledWith(
+      'dwd-reminders',
+      expect.objectContaining({ importance: 3 }),
+    );
+    expect(runtime.channel.mock.invocationCallOrder[0]).toBeLessThan(
+      runtime.permissions.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(runtime.permissions.mock.invocationCallOrder[0]).toBeLessThan(
+      runtime.request.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(runtime.request.mock.invocationCallOrder[0]).toBeLessThan(
+      runtime.token.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(runtime.register).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      'ExpoPushToken[fixture]',
+      'android',
+    );
+  });
+  it('keeps an offline Android opt-in and registers automatically on reconnection', async () => {
+    runtime.platform = 'android';
+    runtime.online = false;
+    runtime.permission = { granted: false, canAskAgain: true };
+    await mount();
+    await update(() => state.enable());
+    expect(state.state).toBe('pending');
+    expect(state.enabled).toBe(true);
+    expect(runtime.token).not.toHaveBeenCalled();
+    expect(runtime.register).not.toHaveBeenCalled();
+    expect(runtime.request).toHaveBeenCalledOnce();
+    runtime.permission = { granted: true, canAskAgain: false };
+    runtime.online = true;
+    await update(() =>
+      root?.update(createElement(NotificationsProvider, null, createElement(Probe))),
+    );
+    expect(state.state).toBe('ready');
+    expect(runtime.register).toHaveBeenCalledOnce();
+    expect(runtime.request).toHaveBeenCalledOnce();
+  });
+  it('does not ask again after Android permission was permanently denied', async () => {
+    runtime.platform = 'android';
+    runtime.permission = { granted: false, canAskAgain: false };
+    await mount();
+    await update(() => state.enable());
+    expect(state.state).toBe('denied');
+    expect(state.canAskAgain).toBe(false);
+    expect(runtime.request).not.toHaveBeenCalled();
+    expect(runtime.register).not.toHaveBeenCalled();
+  });
+  it('classifies missing Firebase configuration as unavailable without exposing the native error', async () => {
+    runtime.platform = 'android';
+    runtime.token.mockRejectedValueOnce(
+      new Error('Default FirebaseApp is not initialized: google-services.json missing'),
+    );
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await mount();
+    await update(() => state.enable());
+    expect(state.state).toBe('unavailable');
+    expect(state.issue).toContain('this version');
+    expect(state.issue).not.toMatch(/firebase|google|device connection/i);
+    expect(runtime.register).not.toHaveBeenCalled();
+    expect(warning).toHaveBeenCalledOnce();
+  });
+  it('avoids native push calls in Expo Go', async () => {
+    runtime.platform = 'android';
+    runtime.environment = 'storeClient';
+    await mount();
+    await update(() => state.enable());
+    expect(state.state).toBe('unavailable');
+    expect(state.issue).toContain('installed DWD app');
+    expect(runtime.channel).not.toHaveBeenCalled();
+    expect(runtime.permissions).not.toHaveBeenCalled();
+    expect(runtime.token).not.toHaveBeenCalled();
+    await update(() => state.deactivate());
+    expect(state.state).toBe('off');
+    expect(runtime.remove).not.toHaveBeenCalled();
+  });
+  it('coalesces foreground and reconnection registration requests', async () => {
+    let finish: ((value: { data: string }) => void) | undefined;
+    runtime.token.mockImplementationOnce(
+      () =>
+        new Promise<{ data: string }>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    globalThis.localStorage.setItem(pushPreferenceKey(owner), 'enabled');
+    runtime.online = true;
+    await mount();
+    await update(() => {
+      for (const listener of runtime.foreground) listener('active');
+    });
+    await update(() => {
+      finish?.({ data: 'ExpoPushToken[fixture]' });
+    });
+    expect(runtime.token).toHaveBeenCalledOnce();
+    expect(runtime.register).toHaveBeenCalledOnce();
+    expect(state.state).toBe('ready');
+  });
+  it('does not register a late token after notifications have been turned off', async () => {
+    let finish: ((value: { data: string }) => void) | undefined;
+    runtime.token.mockImplementationOnce(
+      () =>
+        new Promise<{ data: string }>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await mount();
+    await update(() => {
+      void state.enable();
+    });
+    let disabling: Promise<void> | undefined;
+    await update(() => {
+      disabling = state.disable();
+    });
+    await update(async () => {
+      finish?.({ data: 'ExpoPushToken[late]' });
+      await disabling;
+    });
+    expect(state.state).toBe('off');
+    expect(runtime.register).not.toHaveBeenCalled();
+    expect(globalThis.localStorage.getItem(pushPreferenceKey(owner))).toBe('disabled');
   });
 });

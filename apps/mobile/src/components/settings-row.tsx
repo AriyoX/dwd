@@ -39,7 +39,9 @@ export function SettingsRow({
           accessible={false}
           value={value}
           disabled={disabled}
-          trackColor={{ true: colors.primary }}
+          trackColor={{ false: colors.outline, true: colors.primaryFill }}
+          thumbColor={value ? colors.onPrimary : colors.surface}
+          ios_backgroundColor={colors.outline}
         />
       </View>
     </Pressable>

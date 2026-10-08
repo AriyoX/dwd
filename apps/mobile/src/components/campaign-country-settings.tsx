@@ -1,5 +1,5 @@
 import { Linking, Text } from 'react-native';
-import { countryProfile, LOCATION_DISCLOSURE } from '@dwd/core';
+import { countryProfile } from '@dwd/core';
 import { useCountryLocation } from '@/providers/location-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { PrimaryButton } from './primary-button';
@@ -12,11 +12,11 @@ export function CampaignCountrySettings() {
   return (
     <Panel>
       <SettingsRow
-        label="Use location"
+        label="Local emergency numbers"
         value={enabled && (busy || permission === 'granted')}
         onChange={(value) => (value ? void request() : disable())}
       />
-      <Text style={typography.body}>{LOCATION_DISCLOSURE} Turn off anytime.</Text>
+      <Text style={typography.body}>Use your location to find local help numbers.</Text>
       <Text style={typography.body}>
         {busy ? 'Finding country…' : enabled && permission === 'granted' ? 'On' : 'Off'} ·{' '}
         {countryProfile(location.countryCode)?.name}
@@ -24,7 +24,7 @@ export function CampaignCountrySettings() {
       </Text>
       {enabled && permission === 'denied' ? (
         <>
-          <Notice message="Allow location in device settings to turn it on." />
+          <Notice message="Allow location in your phone settings to turn it on." />
           <PrimaryButton
             label="Open settings"
             variant="quiet"

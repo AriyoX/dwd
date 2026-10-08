@@ -29,7 +29,7 @@ export default function LegalScreen() {
         </Panel>
       ))}
       <PrimaryButton
-        label={LEGAL_CONTACT.email}
+        label="Email DWD support"
         variant="quiet"
         onPress={() =>
           void Linking.openURL(`mailto:${LEGAL_CONTACT.email}`).catch(() =>

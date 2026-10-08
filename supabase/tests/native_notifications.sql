@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(29);
+select extensions.plan(30);
 insert into auth.users(id, email, raw_user_meta_data) values
  ('81000000-0000-4000-8000-000000000001', 'native-one@example.test', '{"display_name":"One","age_confirmed":true}'),
  ('81000000-0000-4000-8000-000000000002', 'native-two@example.test', '{"display_name":"Two","age_confirmed":true}');
@@ -36,7 +36,8 @@ set local role service_role;
 insert into native_state values ('jobs', public.claim_native_notification_jobs(10));
 select extensions.is(jsonb_array_length((select value from native_state where key = 'jobs')), 2, 'worker claims one delivery for each device');
 select extensions.is(jsonb_array_length(public.claim_native_notification_jobs(10)), 0, 'leased deliveries are not claimed twice');
-select extensions.ok(not ((select value->0 from native_state where key = 'jobs') ? 'body'), 'private message details stay off native push payloads');
+select extensions.is((select value->0->>'title' from native_state where key = 'jobs'), 'Private check-in', 'native job preserves the event title');
+select extensions.is((select value->0->>'body' from native_state where key = 'jobs'), 'Private message', 'native job preserves the event message');
 select extensions.is(public.complete_native_notification_job(((select value->0->>'deliveryId' from native_state where key='jobs'))::uuid, 99, 'late')->>'updated', 'false', 'late attempt cannot overwrite a lease');
 select extensions.is(public.complete_native_notification_job(((select value->0->>'deliveryId' from native_state where key='jobs'))::uuid, 1, 'expo-ticket')->>'updated', 'true', 'Expo ticket acceptance is recorded');
 reset role;

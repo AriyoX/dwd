@@ -16,6 +16,14 @@ Code confirmation is implemented but disabled by default. Supabase rejected the 
 
 Do not enable that flag before the template is installed: the default email contains only a link. No SMTP credentials or Google secret belong in the browser. See [email template variables](https://supabase.com/docs/guides/auth/auth-email-templates) and [free-tier template restrictions](https://supabase.com/changelog/46599-changes-to-email-template-customisation-on-free-tier).
 
+## Email callback repair, October 7, 2026
+
+`/auth/confirm` now renders the browser handoff directly. Default Supabase verification links can return `access_token` and `refresh_token` in a URL fragment, which a server route cannot read. The browser removes that fragment, posts the session to `/auth/confirm/verify`, and continues to the original destination after Supabase validates the confirmed user and writes the session cookies. Keeping the handoff at the email's exact destination also avoids WebKit dropping the fragment during an additional redirect. No SMTP or hosted Auth configuration change is required for this repair.
+
+Code and token-hash links continue through the server verifier. Email and Google code exchanges now forward `sb_flow_id`, so each callback selects its own PKCE verifier if multiple auth attempts are pending. PKCE links still need the browser that started the flow; token-hash and implicit-session links can establish a session in another browser. Localhost is supported when the link returns to the same local app origin.
+
+Regression coverage follows a real local Supabase `/verify` link in Chromium and WebKit, then loads a protected page to verify the server session. It also checks invalid fragment sessions, reset-link recovery, invitation preservation, and code verifier selection. Public email delivery and the user's original link were not exercised.
+
 ## Release status and verification
 
 Validation passed: production build, TypeScript, lint, 151 unit tests, 142 isolated database assertions, and 33 desktop/mobile browser checks across Chromium and WebKit. The browser checks cover both link-only and code-enabled confirmation, pending-email persistence, invalid codes, confirmation in another tab, Google handoff/cancellation, adult onboarding, and the existing signup/invitation workflows. A read-only hosted OAuth request returned Google's authorization page with the correct Supabase callback.

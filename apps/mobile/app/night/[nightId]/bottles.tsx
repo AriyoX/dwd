@@ -12,6 +12,7 @@ import {
   type MemberSnapshot,
   type NightSnapshot,
   type SharedBottle,
+  type SharedBottleInput,
 } from '@dwd/core';
 import {
   closeSharedBottle,
@@ -22,6 +23,7 @@ import {
 } from '@dwd/data';
 import { Choice } from '@/components/choice';
 import { DrinkQuantity } from '@/components/drink-quantity';
+import { SharedBottleFields } from '@/components/shared-bottle-fields';
 import { Action, PrimaryButton } from '@/components/primary-button';
 import { LoadingPanel, Notice, Panel, RetryPanel, Screen } from '@/components/screen';
 import { SettingsRow } from '@/components/settings-row';
@@ -34,16 +36,26 @@ import {
   materializeBottle,
   materializeBottlePlan,
   nightAccess,
+  newBottleDraft,
+  bottleInputIssue,
   type BottleDraft,
 } from '@/lib/night-features';
 import { confirmAction } from '@/lib/confirm';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { useConnectivity } from '@/providers/connectivity-provider';
+import { RecoverableCommand } from '@/lib/recoverable-command';
+import { actorClient } from '@/lib/actor-client';
+import { withRequestTimeout } from '@/lib/request-timeout';
 
 export default function BottlesScreen() {
-  const { nightId, memberId } = useLocalSearchParams<{ nightId: string; memberId?: string }>();
+  const { nightId, memberId, bottleId } = useLocalSearchParams<{
+    nightId: string;
+    memberId?: string;
+    bottleId?: string;
+  }>();
   const { colors } = useTheme();
-  const { snapshot, issue, refresh, loading } = useNight(nightId);
+  const { snapshot, issue, refresh, refreshing } = useNight(nightId);
   const scrollRef = useRef<ScrollView>(null);
   const access = snapshot ? nightAccess(snapshot, memberId ?? snapshot.currentMemberId) : null;
   return (
@@ -53,8 +65,8 @@ export default function BottlesScreen() {
       insetTop={false}
       refreshControl={
         <RefreshControl
-          refreshing={loading}
-          onRefresh={() => void refresh()}
+          refreshing={refreshing}
+          onRefresh={() => void refresh(true)}
           tintColor={colors.primary}
         />
       }
@@ -70,7 +82,8 @@ export default function BottlesScreen() {
         <Notice message="You cannot manage bottles for this person or the night has ended." />
       ) : (
         <BottleShelf
-          key={`${snapshot.currentUserId}:${access.member.id}`}
+          key={`${snapshot.currentUserId}:${access.member.id}:${bottleId ?? 'shelf'}`}
+          initialBottleId={bottleId}
           snapshot={snapshot}
           member={access.member}
           refresh={refresh}
@@ -86,11 +99,13 @@ export default function BottlesScreen() {
 }
 
 function BottleShelf({
+  initialBottleId,
   snapshot,
   member,
   refresh,
   onNavigate,
 }: {
+  initialBottleId?: string | undefined;
   snapshot: NightSnapshot;
   member: MemberSnapshot;
   refresh: () => Promise<void>;
@@ -102,7 +117,9 @@ function BottleShelf({
   const now = useNow();
   const action = useNightAction(refresh);
   const logging = useLogging(() => void refresh(), snapshot);
-  const [page, changePage] = useState<'shelf' | 'create' | 'plan'>('shelf');
+  const [page, changePage] = useState<'shelf' | 'create' | 'plan'>(
+    initialBottleId ? 'plan' : 'shelf',
+  );
   const [formBusy, setFormBusy] = useState(false);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
   function setPage(next: typeof page) {
@@ -114,12 +131,19 @@ function BottleShelf({
     setPage('shelf');
     setSavedNotice(message);
   }
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialBottleId ?? null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const bottles = availableBottles(snapshot, member.id);
   const active = bottles.filter((b) => !b.closedAt);
   const selected = bottles.find((b) => b.id === selectedId && !b.closedAt);
   const busy = action.busy || logging.busy;
+  function startLogging() {
+    onNavigate();
+    router.replace({
+      pathname: `/night/${snapshot.night.id}/log`,
+      params: { memberId: member.id },
+    });
+  }
   function fullPlan() {
     router.push({ pathname: `/night/${snapshot.night.id}/plan`, params: { memberId: member.id } });
   }
@@ -163,12 +187,12 @@ function BottleShelf({
   return (
     <>
       <Text style={typography.body}>For {member.displayName}</Text>
-      {savedNotice ? <Notice message={savedNotice} /> : null}
+      {savedNotice ? <Notice dismissible message={savedNotice} /> : null}
       {action.issue || logging.issue ? (
-        <Notice error message={action.issue ?? logging.issue ?? ''} />
+        <Notice dismissible error message={action.issue ?? logging.issue ?? ''} />
       ) : null}
       {action.notice || logging.notice ? (
-        <Notice message={action.notice ?? logging.notice ?? ''} />
+        <Notice dismissible message={action.notice ?? logging.notice ?? ''} />
       ) : null}
       {page !== 'shelf' ? (
         <PrimaryButton
@@ -186,13 +210,7 @@ function BottleShelf({
           member={member}
           refresh={refresh}
           onBusy={setFormBusy}
-          onSaved={() =>
-            saved(
-              member.id === snapshot.currentMemberId
-                ? 'Bottle added to your plan.'
-                : `Bottle added to your plan and ${member.displayName}’s plan.`,
-            )
-          }
+          onSaved={() => saved('Bottle added. Friends can join from their night.')}
         />
       ) : page === 'plan' && selected ? (
         <BottlePlan
@@ -201,7 +219,13 @@ function BottleShelf({
           member={member}
           refresh={refresh}
           onBusy={setFormBusy}
-          onSaved={() => saved('Bottle plan saved.')}
+          onSaved={() => {
+            if (member.planItems.some((p) => p.sharedBottleId === selected.id && !p.archivedAt)) {
+              saved('Bottle plan saved.');
+            } else {
+              startLogging();
+            }
+          }}
           onFullPlan={fullPlan}
         />
       ) : page === 'plan' ? (
@@ -209,7 +233,7 @@ function BottleShelf({
       ) : (
         <>
           <PrimaryButton
-            label="Share a bottle"
+            label="Add shared bottle"
             icon="add-outline"
             variant="secondary"
             disabled={busy}
@@ -316,6 +340,7 @@ function BottleShelf({
                           : `Log ${word}`
                         : 'Join bottle'
                   }
+                  large
                   busy={logging.busy}
                   disabled={action.busy || bottle.remainingMl < 1}
                   onPress={() => {
@@ -341,7 +366,7 @@ function BottleShelf({
                 />
                 {tracking ? (
                   <PrimaryButton
-                    label="Adjust drinks"
+                    label="Adjust my plan"
                     variant="secondary"
                     disabled={busy}
                     onPress={() => {
@@ -457,20 +482,11 @@ function CreateBottle({
   onSaved: () => void;
   onBusy: (busy: boolean) => void;
 }) {
-  const { client } = useSupabase();
+  const { client, session } = useSupabase();
+  const { online } = useConnectivity();
   const { colors, typography } = useTheme();
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [draft, setDraft] = useState<BottleDraft>(() => ({
-    id: Crypto.randomUUID(),
-    label: '',
-    category: 'spirit',
-    volumeMl: '750',
-    abvPercent: '40',
-    pourMl: '30',
-    defaultQuantity: '1',
-    access: 'everyone',
-    allowedMemberIds: [],
-  }));
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [draft, setDraft] = useState<BottleDraft>(() => newBottleDraft(Crypto.randomUUID()));
   const [revision] = useState(member.planRevision);
   const creator = snapshot.members.find((person) => person.id === snapshot.currentMemberId);
   const [creatorRevision] = useState(creator?.planRevision ?? 0);
@@ -478,181 +494,82 @@ function CreateBottle({
   const [creatorChoice] = useState(() => bottleMainChoice(creator?.planItems ?? []));
   const [main, setMain] = useState(targetChoice.isMain);
   const [creatorMain, setCreatorMain] = useState(creatorChoice.isMain);
-  const [requestKey] = useState(Crypto.randomUUID);
+  const [command] = useState(
+    () =>
+      new RecoverableCommand<{
+        bottle: SharedBottleInput;
+        key: string;
+        main: boolean;
+        creatorMain: boolean;
+      }>(),
+  );
+  const [submitted, setSubmitted] = useState(false);
   const [issue, setIssue] = useState<string | null>(null);
   const action = useNightAction(refresh);
+  const frozen = action.busy || submitted;
   useEffect(() => {
     onBusy(action.busy);
     return () => onBusy(false);
   }, [action.busy, onBusy]);
   const update = (patch: Partial<BottleDraft>) => setDraft((old) => ({ ...old, ...patch }));
   async function save() {
-    if (!client || !nightAccess(snapshot, member.id).canLog) return;
+    if (!client || !session || !nightAccess(snapshot, member.id).canLog) return;
+    if (online === false) {
+      setIssue('Connect to the internet to share a bottle.');
+      return;
+    }
     const parsed = materializeBottle(draft, member.id, snapshot.currentMemberId);
     if (!parsed.success) {
-      setDetailsOpen(true);
-      setIssue(parsed.error.issues[0]?.message ?? 'Check the bottle details.');
+      setIssue(bottleInputIssue(parsed.error.issues[0]?.path[0]));
       return;
     }
     setIssue(null);
+    const payload = command.capture(() => ({
+      bottle: parsed.data,
+      key: Crypto.randomUUID(),
+      main,
+      creatorMain,
+    }));
+    setSubmitted(true);
     await action.run(
       () =>
-        shareBottleAndPlan(
-          client,
-          snapshot.night.id,
-          parsed.data,
-          member.id,
-          revision,
-          requestKey,
-          {
-            makeMain: main,
-            creatorExpectedRevision: creatorRevision,
-            creatorMakeMain: member.id === snapshot.currentMemberId ? main : creatorMain,
-          },
+        withRequestTimeout((signal) =>
+          shareBottleAndPlan(
+            actorClient(client, session.access_token, signal),
+            snapshot.night.id,
+            payload.bottle,
+            member.id,
+            revision,
+            payload.key,
+            {
+              makeMain: payload.main,
+              creatorExpectedRevision: creatorRevision,
+              creatorMakeMain:
+                member.id === snapshot.currentMemberId ? payload.main : payload.creatorMain,
+            },
+          ),
         ),
       undefined,
-      onSaved,
+      () => {
+        command.complete();
+        onSaved();
+      },
+      (error) => {
+        command.reject(error);
+        setSubmitted(command.pending);
+      },
     );
   }
   return (
     <>
-      <TextField
-        label="Bottle name"
-        value={draft.label}
-        maxLength={60}
-        editable={!action.busy}
-        onChangeText={(label) => update({ label })}
-      />
-      <Text accessibilityRole="header" style={typography.sectionTitle}>
-        What’s in the bottle?
-      </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {(['spirit', 'wine', 'beer', 'cocktail', 'other'] as const).map((category) => (
-          <View key={category} style={{ flexGrow: 1, flexBasis: '30%' }}>
-            <Choice
-              compact
-              label={
-                category === 'spirit'
-                  ? 'Spirit'
-                  : category.charAt(0).toUpperCase() + category.slice(1)
-              }
-              selected={draft.category === category}
-              disabled={action.busy}
-              onPress={() => {
-                if (category === 'cocktail' || category === 'other') setDetailsOpen(true);
-                update({
-                  category,
-                  ...(category === 'wine'
-                    ? { abvPercent: '12', pourMl: '150' }
-                    : category === 'spirit'
-                      ? { abvPercent: '40', pourMl: '30' }
-                      : category === 'beer'
-                        ? { abvPercent: '5', pourMl: '330' }
-                        : { abvPercent: '' }),
-                });
-              }}
-            />
-          </View>
-        ))}
-      </View>
-      <DrinkQuantity
-        label={`Planned ${bottleDrinkWord(draft.category)}s${member.id !== snapshot.currentMemberId ? ' per person' : ''}`}
-        value={draft.defaultQuantity}
-        disabled={action.busy}
-        onChange={(defaultQuantity) => update({ defaultQuantity })}
-      />
-      <View style={{ gap: 16 }}>
-        <Action
-          label="Bottle details"
-          expanded={detailsOpen}
-          disabled={action.busy}
-          onPress={() => setDetailsOpen(!detailsOpen)}
-          style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}
-        >
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={typography.sectionTitle}>Bottle details</Text>
-            <Text style={typography.body}>
-              {draft.volumeMl || '—'} ml · {draft.abvPercent || '—'}% · {draft.pourMl || '—'} ml per{' '}
-              {bottleDrinkWord(draft.category)}
-            </Text>
-          </View>
-          <Ionicons
-            name={detailsOpen ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={colors.primary}
-            accessible={false}
-          />
-        </Action>
-        {detailsOpen ? (
-          <>
-            <TextField
-              label="Bottle size (ml)"
-              keyboardType="decimal-pad"
-              value={draft.volumeMl}
-              editable={!action.busy}
-              onChangeText={(volumeMl) => update({ volumeMl })}
-            />
-            <TextField
-              label="Alcohol strength (%)"
-              keyboardType="decimal-pad"
-              value={draft.abvPercent}
-              editable={!action.busy}
-              onChangeText={(abvPercent) => update({ abvPercent })}
-            />
-            <TextField
-              label="Drink size (ml)"
-              keyboardType="decimal-pad"
-              value={draft.pourMl}
-              editable={!action.busy}
-              onChangeText={(pourMl) => update({ pourMl })}
-            />
-          </>
-        ) : null}
-        <Notice message="Check the bottle’s label. For mixed drinks, count only the alcohol, without the mixer." />
-      </View>
-      <Text accessibilityRole="header" style={typography.sectionTitle}>
-        Who can join?
-      </Text>
-      <Choice
-        label="Everyone"
-        selected={draft.access === 'everyone'}
-        disabled={action.busy}
-        onPress={() => update({ access: 'everyone' })}
-      />
-      <Choice
-        label="Choose people"
-        selected={draft.access === 'selected'}
-        disabled={action.busy}
-        onPress={() => update({ access: 'selected' })}
-      />
-      {draft.access === 'selected'
-        ? snapshot.members
-            .filter(
-              (p) => p.leftAt === null && p.id !== snapshot.currentMemberId && p.id !== member.id,
-            )
-            .map((p) => (
-              <SettingsRow
-                key={p.id}
-                label={p.displayName}
-                value={draft.allowedMemberIds.includes(p.id)}
-                disabled={action.busy}
-                onChange={(value) =>
-                  update({
-                    allowedMemberIds: value
-                      ? [...draft.allowedMemberIds, p.id]
-                      : draft.allowedMemberIds.filter((id) => id !== p.id),
-                  })
-                }
-              />
-            ))
-        : null}
-      <Notice
-        message={
-          (member.id === snapshot.currentMemberId
-            ? 'Adds to your plan. Your other planned drinks stay.'
-            : `Adds the same quantity to your plan and ${member.displayName}’s plan. Your other planned drinks stay.`) +
-          ' Other people choose whether to join.'
-        }
+      <SharedBottleFields
+        draft={draft}
+        disabled={frozen}
+        error={Boolean(issue)}
+        onChange={(patch) => {
+          update(patch);
+          setIssue(null);
+        }}
       />
       <MainDrinkChoice
         label={
@@ -662,7 +579,7 @@ function CreateBottle({
         }
         choice={targetChoice}
         value={main}
-        disabled={action.busy}
+        disabled={frozen}
         onChange={setMain}
       />
       {member.id !== snapshot.currentMemberId ? (
@@ -670,13 +587,75 @@ function CreateBottle({
           label="Make this my main drink"
           choice={creatorChoice}
           value={creatorMain}
-          disabled={action.busy}
+          disabled={frozen}
           onChange={setCreatorMain}
         />
       ) : null}
+      <Action
+        label="Sharing options"
+        expanded={optionsOpen}
+        onPress={() => setOptionsOpen(!optionsOpen)}
+        style={{ minHeight: 48, flexDirection: 'row', gap: 12, alignItems: 'center' }}
+      >
+        <Text style={[typography.sectionTitle, { flex: 1 }]}>Sharing options</Text>
+        <Ionicons
+          name={optionsOpen ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color={colors.primary}
+          accessible={false}
+        />
+      </Action>
+      {optionsOpen ? (
+        <>
+          <Text accessibilityRole="header" style={typography.sectionTitle}>
+            Who can join?
+          </Text>
+          <Choice
+            label="Everyone"
+            selected={draft.access === 'everyone'}
+            disabled={frozen}
+            onPress={() => update({ access: 'everyone' })}
+          />
+          <Choice
+            label="Choose people"
+            selected={draft.access === 'selected'}
+            disabled={frozen}
+            onPress={() => update({ access: 'selected' })}
+          />
+          {draft.access === 'selected'
+            ? snapshot.members
+                .filter(
+                  (p) =>
+                    p.leftAt === null && p.id !== snapshot.currentMemberId && p.id !== member.id,
+                )
+                .map((p) => (
+                  <SettingsRow
+                    key={p.id}
+                    label={p.displayName}
+                    value={draft.allowedMemberIds.includes(p.id)}
+                    disabled={frozen}
+                    onChange={(value) =>
+                      update({
+                        allowedMemberIds: value
+                          ? [...draft.allowedMemberIds, p.id]
+                          : draft.allowedMemberIds.filter((id) => id !== p.id),
+                      })
+                    }
+                  />
+                ))
+            : null}
+        </>
+      ) : null}
+      <Notice
+        message={
+          member.id === snapshot.currentMemberId
+            ? 'Friends choose whether to join.'
+            : `Plans the same drinks for you and ${member.displayName}. Friends choose whether to join.`
+        }
+      />
       {issue || action.issue ? <Notice error message={issue ?? action.issue ?? ''} /> : null}
       <PrimaryButton
-        label="Share and start tracking"
+        label={submitted ? 'Try again' : 'Add bottle'}
         busy={action.busy}
         onPress={() => void save()}
       />
@@ -699,51 +678,76 @@ function BottlePlan({
   onFullPlan: () => void;
   onBusy: (busy: boolean) => void;
 }) {
-  const { client } = useSupabase();
+  const { client, session } = useSupabase();
+  const { online } = useConnectivity();
   const { typography } = useTheme();
   const existing = member.planItems.find((p) => !p.archivedAt && p.sharedBottleId === bottle.id);
   const [choice] = useState(() => bottleMainChoice(member.planItems, bottle.id));
   const [quantity, setQuantity] = useState(
-    String(existing?.plannedQuantity ?? bottle.defaultQuantity ?? 1),
+    String(existing?.plannedQuantity ?? bottle.defaultQuantity),
   );
   const [size, setSize] = useState(String(existing?.volumeMl ?? bottle.pourMl));
   const [main, setMain] = useState(choice.isMain);
   const [revision] = useState(member.planRevision);
-  const [requestKey] = useState(Crypto.randomUUID);
+  const [command] = useState(
+    () => new RecoverableCommand<{ quantity: number; size: number; main: boolean; key: string }>(),
+  );
+  const [submitted, setSubmitted] = useState(false);
   const [issue, setIssue] = useState<string | null>(null);
   const action = useNightAction(refresh);
+  const frozen = action.busy || submitted;
   useEffect(() => {
     onBusy(action.busy);
     return () => onBusy(false);
   }, [action.busy, onBusy]);
   async function save() {
-    if (!client) return;
+    if (!client || !session) return;
+    if (online === false) {
+      setIssue('Connect to the internet to adjust a shared bottle.');
+      return;
+    }
     const parsed = materializeBottlePlan(quantity, size, bottle.volumeMl);
     if (!parsed.success) {
       setIssue(`Choose 1–50 drinks and a drink size of 1–${Math.min(2000, bottle.volumeMl)} ml.`);
       return;
     }
     setIssue(null);
+    const payload = command.capture(() => ({
+      quantity: parsed.data.plannedQuantity,
+      size: parsed.data.volumeMl,
+      main,
+      key: Crypto.randomUUID(),
+    }));
+    setSubmitted(true);
     await action.run(
       () =>
-        planSharedBottle(
-          client,
-          bottle.id,
-          member.id,
-          parsed.data.plannedQuantity,
-          parsed.data.volumeMl,
-          revision,
-          requestKey,
-          main,
+        withRequestTimeout((signal) =>
+          planSharedBottle(
+            actorClient(client, session.access_token, signal),
+            bottle.id,
+            member.id,
+            payload.quantity,
+            payload.size,
+            revision,
+            payload.key,
+            payload.main,
+          ),
         ),
       undefined,
-      onSaved,
+      () => {
+        command.complete();
+        onSaved();
+      },
+      (error) => {
+        command.reject(error);
+        setSubmitted(command.pending);
+      },
     );
   }
   return (
     <>
       <Text accessibilityRole="header" style={typography.sectionTitle}>
-        {existing ? 'Adjust drinks' : 'Join bottle'} · {bottle.label}
+        {existing ? 'Adjust my plan' : 'Join bottle'} · {bottle.label}
       </Text>
       <Text style={typography.body}>
         {bottle.remainingMl} ml left · {bottle.abvPercent}% ABV
@@ -751,34 +755,49 @@ function BottlePlan({
       <DrinkQuantity
         label={`Planned ${bottleDrinkWord(bottle.category)}s`}
         value={quantity}
-        disabled={action.busy}
+        disabled={frozen}
         onChange={setQuantity}
       />
       <TextField
         label="Drink size (ml)"
         value={size}
         keyboardType="decimal-pad"
-        editable={!action.busy}
+        editable={!frozen}
         onChangeText={setSize}
       />
       <MainDrinkChoice
-        label="Make this the main drink"
+        label={
+          member.userId === session?.user.id
+            ? 'Use as my main drink'
+            : `Use as ${member.displayName}'s main drink`
+        }
         choice={choice}
         value={main}
-        disabled={action.busy}
+        disabled={frozen}
         onChange={setMain}
       />
-      <Notice message="This adds or updates this bottle in the plan. Your other planned drinks stay included." />
+      {!existing ? (
+        <Notice message="Joining adds this bottle to your plan. Your earlier drinks stay saved." />
+      ) : null}
+      <Notice message={`Logging a drink uses ${size} ml from this bottle.`} />
       {issue || action.issue ? <Notice error message={issue ?? action.issue ?? ''} /> : null}
       <PrimaryButton
-        label={existing ? 'Save changes' : 'Join and start tracking'}
+        label={
+          submitted
+            ? 'Try again'
+            : existing
+              ? 'Save changes'
+              : main
+                ? 'Join & use as main'
+                : 'Join bottle'
+        }
         busy={action.busy}
         onPress={() => void save()}
       />
       <PrimaryButton
         label="Edit full plan"
         variant="quiet"
-        disabled={action.busy}
+        disabled={frozen}
         onPress={onFullPlan}
       />
     </>

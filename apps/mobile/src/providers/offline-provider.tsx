@@ -16,6 +16,7 @@ import {
 } from '@/lib/offline-logging';
 import { nativeLogSender } from '@/lib/offline-logging-api';
 import { useSupabase } from './supabase-provider';
+import { useConnectivity } from './connectivity-provider';
 
 interface OfflineContextValue {
   outbox: NativeLogOutbox | null;
@@ -28,12 +29,15 @@ const OfflineContext = createContext<OfflineContextValue | null>(null);
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
   const { client, session, access } = useSupabase();
+  const { online } = useConnectivity();
   const owner = session?.user.id;
   const currentOwner = useRef(owner);
   const currentSession = useRef(session);
+  const connection = useRef(online);
   useLayoutEffect(() => {
     currentSession.current = session;
-  }, [session]);
+    connection.current = online;
+  }, [session, online]);
   const [bundle, setBundle] = useState<{ owner: string; outbox: NativeLogOutbox } | null>(null);
   const [state, setState] = useState<{
     owner: string;
@@ -56,7 +60,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         setState({
           owner,
           records: [],
-          issue: 'Could not read saved entries on this device. Retry.',
+          issue: "Couldn't open saved entries. Try again.",
         });
       }
       if (synced) setActivityVersion((value) => value + 1);
@@ -66,7 +70,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       nativeLogSender(
         client,
         current,
-        () => AppState.currentState === 'active',
+        () => AppState.currentState === 'active' && connection.current !== false,
         () => {
           const value = currentSession.current;
           return value ? { actorUserId: value.user.id, accessToken: value.access_token } : null;
@@ -99,16 +103,21 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const retry = useCallback(async () => {
     if (!outbox || AppState.currentState !== 'active') return;
     try {
+      if (online === false) {
+        if (outbox.current() && owner)
+          setState({ owner, records: outbox.store.getAll(), issue: null });
+        return;
+      }
       await outbox.retryAll();
     } catch {
       if (outbox.current() && owner)
         setState({
           owner,
           records: [],
-          issue: 'Could not read saved entries on this device. Retry.',
+          issue: "Couldn't open saved entries. Try again.",
         });
     }
-  }, [outbox, owner]);
+  }, [outbox, owner, online]);
   useEffect(() => {
     const start = setTimeout(() => void retry(), 0);
     const timer = setInterval(() => void retry(), 15_000);

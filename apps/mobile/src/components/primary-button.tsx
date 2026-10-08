@@ -14,6 +14,7 @@ export function Action({
   selected,
   expanded,
   style,
+  containerStyle,
 }: {
   children: ReactNode;
   onPress: () => void;
@@ -23,6 +24,7 @@ export function Action({
   selected?: boolean;
   expanded?: boolean;
   style?: StyleProp<ViewStyle>;
+  containerStyle?: StyleProp<ViewStyle>;
 }) {
   const [pressed, setPressed] = useState(false);
   const reduced = useReducedMotion();
@@ -31,12 +33,13 @@ export function Action({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{
-        disabled,
+        disabled: disabled || busy,
         busy,
         ...(selected === undefined ? {} : { selected }),
         ...(expanded === undefined ? {} : { expanded }),
       }}
-      disabled={disabled}
+      disabled={disabled || busy}
+      style={[{ minHeight: 48, minWidth: 48 }, containerStyle]}
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
@@ -45,9 +48,10 @@ export function Action({
     >
       <Animated.View
         style={[
+          { minHeight: 48, minWidth: 48 },
           style,
           {
-            opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
+            opacity: busy ? 1 : disabled ? 0.5 : pressed ? 0.8 : 1,
             transform: [{ scale: pressed && !reduced ? 0.97 : 1 }],
             transitionProperty: ['transform', 'opacity'],
             transitionDuration: reduced ? 0 : 120,
@@ -68,6 +72,7 @@ export function PrimaryButton({
   busyLabel = 'Saving',
   variant = 'primary',
   icon,
+  large = false,
 }: {
   label: string;
   onPress: () => void;
@@ -76,6 +81,7 @@ export function PrimaryButton({
   busyLabel?: string;
   variant?: 'primary' | 'secondary' | 'water' | 'quiet' | 'danger';
   icon?: React.ComponentProps<typeof Ionicons>['name'];
+  large?: boolean;
 }) {
   const { colors } = useTheme();
   const foreground =
@@ -95,7 +101,7 @@ export function PrimaryButton({
       busy={busy}
       onPress={onPress}
       style={{
-        minHeight: 52,
+        minHeight: large ? 72 : 52,
         flexDirection: 'row',
         gap: 10,
         alignItems: 'center',
@@ -104,15 +110,22 @@ export function PrimaryButton({
         paddingVertical: 14,
         borderRadius: radii.control,
         borderWidth: 1,
-        borderColor: variant === 'secondary' ? colors.border : 'transparent',
+        borderColor:
+          variant === 'secondary'
+            ? colors.outline
+            : variant === 'danger'
+              ? colors.dangerOutline
+              : 'transparent',
         backgroundColor:
           variant === 'primary'
-            ? colors.primary
+            ? colors.primaryFill
             : variant === 'water'
               ? colors.waterSoft
               : variant === 'quiet'
                 ? 'transparent'
-                : colors.surface,
+                : variant === 'danger'
+                  ? colors.dangerContainer
+                  : colors.surface,
       }}
     >
       {busy ? (
@@ -124,11 +137,13 @@ export function PrimaryButton({
         </>
       ) : (
         <>
-          {icon ? <Ionicons name={icon} size={20} color={foreground} accessible={false} /> : null}
+          {icon ? (
+            <Ionicons name={icon} size={large ? 26 : 20} color={foreground} accessible={false} />
+          ) : null}
           <Text
             style={{
               color: foreground,
-              fontSize: 16,
+              fontSize: large ? 20 : 16,
               fontWeight: '600',
               textAlign: 'center',
               flexShrink: 1,

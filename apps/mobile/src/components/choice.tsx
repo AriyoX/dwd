@@ -33,7 +33,7 @@ export function Choice({
         alignItems: 'center',
         borderWidth: 1,
         borderRadius: 16,
-        borderColor: selected ? colors.primary : colors.border,
+        borderColor: selected ? colors.selectedBorder : colors.outline,
         backgroundColor: selected ? colors.primarySoft : colors.surface,
       }}
     >

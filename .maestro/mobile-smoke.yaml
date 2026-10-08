@@ -7,18 +7,23 @@ tags:
 - launchApp:
     clearState: false
 - openLink: 'dwd://'
-- tapOn: 'Account'
-- assertVisible: 'Your account'
+- runFlow:
+    when:
+      visible: 'Skip tour'
+    commands:
+      - tapOn: 'Skip tour'
+- tapOn: 'Settings'
+- assertVisible: 'Settings'
 - scrollUntilVisible:
     element: 'Notifications'
     direction: DOWN
 - tapOn: 'Notifications'
-- assertVisible: 'Device notifications'
+- assertVisible: 'Notifications'
 - scrollUntilVisible:
     element: 'Inbox'
     direction: DOWN
 - assertVisible: 'Inbox'
 - back
-- tapOn: 'History'
-- assertVisible: 'Night history'
+- tapOn: 'Entries'
+- assertVisible: 'Entries'
 - tapOn: 'Tonight'

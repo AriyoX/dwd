@@ -219,7 +219,7 @@ test('a Google identity must finish its profile before joining', async ({ page }
     await expect(page.getByLabel('Display name')).toHaveValue('Google Test');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page).toHaveURL(/complete-signup/);
-    await page.getByLabel('I am 18 or older.').check();
+    await page.getByRole('checkbox', { name: /I am 18 or older/ }).check();
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(next));
     const profile = execFileSync(

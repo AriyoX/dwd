@@ -9,6 +9,7 @@ import {
   Shield,
   UserRound,
 } from 'lucide-react';
+import { AppearancePicker } from '@/components/layout/appearance-picker';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Card } from '@/components/ui/card';
 import { AccountDeletion } from '@/features/account/account-deletion';
@@ -60,6 +61,10 @@ export default async function AccountPage() {
         </header>
         <div className="settings-layout">
           <div className="stack-lg">
+            <Card className="stack settings-card">
+              <h2 className="section-title">Appearance</h2>
+              <AppearancePicker />
+            </Card>
             <Card className="stack settings-card">
               <h2 className="section-title">
                 <UserRound size={20} aria-hidden="true" /> Profile

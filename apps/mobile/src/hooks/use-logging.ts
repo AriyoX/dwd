@@ -9,10 +9,13 @@ import { makePendingLog } from '@/lib/offline-logging';
 import { nativeLogSender } from '@/lib/offline-logging-api';
 import { submitDrink } from '@/lib/logging';
 import { bottleLogIssue, nightAccess } from '@/lib/night-features';
+import { useConnectivity } from '@/providers/connectivity-provider';
+import { entryFailureMessage } from '@/lib/entry-message';
 
-export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null) {
+export function useLogging(onSaved: (remote?: boolean) => void, snapshot?: NightSnapshot | null) {
   const { client, session } = useSupabase();
   const { outbox, retry } = useOffline();
+  const { online } = useConnectivity();
   const owner = session?.user.id;
   const currentOwner = useRef(owner);
   const mounted = useRef(true);
@@ -29,6 +32,7 @@ export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null)
   const [issue, setIssue] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const inFlight = useRef(false);
+  const lastAccepted = useRef<{ fingerprint: string; at: number } | null>(null);
   const bottleAttempt = useRef<{ fingerprint: string; key: string; consumedAt: string } | null>(
     null,
   );
@@ -38,11 +42,28 @@ export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null)
     choice: { planItemId: string } | { customDrink: CustomDrinkInput } | 'water',
   ) {
     if (!outbox || !snapshot || snapshot.currentUserId !== owner || inFlight.current) return false;
+    const fingerprint = JSON.stringify([owner, targetMemberId, choice]);
+    if (
+      lastAccepted.current?.fingerprint === fingerprint &&
+      Date.now() - lastAccepted.current.at < 600
+    )
+      return false;
     const current = () => mounted.current && currentOwner.current === owner && outbox.current();
     if (!current() || !nightAccess(snapshot, targetMemberId).canLog) return false;
     const problem = bottleLogIssue(snapshot, targetMemberId, choice);
     if (problem) {
       setIssue(problem);
+      return false;
+    }
+    const bottle =
+      choice !== 'water' &&
+      ('customDrink' in choice
+        ? choice.customDrink.sharedBottleId
+        : snapshot.members
+            .find((member) => member.id === targetMemberId)
+            ?.planItems.find((item) => item.id === choice.planItemId)?.sharedBottleId);
+    if (bottle && online === false) {
+      setIssue('Connect to the internet to log from a shared bottle.');
       return false;
     }
     inFlight.current = true;
@@ -51,7 +72,6 @@ export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null)
     setNotice(null);
     let durable = false;
     try {
-      const fingerprint = JSON.stringify([owner, targetMemberId, choice]);
       const previous =
         bottleAttempt.current?.fingerprint === fingerprint ? bottleAttempt.current : null;
       const record = makePendingLog(
@@ -96,16 +116,21 @@ export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null)
           return false;
         }
         if (result.status !== 'created' && result.status !== 'duplicate') {
-          setIssue(result.message);
+          setIssue(
+            result.status === 'permanently_rejected'
+              ? entryFailureMessage(result.code)
+              : "Couldn't save this drink. Try again.",
+          );
           if (result.status === 'permanently_rejected') bottleAttempt.current = null;
           return false;
         }
         bottleAttempt.current = null;
+        lastAccepted.current = { fingerprint, at: Date.now() };
         setNotice('Drink logged.');
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
           () => undefined,
         );
-        onSaved();
+        onSaved(true);
         return true;
       }
       outbox.enqueue(record);
@@ -122,24 +147,31 @@ export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null)
           return false;
         }
         // Persist acknowledgment before replay. Sending can finish after this sheet closes.
-        void outbox.confirm(record.idempotencyKey).catch(() => undefined);
+        void outbox.confirm(record.idempotencyKey, online !== false).catch(() => undefined);
       } else {
         void retry();
       }
       if (!current()) return false;
-      setNotice('Saved on this device. Waiting to sync.');
+      lastAccepted.current = { fingerprint, at: Date.now() };
+      setNotice(
+        online === false
+          ? "Saved. We'll update it when you're online."
+          : choice === 'water'
+            ? 'Chaser logged.'
+            : 'Drink logged.',
+      );
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => undefined,
       );
-      onSaved();
+      onSaved(false);
       return true;
     } catch {
       if (current())
         setIssue(
           bottleAttempt.current?.fingerprint === JSON.stringify([owner, targetMemberId, choice])
-            ? 'Shared bottles need a connection. Retry to check and save the same pour.'
+            ? "Couldn't save this pour. Try again when you're online."
             : durable
-              ? 'Entry kept on this device. Open Pending entries to review it.'
+              ? 'Your entry is saved. Open Entries to review it.'
               : 'Could not save on this device. Free some storage and try again.',
         );
       return false;

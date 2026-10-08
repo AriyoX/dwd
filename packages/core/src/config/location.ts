@@ -1,4 +1,4 @@
-import boundaries from './country-boundaries.json';
+import boundaries from './country-boundaries.json' with { type: 'json' };
 import { type CalendarRegion, type CountryCode } from './countries';
 
 export interface CountryLocation {

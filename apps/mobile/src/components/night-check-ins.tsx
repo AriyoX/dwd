@@ -93,7 +93,7 @@ export function NightCheckIns({ snapshot, now }: { snapshot: NightSnapshot; now:
       ))}
       {action.issue ? <Notice error message={action.issue} /> : null}
       {query.issue ? (
-        <PrimaryButton label="Retry" variant="secondary" onPress={() => void query.refresh()} />
+        <PrimaryButton label="Try again" variant="secondary" onPress={() => void query.refresh()} />
       ) : null}
     </Panel>
   );

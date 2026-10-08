@@ -15,7 +15,7 @@ export function Brand() {
     <View style={{ alignItems: 'flex-start', paddingVertical: 6 }}>
       <Svg
         accessible
-        accessibilityLabel="dwd, Drink with Desire"
+        accessibilityLabel="dwd"
         accessibilityRole="image"
         width={96}
         height={(96 * 412) / 1063}

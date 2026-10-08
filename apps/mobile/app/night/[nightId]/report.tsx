@@ -90,7 +90,7 @@ function ReportForm() {
         if (stillMounted()) setSent(true);
       }
     } catch {
-      if (stillMounted()) setIssue('Could not complete the request. Retry when connected.');
+      if (stillMounted()) setIssue("Couldn't save this. Try again when you're online.");
     } finally {
       saving.current = false;
       if (stillMounted()) setBusy(false);
@@ -123,7 +123,7 @@ function ReportForm() {
         </Panel>
       ) : null}
       {sent ? (
-        <Notice message="Report sent. Check Your messages in Account for replies." />
+        <Notice message="Report sent. Open Your messages in Settings for replies." />
       ) : (
         <>
           <TextField

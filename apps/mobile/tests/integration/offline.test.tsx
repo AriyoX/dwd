@@ -7,7 +7,7 @@ import type { Database } from '@dwd/core';
 import { SupabaseProvider, useSupabase } from '@/providers/supabase-provider';
 import { OfflineProvider, useOffline } from '@/providers/offline-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
-import { PendingLogs } from '@/components/pending-logs';
+import { NightActivity } from '@/components/night-activity';
 import { PrimaryButton } from '@/components/primary-button';
 import { readOfflineSession } from '@/lib/offline-session';
 import { NativePendingLogStore, type NativePendingLog } from '@/lib/offline-logging';
@@ -17,13 +17,20 @@ const runtime = vi.hoisted(() => ({
   client: null as SupabaseClient<Database> | null,
   foreground: new Set<(state: string) => void>(),
   confirm: vi.fn(),
+  online: null as boolean | null,
 }));
+vi.mock('@/providers/connectivity-provider', () => ({
+  useConnectivity: () => ({ online: runtime.online }),
+}));
+vi.mock('@/components/dismissible-notice', () => ({ DismissibleNotice: 'Text' }));
 vi.mock('react-native', () => ({
   Text: 'Text',
   View: 'View',
   Pressable: 'Pressable',
   ActivityIndicator: 'ActivityIndicator',
   ScrollView: 'ScrollView',
+  KeyboardAvoidingView: 'View',
+  Platform: { OS: 'ios' },
   AppState: {
     currentState: 'active',
     addEventListener: (_event: string, fn: (state: string) => void) => {
@@ -96,6 +103,7 @@ let auth: ReturnType<typeof useSupabase>;
 let queue: ReturnType<typeof useOffline>;
 let query: ReturnType<typeof useAccountQuery<string[]>>;
 const load = vi.fn<(client: SupabaseClient<Database>) => Promise<string[]>>();
+const onLoaded = vi.fn();
 const authListeners = new Set<(event: AuthChangeEvent, session: Session | null) => void>();
 function emit(event: AuthChangeEvent, session: Session | null) {
   for (const listener of authListeners) listener(event, session);
@@ -105,13 +113,20 @@ const profile = vi.fn();
 function Probe() {
   const authValue = useSupabase();
   const queueValue = useOffline();
-  const queryValue = useAccountQuery(load, 'active-nights', true);
+  // Deliberately inline: rerenders must not create another load/focus loop.
+  const queryValue = useAccountQuery(
+    (client) => load(client),
+    'active-nights',
+    true,
+    false,
+    onLoaded,
+  );
   useEffect(() => {
     auth = authValue;
     queue = queueValue;
     query = queryValue;
   }, [authValue, queueValue, queryValue]);
-  return createElement(PendingLogs);
+  return createElement(NightActivity, { nightId: pending.nightId, timezone: 'UTC' });
 }
 function press(label: string) {
   const onPress = root.root.findByProps({ accessibilityLabel: label }).props[
@@ -138,6 +153,7 @@ async function mount() {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
+  runtime.online = null;
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const values = new Map<string, string>();
   vi.stubGlobal('localStorage', {
@@ -179,6 +195,45 @@ afterEach(async () => {
 });
 
 describe('native offline provider and screen integration', () => {
+  it('uses saved entries while offline and retries the same entry when the connection returns', async () => {
+    runtime.online = false;
+    new NativePendingLogStore(localStorage, owner).update(pending.idempotencyKey, {
+      status: 'pending',
+    });
+    const request = Object.assign(
+      Promise.resolve({
+        data: { status: 'temporarily_failed', message: 'Unavailable' },
+        error: null,
+      }),
+      { setHeader: () => request, abortSignal: () => request },
+    );
+    const rpc = vi.fn(() => request);
+    if (!runtime.client) throw new Error('Missing test client');
+    runtime.client.rpc = rpc as unknown as SupabaseClient<Database>['rpc'];
+    await mount();
+    await update(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+      await queue.retry();
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
+    expect(query.data).toEqual(['cached night']);
+    runtime.online = true;
+    await update(() =>
+      root.update(
+        createElement(
+          SupabaseProvider,
+          null,
+          createElement(OfflineProvider, null, createElement(Probe)),
+        ),
+      ),
+    );
+    await update(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(rpc).toHaveBeenCalledOnce();
+    expect(queue.records[0]?.idempotencyKey).toBe(pending.idempotencyKey);
+  });
   it('keeps a delayed read bound to its original account after an account switch', async () => {
     const authorization = vi.fn();
     const request = Object.assign(Promise.resolve({ data: [], error: null }), {
@@ -287,15 +342,61 @@ describe('native offline provider and screen integration', () => {
     expect(query.issue).toBeNull();
   });
 
+  it('only shows pull-to-refresh progress for an explicit pull and ignores older responses', async () => {
+    load.mockResolvedValue(['initial night']);
+    await mount();
+    const initialCalls = load.mock.calls.length;
+    await update(() => queue.retry());
+    expect(load).toHaveBeenCalledTimes(initialCalls);
+    let background!: (value: string[]) => void;
+    load.mockReturnValueOnce(
+      new Promise((resolve) => {
+        background = resolve;
+      }),
+    );
+    let silent!: Promise<void>;
+    await update(() => {
+      silent = query.refresh();
+    });
+    expect(query.loading).toBe(true);
+    expect(query.refreshing).toBe(false);
+    expect(query.data).toEqual(['initial night']);
+    let pulled!: (value: string[]) => void;
+    load.mockReturnValueOnce(
+      new Promise((resolve) => {
+        pulled = resolve;
+      }),
+    );
+    let visible!: Promise<void>;
+    await update(() => {
+      visible = query.refresh(true);
+    });
+    expect(query.refreshing).toBe(true);
+    await update(async () => {
+      pulled(['latest night']);
+      await visible;
+    });
+    await update(async () => {
+      background(['older night']);
+      await silent;
+    });
+    expect(query.data).toEqual(['latest night']);
+    expect(query.refreshing).toBe(false);
+    expect(onLoaded).toHaveBeenLastCalledWith(['latest night']);
+    expect(onLoaded).not.toHaveBeenCalledWith(['older night']);
+  });
+
   it('keeps pending entries compact and shows removal progress on the correct control', async () => {
     await mount();
     expect(root.root.findAllByType(PrimaryButton)).toHaveLength(0);
-    const disclosure = root.root.findByProps({ accessibilityLabel: '1 pending entry' });
+    const disclosure = root.root.findByProps({
+      accessibilityLabel: 'View entries. 1 entries, 1 saved on phone',
+    });
     expect(disclosure.props['accessibilityState'].expanded).toBe(false);
-    await update(() => press('1 pending entry'));
+    await update(() => press('View entries. 1 entries, 1 saved on phone'));
     expect(
-      root.root.findByProps({ accessibilityLabel: '1 pending entry' }).props['accessibilityState']
-        .expanded,
+      root.root.findByProps({ accessibilityLabel: 'Hide entries. 1 entries, 1 saved on phone' })
+        .props['accessibilityState'].expanded,
     ).toBe(true);
     let finish!: (value: boolean) => void;
     runtime.confirm.mockReturnValue(
@@ -305,11 +406,16 @@ describe('native offline provider and screen integration', () => {
     );
     await update(() => press('Remove entry'));
     expect(root.root.findByProps({ label: 'Remove entry' }).props['busy']).toBe(true);
-    expect(root.root.findByProps({ label: 'Review warning' }).props['busy']).toBe(false);
+    expect(root.root.findByProps({ label: 'Review entry' }).props['busy']).toBe(false);
     await update(() => {
       finish(true);
     });
     expect(queue.records).toEqual([]);
-    expect(root.toJSON()).toBeNull();
+    expect(root.root.findAllByType(PrimaryButton)).toHaveLength(0);
+    expect(
+      root.root.findByProps({ accessibilityLabel: 'Hide entries. 0 entries' }).props[
+        'accessibilityState'
+      ].expanded,
+    ).toBe(true);
   });
 });

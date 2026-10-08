@@ -99,7 +99,7 @@ export function AppleButton({ disabled, busy, onSignIn }: AppleButtonProps) {
             : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
         }
         cornerRadius={14}
-        style={{ width: '100%', height: 52, opacity: disabled && !busy ? 0.5 : 1 }}
+        style={{ width: '100%', height: 44, opacity: disabled && !busy ? 0.5 : 1 }}
         accessibilityState={{ disabled: disabled || busy, busy }}
         onPress={() => {
           if (!disabled && !busy) onSignIn(() => appleSignIn(client, adapter));

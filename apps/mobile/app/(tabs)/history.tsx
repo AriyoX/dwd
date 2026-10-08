@@ -6,8 +6,11 @@ import type { FinishedNight } from '@dwd/core';
 import { getFinishedNights } from '@dwd/data';
 import { Brand } from '@/components/brand';
 import { NightArtwork } from '@/components/night-artwork';
+import { NightActivity } from '@/components/night-activity';
+import { useOffline } from '@/providers/offline-provider';
 import { PrimaryButton } from '@/components/primary-button';
-import { Panel, RetryPanel, Screen, ScreenHeading } from '@/components/screen';
+import { Panel, RetryPanel, ScreenHeading } from '@/components/screen';
+import { TourScreen, TourTarget } from '@/components/tour-screen';
 import { useSupabase } from '@/providers/supabase-provider';
 import { radii, type ThemeColors, type makeTypography } from '@/theme/tokens';
 import { useTheme, useThemedStyles } from '@/providers/theme-provider';
@@ -19,6 +22,7 @@ import type { Database } from '@dwd/core';
 export default function HistoryScreen() {
   const router = useRouter();
   const { status } = useSupabase();
+  const offline = useOffline();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const [page, setPage] = useState(0);
@@ -26,28 +30,39 @@ export default function HistoryScreen() {
     (client: SupabaseClient<Database>) => getFinishedNights(client, page),
     [page],
   );
-  const { data, loading, issue, refresh } = useAccountQuery(load, String(page));
+  const { data, loading, refreshing, issue, refresh } = useAccountQuery(
+    load,
+    `finished-nights:${page}`,
+    true,
+    false,
+    undefined,
+    60_000,
+  );
   const nights = data?.nights ?? [];
   const hasMore = data?.hasMore ?? false;
 
   return (
-    <Screen
+    <TourScreen
+      route="/history"
       refreshControl={
         status === 'signed-in' ? (
           <RefreshControl
-            refreshing={loading}
-            onRefresh={() => void refresh()}
+            refreshing={refreshing}
+            onRefresh={() => void refresh(true)}
             tintColor={colors.primary}
           />
         ) : undefined
       }
     >
       <Brand />
-      <ScreenHeading title="Night history" />
+      <ScreenHeading title="Entries" />
+      {status === 'signed-in' && (offline.records.length || offline.issue) ? (
+        <NightActivity title="Saved entries" timezone="UTC" />
+      ) : null}
 
       {status === 'unconfigured' ? (
         <Panel>
-          <Text style={styles.body}>Account connection unavailable.</Text>
+          <Text style={styles.body}>DWD is unavailable. Try again.</Text>
         </Panel>
       ) : status === 'loading' || (!data && loading) ? (
         <Panel style={styles.loadingPanel}>
@@ -64,20 +79,28 @@ export default function HistoryScreen() {
           <Text accessibilityRole="alert" style={styles.body}>
             {issue}
           </Text>
-          <PrimaryButton label="Retry history" variant="secondary" onPress={() => void refresh()} />
+          <PrimaryButton label="Try again" variant="secondary" onPress={() => void refresh()} />
         </Panel>
       ) : nights.length === 0 ? (
         <Panel style={styles.emptyPanel}>
           <NightArtwork compact />
-          <Text accessibilityRole="header" style={styles.emptyTitle}>
-            {page === 0 ? 'No finished nights yet' : 'No more nights'}
-          </Text>
+          <TourTarget id="entries">
+            <Text accessibilityRole="header" style={styles.emptyTitle}>
+              {page === 0 ? 'No finished nights yet' : 'No more nights'}
+            </Text>
+          </TourTarget>
         </Panel>
       ) : (
         <View style={styles.list}>
-          {nights.map((night, index) => (
-            <HistoryCard key={night.id} night={night} index={index} />
-          ))}
+          {nights.map((night, index) =>
+            index === 0 ? (
+              <TourTarget key={night.id} id="entries">
+                <HistoryCard night={night} index={index} />
+              </TourTarget>
+            ) : (
+              <HistoryCard key={night.id} night={night} index={index} />
+            ),
+          )}
         </View>
       )}
       {data && issue ? <RetryPanel issue={issue} retry={() => void refresh()} /> : null}
@@ -101,7 +124,7 @@ export default function HistoryScreen() {
           ) : null}
         </View>
       ) : null}
-    </Screen>
+    </TourScreen>
   );
 }
 
@@ -166,7 +189,7 @@ function HistoryCard({ night, index }: { night: FinishedNight; index: number }) 
         <Text style={styles.nightTitle}>{night.title}</Text>
         <View style={styles.counts}>
           <View style={styles.count}>
-            <Ionicons name="wine-outline" color={colors.accent} size={15} accessible={false} />
+            <Ionicons name="wine-outline" color={colors.muted} size={15} accessible={false} />
             <Text style={styles.meta}>{formatCount(night.alcoholCount, 'drink')}</Text>
           </View>
           <View style={styles.count}>

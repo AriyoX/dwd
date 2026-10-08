@@ -11,17 +11,17 @@ export interface NativePushJob {
   expiresAt?: string;
 }
 type ExpoResult = { status?: string; id?: string; details?: { error?: string } };
-export function nativePushMessage(job: NativePushJob) {
+export function nativePushMessage(job: NativePushJob, now = Date.now()) {
   return {
     to: job.token,
-    title: job.preplot ? job.title : 'Drink with Desire',
-    body: job.preplot ? job.body : 'You have a new notification. Open DWD to view it.',
+    title: job.title || 'DWD',
+    body: job.body || 'Your night has an update.',
     sound: 'default',
     channelId: 'dwd-reminders',
-    ttl: 120,
+    // Expo gives ttl precedence over expiration. Campaigns need an absolute cutoff.
     ...(job.preplot && job.expiresAt
-      ? { expiration: Math.floor(Date.parse(job.expiresAt) / 1000) }
-      : {}),
+      ? { expiration: Math.floor(Math.min(Date.parse(job.expiresAt), now + 120_000) / 1000) }
+      : { ttl: 120 }),
     data: { eventId: job.eventId, recipientUserId: job.recipientUserId, nightId: job.nightId },
   };
 }

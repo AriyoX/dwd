@@ -2,42 +2,36 @@ import { RefreshControl, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getActiveNights } from '@dwd/data';
+import { TourScreen, TourTarget } from '@/components/tour-screen';
+import { TonightBanners } from '@/components/tonight-banners';
 import { Brand } from '@/components/brand';
 import { NightArtwork } from '@/components/night-artwork';
 import { Action, PrimaryButton } from '@/components/primary-button';
-import {
-  LoadingPanel,
-  Notice,
-  Panel,
-  RetryPanel,
-  Screen,
-  ScreenHeading,
-} from '@/components/screen';
+import { LoadingPanel, Notice, Panel, RetryPanel, ScreenHeading } from '@/components/screen';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
-import { PendingLogs } from '@/components/pending-logs';
-import { TourEntry } from '@/components/tour-entry';
-import { CampaignCountrySettings } from '@/components/campaign-country-settings';
 
 export default function TonightScreen() {
   const router = useRouter();
-  const { status, session } = useSupabase();
+  const { status } = useSupabase();
   const { colors, typography } = useTheme();
   const {
     data: nights,
     loading,
+    refreshing,
     issue,
     refresh,
     cached,
   } = useAccountQuery(getActiveNights, 'active-nights', true);
   return (
-    <Screen
+    <TourScreen
+      route="/"
       refreshControl={
         status === 'signed-in' ? (
           <RefreshControl
-            refreshing={loading}
-            onRefresh={() => void refresh()}
+            refreshing={refreshing}
+            onRefresh={() => void refresh(true)}
             tintColor={colors.primary}
           />
         ) : undefined
@@ -57,9 +51,6 @@ export default function TonightScreen() {
         </Text>
       </View>
       <ScreenHeading title="Tonight" />
-      <CampaignCountrySettings />
-      <PendingLogs key={session?.user.id} />
-      {session ? <TourEntry key={session.user.id} owner={session.user.id} /> : null}
       {status === 'signed-in' ? (
         <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>
@@ -85,7 +76,7 @@ export default function TonightScreen() {
             nights?.map((night) => (
               <Action
                 key={night.id}
-                label={`Open ${night.title}`}
+                label={`Open ${night.title} to log a drink`}
                 onPress={() => router.push(`/night/${night.id}`)}
                 style={{
                   padding: 20,
@@ -131,6 +122,9 @@ export default function TonightScreen() {
                       minute: '2-digit',
                     })}
                   </Text>
+                  <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>
+                    Open night
+                  </Text>
                 </View>
                 <Ionicons
                   name="chevron-forward"
@@ -145,46 +139,78 @@ export default function TonightScreen() {
       ) : null}
       {status === 'signed-in' ? (
         <View style={{ gap: 14 }}>
-          <Panel
-            style={{ backgroundColor: colors.surface, padding: 24, gap: 8, overflow: 'hidden' }}
-          >
-            <Text
-              accessibilityRole="header"
+          {nights?.length ? (
+            <TourTarget id="start">
+              <PrimaryButton
+                label="Start another night"
+                icon="add"
+                variant="secondary"
+                onPress={() => router.push('/night/new')}
+              />
+            </TourTarget>
+          ) : (
+            <Panel
+              style={{ backgroundColor: colors.surface, padding: 24, gap: 8, overflow: 'hidden' }}
+            >
+              <Text
+                accessibilityRole="header"
+                style={{
+                  color: colors.text,
+                  fontSize: 28,
+                  lineHeight: 33,
+                  letterSpacing: -0.8,
+                  fontWeight: '600',
+                }}
+              >
+                Ready for tonight?
+              </Text>
+              <NightArtwork compact={Boolean(nights?.length)} />
+              <TourTarget id="start">
+                <PrimaryButton
+                  label="Start a night"
+                  icon="add"
+                  onPress={() => router.push('/night/new')}
+                />
+              </TourTarget>
+            </Panel>
+          )}
+          <TourTarget id="join">
+            <Action
+              label="Join with an invite"
+              onPress={() => router.push('/join')}
               style={{
-                color: colors.text,
-                fontSize: 28,
-                lineHeight: 33,
-                letterSpacing: -0.8,
-                fontWeight: '600',
+                flexDirection: 'row',
+                gap: 14,
+                alignItems: 'center',
+                padding: 18,
+                borderRadius: 22,
+                backgroundColor: colors.primarySoft,
               }}
             >
-              A night of your own.
-            </Text>
-            <NightArtwork compact={Boolean(nights?.length)} />
-            <PrimaryButton
-              label="Start a night"
-              icon="add"
-              onPress={() => router.push('/night/new')}
+              <Ionicons name="people-outline" size={24} color={colors.primary} accessible={false} />
+              <Text style={{ flex: 1, color: colors.primary, fontSize: 17, fontWeight: '600' }}>
+                Join with an invite
+              </Text>
+              <Ionicons name="arrow-forward" size={20} color={colors.primary} accessible={false} />
+            </Action>
+          </TourTarget>
+          {/* <Panel style={{ paddingVertical: 4, gap: 0 }}>
+            <NavigationRow
+              label="Notifications"
+              icon="notifications-outline"
+              onPress={() => router.push('/notifications')}
             />
-          </Panel>
-          <Action
-            label="Join with an invite"
-            onPress={() => router.push('/join')}
-            style={{
-              flexDirection: 'row',
-              gap: 14,
-              alignItems: 'center',
-              padding: 18,
-              borderRadius: 22,
-              backgroundColor: colors.primarySoft,
-            }}
-          >
-            <Ionicons name="people-outline" size={24} color={colors.primary} accessible={false} />
-            <Text style={{ flex: 1, color: colors.primary, fontSize: 17, fontWeight: '600' }}>
-              Join your mates
-            </Text>
-            <Ionicons name="arrow-forward" size={20} color={colors.primary} accessible={false} />
-          </Action>
+            <NavigationRow
+              label="Entries & memories"
+              icon="time-outline"
+              onPress={() => router.push('/history')}
+            />
+            <NavigationRow
+              label="Settings"
+              icon="settings-outline"
+              onPress={() => router.push('/account')}
+            />
+          </Panel> */}
         </View>
       ) : status === 'loading' ? (
         <LoadingPanel />
@@ -194,7 +220,7 @@ export default function TonightScreen() {
           <Notice
             message={
               status === 'unconfigured'
-                ? 'Account connection unavailable.'
+                ? 'DWD is unavailable. Try again.'
                 : 'Sign in to start or join a night.'
             }
           />
@@ -203,11 +229,12 @@ export default function TonightScreen() {
           ) : null}
         </Panel>
       )}
-      <View style={{ marginTop: 'auto', paddingTop: 12 }}>
+      <View style={{ marginTop: 'auto', paddingTop: 12, gap: 20 }}>
+        {status === 'signed-in' ? <TonightBanners /> : null}
         <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 19 }}>
           DWD cannot determine sobriety or driving safety.
         </Text>
       </View>
-    </Screen>
+    </TourScreen>
   );
 }
