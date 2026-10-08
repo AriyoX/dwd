@@ -1,15 +1,18 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(18);
+select extensions.plan(30);
 
 insert into auth.users(id, email, raw_user_meta_data) values
   ('71000000-0000-4000-8000-000000000001', 'message-recipient@example.test', '{"display_name":"Recipient","age_confirmed":true}'),
   ('71000000-0000-4000-8000-000000000002', 'message-outsider@example.test', '{"display_name":"Outsider","age_confirmed":true}');
+insert into auth.sessions(id, user_id) values
+  ('73000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000001');
 create temporary table message_state(key text primary key, value jsonb);
 grant all on message_state to authenticated, service_role;
 
 select set_config('request.jwt.claim.sub', '71000000-0000-4000-8000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"71000000-0000-4000-8000-000000000001","session_id":"73000000-0000-4000-8000-000000000001"}', true);
 set local role authenticated;
 insert into message_state values ('night', public.start_night_out(
   '72000000-0000-4000-8000-000000000001', 'Message night', clock_timestamp() + interval '2 hours',
@@ -18,6 +21,9 @@ insert into message_state values ('night', public.start_night_out(
 select public.update_notification_preferences(true, true, true, true, true, 60) is not null;
 select public.register_push_subscription(
   'https://fcm.googleapis.com/fcm/send/message-fixture', repeat('p', 32), repeat('a', 16)
+) is not null;
+select public.register_native_push(
+  '74000000-0000-4000-8000-000000000001', 'ExpoPushToken[message-fixture]', 'ios'
 ) is not null;
 
 reset role;
@@ -51,6 +57,7 @@ select extensions.ok(not has_function_privilege('anon', 'public.claim_notificati
 select extensions.ok(has_function_privilege('service_role', 'public.claim_notification_jobs(integer)', 'EXECUTE'), 'delivery worker can claim message payloads');
 
 select set_config('request.jwt.claim.sub', '', true);
+select set_config('request.jwt.claims', '{}', true);
 set local role service_role;
 insert into message_state values ('jobs', public.claim_notification_jobs(10));
 select extensions.is(jsonb_array_length((select value from message_state where key = 'jobs')), 5, 'worker claims all five notification types');
@@ -65,6 +72,19 @@ join public.notification_events e on e.id = (job.value->>'eventId')::uuid
 order by e.event_type;
 set local role service_role;
 select extensions.is(jsonb_array_length(public.claim_notification_jobs(10)), 0, 'message changes do not duplicate claimed deliveries');
+insert into message_state values ('native-jobs', public.claim_native_notification_jobs(10));
+select extensions.is(jsonb_array_length((select value from message_state where key = 'native-jobs')), 5, 'native worker claims all five notification types');
+reset role;
+select extensions.is(job.value->>'title', e.title, e.event_type || ' native push carries its actual title')
+from jsonb_array_elements((select value from message_state where key = 'native-jobs')) job(value)
+join public.notification_events e on e.id = (job.value->>'eventId')::uuid
+order by e.event_type;
+select extensions.is(job.value->>'body', e.body, e.event_type || ' native push carries its actual message')
+from jsonb_array_elements((select value from message_state where key = 'native-jobs')) job(value)
+join public.notification_events e on e.id = (job.value->>'eventId')::uuid
+order by e.event_type;
+set local role service_role;
+select extensions.is(jsonb_array_length(public.claim_native_notification_jobs(10)), 0, 'native message changes do not duplicate claimed deliveries');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '71000000-0000-4000-8000-000000000001', true);
