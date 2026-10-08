@@ -303,7 +303,7 @@ export default function NightScreen() {
               onPress={() => router.push(`/night/${nightId}/help`)}
               style={{ minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 }}
             >
-              <Text style={{ color: colors.danger, fontSize: 16, fontWeight: '600' }}>
+              <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>
                 Get help
               </Text>
             </Action>

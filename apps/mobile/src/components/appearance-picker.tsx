@@ -25,7 +25,7 @@ export function AppearancePicker() {
                 paddingHorizontal: 6,
                 borderRadius: 14,
                 borderWidth: 1.5,
-                borderColor: selected ? colors.primary : colors.border,
+                borderColor: selected ? colors.selectedBorder : colors.outline,
                 backgroundColor: selected ? colors.primarySoft : colors.surface,
               }}
             >

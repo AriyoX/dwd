@@ -128,8 +128,7 @@ export function NightActivity({
                         width: 40,
                         height: 40,
                         borderRadius: 14,
-                        backgroundColor:
-                          entry.kind === 'water' ? colors.waterSoft : colors.primarySoft,
+                        backgroundColor: colors.surfaceSoft,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
@@ -137,7 +136,7 @@ export function NightActivity({
                       <Ionicons
                         name={entry.kind === 'water' ? 'water-outline' : 'wine-outline'}
                         size={24}
-                        color={entry.kind === 'water' ? colors.water : colors.primary}
+                        color={colors.muted}
                         accessible={false}
                       />
                     </View>

@@ -18,7 +18,7 @@ export default function HelpScreen() {
         </Text>
         {EMERGENCY_SIGNS.map((sign) => (
           <View key={sign} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-            <Ionicons name="warning-outline" size={19} color={colors.danger} accessible={false} />
+            <Ionicons name="warning-outline" size={19} color={colors.muted} accessible={false} />
             <Text style={[typography.body, { flex: 1, color: colors.text }]}>{sign}</Text>
           </View>
         ))}

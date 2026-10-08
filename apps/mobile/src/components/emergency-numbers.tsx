@@ -27,7 +27,7 @@ export function EmergencyNumbers({ urgent = false }: { urgent?: boolean }) {
   return (
     <Panel>
       {urgent ? (
-        <Ionicons name="medical-outline" size={32} color={colors.danger} accessible={false} />
+        <Ionicons name="medical-outline" size={32} color={colors.muted} accessible={false} />
       ) : null}
       <Text accessibilityRole="header" style={typography.sectionTitle}>
         {urgent ? 'Someone needs help' : 'Emergency numbers'}
@@ -46,7 +46,7 @@ export function EmergencyNumbers({ urgent = false }: { urgent?: boolean }) {
           key={number}
           label={`Call ${number} · ${service}`}
           icon="call-outline"
-          variant="danger"
+          variant="primary"
           onPress={() => void call(number)}
         />
       ))}

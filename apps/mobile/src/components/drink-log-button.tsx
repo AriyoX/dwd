@@ -30,7 +30,7 @@ export function DrinkLogButton({
         minHeight: 84,
         padding: 20,
         borderRadius: 20,
-        backgroundColor: primary ? colors.primary : colors.surface,
+        backgroundColor: primary ? colors.primaryFill : colors.surface,
         borderColor: colors.border,
         borderWidth: primary ? 0 : 1,
         flexDirection: 'row',

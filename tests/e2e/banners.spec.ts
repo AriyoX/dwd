@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { test, expect, type Page } from '@playwright/test';
 import { parseBannerAds } from '@dwd/core';
 
-test('bundled campaigns rotate continuously, pause, resume, and respect reduced motion', async ({
+test('bundled campaigns rotate, pause during interaction, and respect reduced motion', async ({
   page,
 }) => {
   test.skip(
@@ -20,15 +20,15 @@ test('bundled campaigns rotate continuously, pause, resume, and respect reduced 
     placement.getByRole('button', { name: `Show banner ${index} of 4` });
   for (const next of [2, 3, 4, 1])
     await expect(dot(next)).toHaveAttribute('aria-pressed', 'true', { timeout: 8000 });
-  await placement.getByRole('button', { name: 'Pause automatic banners' }).click();
-  await placement
-    .getByRole('button', { name: 'Resume automatic banners' })
-    .evaluate((button: HTMLElement) => button.blur());
+  await expect(
+    placement.getByRole('button', { name: /(?:Pause|Resume) automatic banners/ }),
+  ).toHaveCount(0);
+  const track = placement.getByLabel('Featured banners', { exact: true });
+  await track.focus();
   await page.mouse.move(0, 0);
   await page.waitForTimeout(6000);
   await expect(dot(1)).toHaveAttribute('aria-pressed', 'true');
-  await placement.getByRole('button', { name: 'Resume automatic banners' }).click();
-  await page.mouse.move(0, 0);
+  await track.evaluate((element: HTMLElement) => element.blur());
   await expect(dot(2)).toHaveAttribute('aria-pressed', 'true', { timeout: 8000 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.waitForTimeout(6000);

@@ -110,15 +110,22 @@ export function PrimaryButton({
         paddingVertical: 14,
         borderRadius: radii.control,
         borderWidth: 1,
-        borderColor: variant === 'secondary' ? colors.border : 'transparent',
+        borderColor:
+          variant === 'secondary'
+            ? colors.outline
+            : variant === 'danger'
+              ? colors.dangerOutline
+              : 'transparent',
         backgroundColor:
           variant === 'primary'
-            ? colors.primary
+            ? colors.primaryFill
             : variant === 'water'
               ? colors.waterSoft
               : variant === 'quiet'
                 ? 'transparent'
-                : colors.surface,
+                : variant === 'danger'
+                  ? colors.dangerContainer
+                  : colors.surface,
       }}
     >
       {busy ? (

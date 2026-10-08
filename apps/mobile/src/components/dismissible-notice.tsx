@@ -175,7 +175,7 @@ function Message({
             <Text
               accessibilityRole={error ? 'alert' : 'text'}
               accessibilityLiveRegion="polite"
-              style={{ color: error ? colors.danger : colors.text, fontSize: 15, lineHeight: 22 }}
+              style={{ color: error ? colors.error : colors.text, fontSize: 15, lineHeight: 22 }}
             >
               {message}
             </Text>

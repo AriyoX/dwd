@@ -7,6 +7,11 @@ export default function TabLayout() {
     <NativeTabs
       tintColor={colors.primary}
       backgroundColor={colors.surface}
+      indicatorColor={colors.secondaryContainer}
+      rippleColor={colors.primarySoft}
+      badgeBackgroundColor={colors.primaryFill}
+      badgeTextColor={colors.onPrimary}
+      shadowColor={colors.border}
       blurEffect={reduceTransparency ? 'none' : 'systemChromeMaterial'}
       disableTransparentOnScrollEdge={reduceTransparency}
       minimizeBehavior="never"

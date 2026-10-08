@@ -43,6 +43,15 @@ export default defineConfig(
     rules: { 'jsx-a11y/alt-text': 'off' },
   },
   {
+    files: ['apps/mobile/plugins/*.cjs'],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: {
+      parserOptions: { project: null },
+      globals: { require: 'readonly', module: 'readonly' },
+    },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     files: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {
       '@typescript-eslint/no-unsafe-assignment': 'off',

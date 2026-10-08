@@ -12,6 +12,7 @@ export function NavigationRow({
   busy = false,
   busyLabel,
   showChevron = true,
+  tone = 'default',
 }: {
   label: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -21,8 +22,17 @@ export function NavigationRow({
   busy?: boolean;
   busyLabel?: string;
   showChevron?: boolean;
+  tone?: 'default' | 'neutral' | 'danger';
 }) {
   const { colors, typography } = useTheme();
+  const ink =
+    tone === 'danger' ? colors.danger : tone === 'neutral' ? colors.muted : colors.primary;
+  const fill =
+    tone === 'danger'
+      ? colors.dangerContainer
+      : tone === 'neutral'
+        ? colors.surfaceSoft
+        : colors.primarySoft;
   return (
     <Action
       label={busy && busyLabel ? busyLabel : detail ? `${label}, ${detail}` : label}
@@ -42,19 +52,26 @@ export function NavigationRow({
           width: 36,
           height: 36,
           borderRadius: 11,
-          backgroundColor: colors.primarySoft,
+          backgroundColor: fill,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
         {busy ? (
-          <ActivityIndicator color={colors.primary} accessible={false} />
+          <ActivityIndicator color={ink} accessible={false} />
         ) : (
-          <Ionicons name={icon} size={20} color={colors.primary} accessible={false} />
+          <Ionicons name={icon} size={20} color={ink} accessible={false} />
         )}
       </View>
       <View style={{ flex: 1, gap: 4 }}>
-        <Text style={{ ...typography.body, color: colors.text, fontSize: 16, fontWeight: '500' }}>
+        <Text
+          style={{
+            ...typography.body,
+            color: tone === 'default' ? colors.text : ink,
+            fontSize: 16,
+            fontWeight: '500',
+          }}
+        >
           {busy && busyLabel ? busyLabel : label}
         </Text>
         {detail ? <Text style={{ color: colors.muted, fontSize: 14 }}>{detail}</Text> : null}

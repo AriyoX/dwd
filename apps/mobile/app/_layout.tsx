@@ -73,12 +73,12 @@ function Navigation() {
       value={{
         ...base,
         colors: {
-          ...base.colors,
           background: colors.background,
           card: colors.surface,
           text: colors.text,
           primary: colors.primary,
           border: colors.border,
+          notification: colors.primary,
         },
       }}
     >

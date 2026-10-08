@@ -103,7 +103,7 @@ export function TextField({
       {error ? (
         <Text
           accessibilityRole="alert"
-          style={{ color: colors.danger, fontSize: 14, lineHeight: 20 }}
+          style={{ color: colors.error, fontSize: 14, lineHeight: 20 }}
         >
           {error}
         </Text>
@@ -137,7 +137,7 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       minHeight: 52,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.outline,
       borderRadius: radii.input,
       backgroundColor: colors.surface,
     },

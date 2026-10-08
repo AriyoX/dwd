@@ -149,7 +149,7 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
   });
   await page.getByRole('button', { name: 'Log Beer', exact: false }).click();
   await expect(page.locator('[data-testid="drink-count"]')).toHaveText('2');
-  await expect(page.getByRole('button', { name: 'Use dark mode' })).toBeHidden();
+  await expect(page.getByLabel('Change appearance', { exact: true })).toBeHidden();
   await page.screenshot({ path: `.tmp/tour-${info.project.name}-logging.png` });
   await card.getByRole('button', { name: 'Next', exact: true }).click();
   card = await coach(page, 'choices');
@@ -337,7 +337,9 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   await page.keyboard.press('Enter');
   await tabThroughControls(page, info.project.name, true);
   await expect(page.locator('.account-popover')).toBeHidden();
-  await page.getByRole('button', { name: 'Use dark mode' }).click();
+  await page.getByLabel('Change appearance', { exact: true }).click();
+  await page.getByRole('button', { name: 'Dark appearance' }).click();
+  await page.getByLabel('Change appearance', { exact: true }).click();
   await page.getByLabel('Account menu').click();
   await page.getByRole('button', { name: 'Take a tour' }).click();
   card = await coach(page, 'start');

@@ -19,8 +19,8 @@ export function NightMetrics({
           count: drinks,
           label: drinks === 1 ? 'drink' : 'drinks',
           icon: 'wine-outline' as const,
-          ink: colors.primary,
-          fill: colors.primarySoft,
+          ink: colors.text,
+          fill: colors.surfaceSoft,
         },
         {
           count: water,

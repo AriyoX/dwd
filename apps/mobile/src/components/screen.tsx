@@ -189,7 +189,7 @@ export function Notice({
       accessibilityRole={error ? 'alert' : 'text'}
       accessibilityLiveRegion="polite"
       style={{
-        color: error ? colors.danger : colors.muted,
+        color: error ? colors.error : colors.muted,
         fontSize: 15,
         lineHeight: 23,
         ...(error ? { padding: 14, borderRadius: 14, backgroundColor: colors.surfaceSoft } : {}),

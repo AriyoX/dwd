@@ -278,7 +278,8 @@ function Setup({ owner }: { owner: string }) {
                       justifyContent: 'center',
                       borderRadius: 14,
                       borderWidth: 1,
-                      borderColor: draft.durationHours === hours ? colors.primary : colors.border,
+                      borderColor:
+                        draft.durationHours === hours ? colors.selectedBorder : colors.outline,
                       backgroundColor:
                         draft.durationHours === hours ? colors.primarySoft : colors.surface,
                     }}

@@ -22,7 +22,6 @@ export function TonightBanners() {
   const [ads, setAds] = useState(HOUSE_BANNERS);
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [touching, setTouching] = useState(false);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [issue, setIssue] = useState<string | null>(null);
@@ -39,7 +38,7 @@ export function TonightBanners() {
 
   useFocusEffect(
     useCallback(() => {
-      if (ads.length < 2 || !width || paused || touching || !foreground || reducedMotion) return;
+      if (ads.length < 2 || !width || touching || !foreground || reducedMotion) return;
       const timer = setTimeout(() => {
         const next = (active + 1) % ads.length;
         // Native ScrollView owns the animation; JS only schedules each new card.
@@ -47,7 +46,7 @@ export function TonightBanners() {
         setActive(next);
       }, 5000);
       return () => clearTimeout(timer);
-    }, [active, ads, width, interval, paused, touching, foreground, reducedMotion]),
+    }, [active, ads, width, interval, touching, foreground, reducedMotion]),
   );
 
   useFocusEffect(
@@ -104,20 +103,6 @@ export function TonightBanners() {
         >
           Featured
         </Text>
-        {ads.length > 1 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={paused ? 'Resume automatic banners' : 'Pause automatic banners'}
-            onPress={() => setPaused((value) => !value)}
-            style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Ionicons
-              name={paused ? 'play-outline' : 'pause-outline'}
-              size={18}
-              color={colors.primary}
-            />
-          </Pressable>
-        ) : null}
       </View>
       {width > 0 ? (
         <ScrollView

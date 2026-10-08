@@ -54,12 +54,12 @@ export function NightPeople({
                     width: 42,
                     height: 42,
                     borderRadius: 21,
-                    backgroundColor: colors.primarySoft,
+                    backgroundColor: colors.surfaceSoft,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '600' }}>
+                  <Text style={{ color: colors.muted, fontSize: 17, fontWeight: '600' }}>
                     {member.displayName.slice(0, 1).toUpperCase()}
                   </Text>
                 </View>

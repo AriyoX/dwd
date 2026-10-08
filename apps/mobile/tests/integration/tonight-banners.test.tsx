@@ -190,7 +190,7 @@ describe('Tonight banner placement', () => {
     expect(one('Notice').props['message']).toBe('Could not open this link. Try again.');
   });
 
-  it('cycles all four campaigns, wraps, pauses, and stops in the background', async () => {
+  it('cycles all four campaigns, wraps, and stops in the background', async () => {
     vi.useFakeTimers();
     vi.stubEnv('EXPO_PUBLIC_DWD_ADS_URL', 'https://dwd.example/ads.json');
     runtime.fetch.mockResolvedValue({
@@ -207,17 +207,12 @@ describe('Tonight banner placement', () => {
       });
       expect(runtime.scroll).toHaveBeenLastCalledWith({ x: next * 344, animated: next !== 0 });
     }
-    const pause = () =>
-      native('Pressable').find((node) =>
+    expect(
+      native('Pressable').some((node) =>
         String(node.props['accessibilityLabel']).includes('automatic banners'),
-      );
-    await act(() => (pause()?.props['onPress'] as () => void)());
+      ),
+    ).toBe(false);
     runtime.scroll.mockClear();
-    await act(() => {
-      vi.advanceTimersByTime(15000);
-    });
-    expect(runtime.scroll).not.toHaveBeenCalled();
-    await act(() => (pause()?.props['onPress'] as () => void)());
     await act(() => runtime.appState('background'));
     await act(() => {
       vi.advanceTimersByTime(15000);

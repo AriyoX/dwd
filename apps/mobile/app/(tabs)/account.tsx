@@ -168,11 +168,13 @@ export default function AccountScreen() {
         />
         <NavigationRow
           label="Privacy"
+          tone="neutral"
           icon="shield-checkmark-outline"
           onPress={() => router.push('/legal?document=privacy')}
         />
         <NavigationRow
           label="Terms"
+          tone="neutral"
           icon="document-text-outline"
           onPress={() => router.push('/legal?document=terms')}
         />
@@ -196,6 +198,7 @@ export default function AccountScreen() {
           />
           <NavigationRow
             label="Delete account"
+            tone="danger"
             icon="trash-outline"
             onPress={() => router.push('/delete-account')}
           />
@@ -214,12 +217,12 @@ const createStyles = (colors: ThemeColors, typography: ReturnType<typeof makeTyp
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 20,
-      backgroundColor: colors.primarySoft,
+      backgroundColor: colors.surfaceSoft,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    initial: { color: colors.primary, fontSize: 26, fontWeight: '600' },
+    initial: { color: colors.muted, fontSize: 26, fontWeight: '600' },
     body: { ...typography.body, flexShrink: 1 },
     loadingPanel: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    error: { color: colors.danger, fontSize: 14, lineHeight: 20 },
+    error: { color: colors.error, fontSize: 14, lineHeight: 20 },
   });

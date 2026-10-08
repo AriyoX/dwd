@@ -186,7 +186,7 @@ function HistoryCard({ night, index }: { night: FinishedNight; index: number }) 
         <Text style={styles.nightTitle}>{night.title}</Text>
         <View style={styles.counts}>
           <View style={styles.count}>
-            <Ionicons name="wine-outline" color={colors.accent} size={15} accessible={false} />
+            <Ionicons name="wine-outline" color={colors.muted} size={15} accessible={false} />
             <Text style={styles.meta}>{formatCount(night.alcoholCount, 'drink')}</Text>
           </View>
           <View style={styles.count}>

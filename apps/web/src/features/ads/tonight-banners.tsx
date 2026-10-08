@@ -3,14 +3,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, ArrowRight, Megaphone, Moon, Pause, Play } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Megaphone, Moon } from 'lucide-react';
 import { HOUSE_BANNERS, isPublicHttpsUrl, parseBannerAds, type BannerAd } from '@dwd/core';
 import styles from './tonight-banners.module.css';
 
 export function TonightBanners() {
   const [ads, setAds] = useState(HOUSE_BANNERS);
   const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [touching, setTouching] = useState(false);
@@ -116,23 +115,13 @@ export function TonightBanners() {
   }, [ads.length]);
 
   useEffect(() => {
-    if (
-      ads.length < 2 ||
-      paused ||
-      hovered ||
-      focused ||
-      touching ||
-      !visible ||
-      !inView ||
-      reduced
-    )
-      return;
+    if (ads.length < 2 || hovered || focused || touching || !visible || !inView || reduced) return;
     const timer = setTimeout(() => {
       const next = (active + 1) % ads.length;
       show(next, next !== 0);
     }, 5000);
     return () => clearTimeout(timer);
-  }, [active, ads, paused, hovered, focused, touching, visible, inView, reduced, show]);
+  }, [active, ads, hovered, focused, touching, visible, inView, reduced, show]);
 
   if (!ads.length) return null;
   return (
@@ -160,27 +149,6 @@ export function TonightBanners() {
         <h2 id={headingId}>Featured</h2>
         {ads.length > 1 ? (
           <div className={styles['arrows']}>
-            <button
-              type="button"
-              aria-label={paused ? 'Resume automatic banners' : 'Pause automatic banners'}
-              aria-controls={trackId}
-              onClick={() => {
-                if (paused) {
-                  // Explicit resume also releases focus/hover pauses, including Safari's
-                  // retained focus on the scroll track after a pointer click.
-                  setFocused(false);
-                  setHovered(false);
-                  setTouching(false);
-                }
-                setPaused((value) => !value);
-              }}
-            >
-              {paused ? (
-                <Play size={18} aria-hidden="true" />
-              ) : (
-                <Pause size={18} aria-hidden="true" />
-              )}
-            </button>
             <button
               type="button"
               aria-label="Previous banner"
