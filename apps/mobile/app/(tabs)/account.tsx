@@ -4,7 +4,6 @@ import type { Database } from '@dwd/core';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Disclosure } from '@/components/disclosure';
 import { SettingsSection } from '@/components/settings-section';
 import { PrimaryButton } from '@/components/primary-button';
 import { Panel, ScreenHeading } from '@/components/screen';
@@ -16,8 +15,6 @@ import { useTheme, useThemedStyles } from '@/providers/theme-provider';
 import type { ThemeColors, makeTypography } from '@/theme/tokens';
 import { NavigationRow } from '@/components/navigation-row';
 import { useNotifications } from '@/providers/notifications-provider';
-import { BlockedUsers } from '@/components/blocked-users';
-import { CampaignCountrySettings } from '@/components/campaign-country-settings';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -164,9 +161,11 @@ export default function AccountScreen() {
             onPress={() => router.push('/tour?replay=1')}
           />
         ) : null}
-        <Disclosure title="Local help numbers">
-          <CampaignCountrySettings />
-        </Disclosure>
+        <NavigationRow
+          label="Local help numbers"
+          icon="call-outline"
+          onPress={() => router.push('/local-help')}
+        />
         <NavigationRow
           label="Privacy"
           icon="shield-checkmark-outline"
@@ -177,15 +176,22 @@ export default function AccountScreen() {
           icon="document-text-outline"
           onPress={() => router.push('/legal?document=terms')}
         />
-        {session ? <BlockedUsers key={session.user.id} /> : null}
+        {session ? (
+          <NavigationRow
+            label="Blocked people"
+            icon="person-remove-outline"
+            onPress={() => router.push('/blocked-people')}
+          />
+        ) : null}
       </SettingsSection>
       {session ? (
-        <Disclosure title="Account options">
-          <PrimaryButton
+        <SettingsSection title="Account options">
+          <NavigationRow
             busy={busy}
             busyLabel="Signing out"
             label="Sign out"
-            variant="quiet"
+            icon="log-out-outline"
+            showChevron={false}
             onPress={() => void signOut()}
           />
           <NavigationRow
@@ -193,7 +199,7 @@ export default function AccountScreen() {
             icon="trash-outline"
             onPress={() => router.push('/delete-account')}
           />
-        </Disclosure>
+        </SettingsSection>
       ) : null}
     </TourScreen>
   );

@@ -109,6 +109,7 @@ function Navigation() {
           </Stack.Protected>
           <Stack.Screen name="auth/callback" options={{ title: 'Confirm account' }} />
           <Stack.Screen name="legal" options={{ title: 'DWD' }} />
+          <Stack.Screen name="local-help" options={{ title: 'Local help numbers' }} />
           <Stack.Protected guard={access === 'ready' || access === 'profile'}>
             <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
           </Stack.Protected>
@@ -117,6 +118,7 @@ function Navigation() {
             <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
             <Stack.Screen name="profile" options={{ ...sheet, title: 'Edit profile' }} />
             <Stack.Screen name="support" options={{ title: 'Support & feedback' }} />
+            <Stack.Screen name="blocked-people" options={{ title: 'Blocked people' }} />
             <Stack.Screen name="reminders" options={{ ...sheet, title: 'Reminders' }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="night/new" options={{ title: 'Start a night' }} />
