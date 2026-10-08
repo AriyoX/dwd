@@ -4,7 +4,8 @@ import { useRouter, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { acknowledgeNotification, getMyNotificationEvents } from '@dwd/data';
 import { Action, PrimaryButton } from '@/components/primary-button';
-import { LoadingPanel, Notice, Panel, RetryPanel, Screen } from '@/components/screen';
+import { LoadingPanel, Notice, Panel, RetryPanel } from '@/components/screen';
+import { TourScreen, TourTarget } from '@/components/tour-screen';
 import { NavigationRow } from '@/components/navigation-row';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { useNightAction } from '@/hooks/use-night-action';
@@ -37,7 +38,8 @@ export default function NotificationsScreen() {
     pending: push.enabled ? 'Waiting to turn on' : 'Waiting to turn off',
   };
   return (
-    <Screen
+    <TourScreen
+      route="/notifications"
       insetTop={false}
       refreshControl={
         <RefreshControl
@@ -48,7 +50,10 @@ export default function NotificationsScreen() {
       }
     >
       <Panel>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        <TourTarget
+          id="notifications"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+        >
           <View style={{ padding: 14, borderRadius: 20, backgroundColor: colors.primarySoft }}>
             <Ionicons
               name="notifications-outline"
@@ -61,7 +66,7 @@ export default function NotificationsScreen() {
             <Text style={typography.sectionTitle}>Notifications</Text>
             <Text style={typography.body}>{labels[push.state]}</Text>
           </View>
-        </View>
+        </TourTarget>
         {push.state === 'ready' ? (
           <PrimaryButton
             label="Turn off notifications"
@@ -248,6 +253,6 @@ export default function NotificationsScreen() {
         <RetryPanel issue={query.issue} retry={() => void query.refresh()} />
       ) : null}
       {action.issue ? <Notice error message={action.issue} /> : null}
-    </Screen>
+    </TourScreen>
   );
 }

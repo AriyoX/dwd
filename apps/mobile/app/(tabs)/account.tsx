@@ -7,7 +7,8 @@ import { useRouter } from 'expo-router';
 import { Disclosure } from '@/components/disclosure';
 import { SettingsSection } from '@/components/settings-section';
 import { PrimaryButton } from '@/components/primary-button';
-import { Panel, Screen, ScreenHeading } from '@/components/screen';
+import { Panel, ScreenHeading } from '@/components/screen';
+import { TourScreen, TourTarget } from '@/components/tour-screen';
 import { authHandoff } from '@/lib/auth-state';
 import { AppearancePicker } from '@/components/appearance-picker';
 import { useSupabase } from '@/providers/supabase-provider';
@@ -58,7 +59,7 @@ export default function AccountScreen() {
   }
 
   return (
-    <Screen>
+    <TourScreen route="/account">
       <ScreenHeading
         title={
           session
@@ -134,16 +135,20 @@ export default function AccountScreen() {
             icon="notifications-outline"
             onPress={() => router.push('/notifications')}
           />
-          <NavigationRow
-            label="Night reminders"
-            icon="time-outline"
-            onPress={() => router.push('/reminders')}
-          />
+          <TourTarget id="reminders">
+            <NavigationRow
+              label="Night reminders"
+              icon="time-outline"
+              onPress={() => router.push('/reminders')}
+            />
+          </TourTarget>
         </SettingsSection>
       ) : null}
-      <SettingsSection title="Appearance">
-        <AppearancePicker />
-      </SettingsSection>
+      <TourTarget id="settings">
+        <SettingsSection title="Appearance">
+          <AppearancePicker />
+        </SettingsSection>
+      </TourTarget>
       <SettingsSection title="Help & privacy">
         {session ? (
           <NavigationRow
@@ -190,7 +195,7 @@ export default function AccountScreen() {
           />
         </Disclosure>
       ) : null}
-    </Screen>
+    </TourScreen>
   );
 }
 

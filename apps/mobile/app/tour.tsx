@@ -1,5 +1,12 @@
-import { Redirect } from 'expo-router';
+import { useEffect } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { useFeatureTour } from '@/providers/feature-tour-provider';
 
 export default function TourScreen() {
-  return <Redirect href={{ pathname: '/', params: { tour: '1' } }} />;
+  const { replay } = useLocalSearchParams<{ replay?: string }>();
+  const start = useFeatureTour()?.start;
+  useEffect(() => {
+    start?.(replay === '1' ? '/account' : '/');
+  }, [start, replay]);
+  return null;
 }

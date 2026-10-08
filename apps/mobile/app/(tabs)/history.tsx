@@ -9,7 +9,8 @@ import { NightArtwork } from '@/components/night-artwork';
 import { NightActivity } from '@/components/night-activity';
 import { useOffline } from '@/providers/offline-provider';
 import { PrimaryButton } from '@/components/primary-button';
-import { Panel, RetryPanel, Screen, ScreenHeading } from '@/components/screen';
+import { Panel, RetryPanel, ScreenHeading } from '@/components/screen';
+import { TourScreen, TourTarget } from '@/components/tour-screen';
 import { useSupabase } from '@/providers/supabase-provider';
 import { radii, type ThemeColors, type makeTypography } from '@/theme/tokens';
 import { useTheme, useThemedStyles } from '@/providers/theme-provider';
@@ -38,7 +39,8 @@ export default function HistoryScreen() {
   const hasMore = data?.hasMore ?? false;
 
   return (
-    <Screen
+    <TourScreen
+      route="/history"
       refreshControl={
         status === 'signed-in' ? (
           <RefreshControl
@@ -79,15 +81,23 @@ export default function HistoryScreen() {
       ) : nights.length === 0 ? (
         <Panel style={styles.emptyPanel}>
           <NightArtwork compact />
-          <Text accessibilityRole="header" style={styles.emptyTitle}>
-            {page === 0 ? 'No finished nights yet' : 'No more nights'}
-          </Text>
+          <TourTarget id="entries">
+            <Text accessibilityRole="header" style={styles.emptyTitle}>
+              {page === 0 ? 'No finished nights yet' : 'No more nights'}
+            </Text>
+          </TourTarget>
         </Panel>
       ) : (
         <View style={styles.list}>
-          {nights.map((night, index) => (
-            <HistoryCard key={night.id} night={night} index={index} />
-          ))}
+          {nights.map((night, index) =>
+            index === 0 ? (
+              <TourTarget key={night.id} id="entries">
+                <HistoryCard night={night} index={index} />
+              </TourTarget>
+            ) : (
+              <HistoryCard key={night.id} night={night} index={index} />
+            ),
+          )}
         </View>
       )}
       {data && issue ? <RetryPanel issue={issue} retry={() => void refresh()} /> : null}
@@ -111,7 +121,7 @@ export default function HistoryScreen() {
           ) : null}
         </View>
       ) : null}
-    </Screen>
+    </TourScreen>
   );
 }
 

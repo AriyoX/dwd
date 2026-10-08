@@ -1,31 +1,19 @@
-import { useRef } from 'react';
-import { RefreshControl, Text, View, type ScrollView } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { RefreshControl, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getActiveNights } from '@dwd/data';
-import { FeatureTour, type TourTargetId } from '@/components/feature-tour';
+import { TourScreen, TourTarget } from '@/components/tour-screen';
 import { NavigationRow } from '@/components/navigation-row';
 import { Brand } from '@/components/brand';
 import { NightArtwork } from '@/components/night-artwork';
 import { Action, PrimaryButton } from '@/components/primary-button';
-import {
-  LoadingPanel,
-  Notice,
-  Panel,
-  RetryPanel,
-  Screen,
-  ScreenHeading,
-} from '@/components/screen';
+import { LoadingPanel, Notice, Panel, RetryPanel, ScreenHeading } from '@/components/screen';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
 
 export default function TonightScreen() {
   const router = useRouter();
-  const { tour } = useLocalSearchParams<{ tour?: string }>();
-  const scroll = useRef<ScrollView>(null);
-  const offset = useRef(0);
-  const targets = useRef<Partial<Record<TourTargetId, View | null>>>({});
   const { status } = useSupabase();
   const { colors, typography } = useTheme();
   const {
@@ -37,12 +25,8 @@ export default function TonightScreen() {
     cached,
   } = useAccountQuery(getActiveNights, 'active-nights', true);
   return (
-    <Screen
-      hidePermissionReminder={tour === '1'}
-      scrollRef={scroll}
-      onScroll={(event) => {
-        offset.current = event.nativeEvent.contentOffset.y;
-      }}
+    <TourScreen
+      route="/"
       refreshControl={
         status === 'signed-in' ? (
           <RefreshControl
@@ -68,13 +52,7 @@ export default function TonightScreen() {
       </View>
       <ScreenHeading title="Tonight" />
       {status === 'signed-in' ? (
-        <View
-          ref={(view) => {
-            targets.current.active = view;
-          }}
-          collapsable={false}
-          style={{ gap: 12 }}
-        >
+        <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>
             Active nights
           </Text>
@@ -162,19 +140,14 @@ export default function TonightScreen() {
       {status === 'signed-in' ? (
         <View style={{ gap: 14 }}>
           {nights?.length ? (
-            <View
-              ref={(view) => {
-                targets.current.start = view;
-              }}
-              collapsable={false}
-            >
+            <TourTarget id="start">
               <PrimaryButton
                 label="Start another night"
                 icon="add"
                 variant="secondary"
                 onPress={() => router.push('/night/new')}
               />
-            </View>
+            </TourTarget>
           ) : (
             <Panel
               style={{ backgroundColor: colors.surface, padding: 24, gap: 8, overflow: 'hidden' }}
@@ -192,26 +165,16 @@ export default function TonightScreen() {
                 Ready for tonight?
               </Text>
               <NightArtwork compact={Boolean(nights?.length)} />
-              <View
-                ref={(view) => {
-                  targets.current.start = view;
-                }}
-                collapsable={false}
-              >
+              <TourTarget id="start">
                 <PrimaryButton
                   label="Start a night"
                   icon="add"
                   onPress={() => router.push('/night/new')}
                 />
-              </View>
+              </TourTarget>
             </Panel>
           )}
-          <View
-            ref={(view) => {
-              targets.current.join = view;
-            }}
-            collapsable={false}
-          >
+          <TourTarget id="join">
             <Action
               label="Join with an invite"
               onPress={() => router.push('/join')}
@@ -230,44 +193,23 @@ export default function TonightScreen() {
               </Text>
               <Ionicons name="arrow-forward" size={20} color={colors.primary} accessible={false} />
             </Action>
-          </View>
+          </TourTarget>
           <Panel style={{ paddingVertical: 4, gap: 0 }}>
-            <View
-              ref={(view) => {
-                targets.current.notifications = view;
-              }}
-              collapsable={false}
-            >
-              <NavigationRow
-                label="Notifications"
-                icon="notifications-outline"
-                onPress={() => router.push('/notifications')}
-              />
-            </View>
-            <View
-              ref={(view) => {
-                targets.current.entries = view;
-              }}
-              collapsable={false}
-            >
-              <NavigationRow
-                label="Entries & memories"
-                icon="time-outline"
-                onPress={() => router.push('/history')}
-              />
-            </View>
-            <View
-              ref={(view) => {
-                targets.current.settings = view;
-              }}
-              collapsable={false}
-            >
-              <NavigationRow
-                label="Settings"
-                icon="settings-outline"
-                onPress={() => router.push('/account')}
-              />
-            </View>
+            <NavigationRow
+              label="Notifications"
+              icon="notifications-outline"
+              onPress={() => router.push('/notifications')}
+            />
+            <NavigationRow
+              label="Entries & memories"
+              icon="time-outline"
+              onPress={() => router.push('/history')}
+            />
+            <NavigationRow
+              label="Settings"
+              icon="settings-outline"
+              onPress={() => router.push('/account')}
+            />
           </Panel>
         </View>
       ) : status === 'loading' ? (
@@ -292,14 +234,6 @@ export default function TonightScreen() {
           DWD cannot determine sobriety or driving safety.
         </Text>
       </View>
-      {tour === '1' && status === 'signed-in' ? (
-        <FeatureTour
-          targets={targets}
-          scroll={scroll}
-          offset={offset}
-          onFinish={() => router.setParams({ tour: undefined })}
-        />
-      ) : null}
-    </Screen>
+    </TourScreen>
   );
 }
