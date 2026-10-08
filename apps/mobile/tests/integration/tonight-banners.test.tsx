@@ -10,6 +10,7 @@ const runtime = vi.hoisted(() => ({
   scroll: vi.fn(),
   fetch: vi.fn(),
   reduced: false,
+  fontScale: 1,
   appState: (_state: string): void => {
     void _state;
   },
@@ -20,6 +21,7 @@ vi.mock('react-native', () => ({
   Image: 'Image',
   Pressable: 'Pressable',
   ScrollView: 'ScrollView',
+  useWindowDimensions: () => ({ width: 390, height: 844, scale: 3, fontScale: runtime.fontScale }),
   Linking: { openURL: runtime.open },
   AppState: {
     currentState: 'active',
@@ -57,6 +59,7 @@ let root: ReactTestRenderer | null = null;
 beforeEach(() => {
   vi.clearAllMocks();
   runtime.reduced = false;
+  runtime.fontScale = 1;
   runtime.open.mockResolvedValue(undefined);
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('fetch', runtime.fetch);
@@ -97,6 +100,54 @@ function one(type: string) {
 }
 
 describe('Tonight banner placement', () => {
+  it.each([280, 360, 600])(
+    'keeps mixed content the same size at a %s-point width',
+    async (width) => {
+      vi.stubEnv('EXPO_PUBLIC_DWD_ADS_URL', 'https://dwd.example/ads.json');
+      const longTitle = 'Sunset at Kuri · Oct 10: Topia Twins, DJ Miracle & Chef Simples';
+      runtime.fetch.mockResolvedValue({
+        ok: true,
+        json: () => ({
+          ads: [
+            campaign,
+            { ...campaign, id: 'long', title: longTitle },
+            { ...campaign, id: 'text-only', title: 'A short offer', imageUrl: undefined },
+          ],
+        }),
+      });
+      await mount();
+      const placement = native('View').find((node) => node.props['onLayout']);
+      await act(() =>
+        (placement?.props['onLayout'] as (event: unknown) => void)({
+          nativeEvent: { layout: { width } },
+        }),
+      );
+      const height = one('ScrollView').props['style'].height as number;
+      expect(height).toBeGreaterThan(0);
+      for (const card of banners()) {
+        expect(card.props['containerStyle']).toEqual({ width: width - 28, height });
+        expect(card.props['style'].height).toBe(height);
+      }
+      expect(banners()[1]?.props['label']).toContain(longTitle);
+      expect(
+        native('Text').find((node) => node.props['children'] === longTitle)?.props['numberOfLines'],
+      ).toBe(3);
+      await act(() => (one('Image').props['onError'] as () => void)());
+      expect(banners()[0]?.props['style'].height).toBe(height);
+    },
+  );
+
+  it('grows every card together when accessibility text size increases', async () => {
+    await mount();
+    const initialHeight = one('ScrollView').props['style'].height as number;
+    runtime.fontScale = 2;
+    await act(() => root?.update(createElement(TonightBanners)));
+    const height = one('ScrollView').props['style'].height as number;
+    expect(height).toBeGreaterThan(initialHeight);
+    expect(banners().every((card) => card.props['style'].height === height)).toBe(true);
+    expect(native('Text').every((node) => node.props['allowFontScaling'] !== false)).toBe(true);
+  });
+
   it('uses house banners without making a request and opens the corresponding screen', async () => {
     await mount();
     expect(runtime.fetch).not.toHaveBeenCalled();
