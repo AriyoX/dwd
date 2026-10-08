@@ -12,6 +12,7 @@ interface LocationValue {
   permission: 'unknown' | 'granted' | 'denied';
   busy: boolean;
   enabled: boolean;
+  servicesEnabled: boolean;
   disable: () => void;
   request: () => Promise<void>;
 }
@@ -30,6 +31,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [permission, setPermission] = useState<LocationValue['permission']>('unknown');
   const [busy, setBusy] = useState(false);
   const [enabled, setEnabled] = useState(false);
+  const [servicesEnabled, setServicesEnabled] = useState(true);
+  const prompting = useRef(false);
   const [initialized, setInitialized] = useState(false);
   const allowed = useRef(false);
   const version = useRef(0);
@@ -49,11 +52,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       return;
     }
     setBusy(true);
-    setLocation(DEFAULT_COUNTRY_LOCATION);
     try {
-      const grant = prompt
-        ? await Location.requestForegroundPermissionsAsync()
-        : await Location.getForegroundPermissionsAsync();
+      prompting.current = prompt;
+      let grant = await Location.getForegroundPermissionsAsync();
+      if (prompt && !grant.granted && grant.canAskAgain)
+        grant = await Location.requestForegroundPermissionsAsync();
       if (attempt !== version.current) return;
       setPermission(
         grant.granted
@@ -66,6 +69,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         setLocation(DEFAULT_COUNTRY_LOCATION);
         return;
       }
+      const services = await Location.hasServicesEnabledAsync();
+      if (attempt !== version.current) return;
+      setServicesEnabled(services);
+      if (!services) return;
       const position = await withRequestTimeout(() =>
         Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Lowest,
@@ -77,6 +84,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     } catch {
       if (attempt === version.current) setLocation(DEFAULT_COUNTRY_LOCATION);
     } finally {
+      prompting.current = false;
       if (attempt === version.current) setBusy(false);
     }
   }
@@ -90,6 +98,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setInitialized(true);
     void refresh();
     const subscription = AppState.addEventListener('change', (state) => {
+      if (prompting.current) return;
       if (state === 'active') void refresh();
       else {
         version.current++;
@@ -131,7 +140,15 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }
   return (
     <Context.Provider
-      value={{ location, permission, busy, enabled, disable, request: () => refresh(true) }}
+      value={{
+        location,
+        permission,
+        busy,
+        enabled,
+        servicesEnabled,
+        disable,
+        request: () => refresh(true),
+      }}
     >
       {children}
     </Context.Provider>

@@ -14,6 +14,7 @@ export function Action({
   selected,
   expanded,
   style,
+  containerStyle,
 }: {
   children: ReactNode;
   onPress: () => void;
@@ -23,6 +24,7 @@ export function Action({
   selected?: boolean;
   expanded?: boolean;
   style?: StyleProp<ViewStyle>;
+  containerStyle?: StyleProp<ViewStyle>;
 }) {
   const [pressed, setPressed] = useState(false);
   const reduced = useReducedMotion();
@@ -37,7 +39,7 @@ export function Action({
         ...(expanded === undefined ? {} : { expanded }),
       }}
       disabled={disabled || busy}
-      style={{ minHeight: 48, minWidth: 48 }}
+      style={[{ minHeight: 48, minWidth: 48 }, containerStyle]}
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}

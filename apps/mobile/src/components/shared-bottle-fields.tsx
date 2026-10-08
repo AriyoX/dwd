@@ -8,6 +8,7 @@ import { Action } from './primary-button';
 import { Choice } from './choice';
 import { DrinkQuantity } from './drink-quantity';
 import { TextField } from './text-field';
+import { Disclosure } from './disclosure';
 
 export function SharedBottleFields({
   draft,
@@ -32,31 +33,37 @@ export function SharedBottleFields({
         editable={!disabled}
         onChangeText={(label) => onChange({ label })}
       />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {(['spirit', 'wine', 'beer', 'cocktail', 'other'] as const).map((category) => (
-          <View key={category} style={{ flexGrow: 1, flexBasis: '30%', minWidth: 90 }}>
-            <Choice
-              compact
-              label={category.charAt(0).toUpperCase() + category.slice(1)}
-              selected={draft.category === category}
-              disabled={disabled}
-              onPress={() => {
-                if (category === 'cocktail' || category === 'other') setDetails(true);
-                onChange({
-                  category,
-                  ...(category === 'wine'
-                    ? { volumeMl: '750', abvPercent: '12', pourMl: '150' }
-                    : category === 'spirit'
-                      ? { volumeMl: '750', abvPercent: '40', pourMl: '30' }
-                      : category === 'beer'
-                        ? { volumeMl: '660', abvPercent: '5', pourMl: '330' }
-                        : { abvPercent: '' }),
-                });
-              }}
-            />
-          </View>
-        ))}
-      </View>
+      <Disclosure
+        title="Drink type"
+        detail={draft.category.charAt(0).toUpperCase() + draft.category.slice(1)}
+        disabled={disabled}
+      >
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {(['spirit', 'wine', 'beer', 'cocktail', 'other'] as const).map((category) => (
+            <View key={category} style={{ flexGrow: 1, flexBasis: 140 }}>
+              <Choice
+                compact
+                label={category.charAt(0).toUpperCase() + category.slice(1)}
+                selected={draft.category === category}
+                disabled={disabled}
+                onPress={() => {
+                  if (category === 'cocktail' || category === 'other') setDetails(true);
+                  onChange({
+                    category,
+                    ...(category === 'wine'
+                      ? { volumeMl: '750', abvPercent: '12', pourMl: '150' }
+                      : category === 'spirit'
+                        ? { volumeMl: '750', abvPercent: '40', pourMl: '30' }
+                        : category === 'beer'
+                          ? { volumeMl: '660', abvPercent: '5', pourMl: '330' }
+                          : { abvPercent: '' }),
+                  });
+                }}
+              />
+            </View>
+          ))}
+        </View>
+      </Disclosure>
       <DrinkQuantity
         label="Planned drinks"
         value={draft.defaultQuantity}
@@ -71,7 +78,9 @@ export function SharedBottleFields({
         style={{ minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12 }}
       >
         <View style={{ flex: 1, gap: 4 }}>
-          <Text style={typography.sectionTitle}>Size & strength</Text>
+          <Text style={{ color: colors.text, fontSize: 17, lineHeight: 22, fontWeight: '600' }}>
+            Size & strength
+          </Text>
           <Text style={typography.body}>
             {draft.volumeMl || '—'} ml · {draft.abvPercent || '—'}% · {draft.pourMl || '—'} ml per{' '}
             {bottleDrinkWord(draft.category)}
@@ -112,10 +121,7 @@ export function SharedBottleFields({
           />
         </>
       ) : null}
-      <Text style={typography.body}>
-        Each tap logs {draft.pourMl || '—'} ml and updates what’s left.
-      </Text>
-      {draft.category === 'spirit' ? (
+      {open && draft.category === 'spirit' ? (
         <Text style={typography.body}>Enter just the spirit poured, without the mixer.</Text>
       ) : null}
     </View>

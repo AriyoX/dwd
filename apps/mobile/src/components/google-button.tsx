@@ -18,13 +18,13 @@ export function GoogleButton({
       disabled={disabled || busy}
       onPress={onPress}
       style={{
-        minHeight: 52,
+        minHeight: 44,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 12,
         paddingHorizontal: 16,
-        paddingVertical: 14,
+        paddingVertical: 10,
         borderRadius: 14,
         borderWidth: 1,
         borderColor: '#747775',
@@ -45,7 +45,7 @@ export function GoogleButton({
           <Text
             style={{
               color: '#1F1F1F',
-              fontSize: 16,
+              fontSize: 17,
               fontWeight: '500',
               flexShrink: 1,
               textAlign: 'center',

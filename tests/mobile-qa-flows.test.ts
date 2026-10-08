@@ -200,19 +200,21 @@ describe('temporary setup lifecycle', () => {
 });
 
 describe('first-use tour preference', () => {
-  it('starts for a new account once and honors the web preference', () => {
+  it('starts once per native account', () => {
     const device = storage();
-    expect(shouldStartTour(device, id(1), false)).toBe(true);
+    expect(shouldStartTour(device, id(1))).toBe(true);
     rememberTourSeen(device, id(1));
-    expect(shouldStartTour(device, id(1), false)).toBe(false);
-    expect(shouldStartTour(device, id(2), false)).toBe(true);
-    expect(shouldStartTour(device, id(2), true)).toBe(false);
+    expect(shouldStartTour(device, id(1))).toBe(false);
+    expect(shouldStartTour(device, id(2))).toBe(true);
   });
-  it.each(['complete', 'skipped'] as const)('respects existing %s progress', (status) => {
-    const device = storage();
-    saveTourProgress(device, id(1), { step: 3, status });
-    expect(shouldStartTour(device, id(1), false)).toBe(false);
-  });
+  it.each(['complete', 'skipped'] as const)(
+    'introduces the new highlights after a %s legacy practice tour',
+    (status) => {
+      const device = storage();
+      saveTourProgress(device, id(1), { step: 3, status });
+      expect(shouldStartTour(device, id(1))).toBe(true);
+    },
+  );
 });
 
 describe('automatic invitation identity', () => {

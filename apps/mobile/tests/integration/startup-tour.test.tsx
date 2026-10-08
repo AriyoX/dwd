@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '@supabase/supabase-js';
 import { TourNavigation } from '@/components/tour-navigation';
 import { rememberTourSeen, tourSeenKey } from '@/lib/practice-tour';
+import { PermissionContext } from '@/providers/permission-context';
 
 const runtime = vi.hoisted(() => ({
   session: null as Session | null,
@@ -90,6 +91,42 @@ afterEach(async () => {
 });
 
 describe('automatic startup tour', () => {
+  it('waits for the first-launch permission sheets to finish before showing highlights', async () => {
+    const permissionState = {
+      ready: false,
+      busy: true,
+      notificationsOff: false,
+      locationOff: false,
+      dismissed: false,
+      issue: null,
+      enable: () => Promise.resolve(),
+      dismiss: vi.fn(),
+    };
+    await act(() => {
+      root = create(
+        createElement(
+          PermissionContext.Provider,
+          { value: permissionState },
+          createElement(TourNavigation),
+        ),
+      );
+    });
+    await timers();
+    expect(runtime.push).not.toHaveBeenCalled();
+    await act(() =>
+      root?.update(
+        createElement(
+          PermissionContext.Provider,
+          {
+            value: { ...permissionState, ready: true, busy: false },
+          },
+          createElement(TourNavigation),
+        ),
+      ),
+    );
+    await timers();
+    expect(runtime.push).toHaveBeenCalledExactlyOnceWith('/tour');
+  });
   it('opens once for a new user, records display before navigation, and syncs the web preference', async () => {
     await render();
     await timers();
@@ -113,7 +150,7 @@ describe('automatic startup tour', () => {
     await timers();
     expect(runtime.push).not.toHaveBeenCalled();
   });
-  it('honors both the saved local preference and completion on the web', async () => {
+  it('honors local dismissal and still introduces native controls to web users', async () => {
     rememberTourSeen(localStorage, owner);
     await render();
     await timers();
@@ -121,7 +158,7 @@ describe('automatic startup tour', () => {
     runtime.session = session('00000000-0000-4000-8000-000000000002', true);
     await render();
     await timers();
-    expect(runtime.push).not.toHaveBeenCalled();
+    expect(runtime.push).toHaveBeenCalledExactlyOnceWith('/tour');
   });
   it('waits for onboarding and invite navigation to finish', async () => {
     runtime.access = 'profile';

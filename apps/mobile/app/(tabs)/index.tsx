@@ -1,7 +1,10 @@
-import { RefreshControl, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRef } from 'react';
+import { RefreshControl, Text, View, type ScrollView } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getActiveNights } from '@dwd/data';
+import { FeatureTour, type TourTargetId } from '@/components/feature-tour';
+import { NavigationRow } from '@/components/navigation-row';
 import { Brand } from '@/components/brand';
 import { NightArtwork } from '@/components/night-artwork';
 import { Action, PrimaryButton } from '@/components/primary-button';
@@ -19,22 +22,32 @@ import { useAccountQuery } from '@/hooks/use-account-query';
 
 export default function TonightScreen() {
   const router = useRouter();
+  const { tour } = useLocalSearchParams<{ tour?: string }>();
+  const scroll = useRef<ScrollView>(null);
+  const offset = useRef(0);
+  const targets = useRef<Partial<Record<TourTargetId, View | null>>>({});
   const { status } = useSupabase();
   const { colors, typography } = useTheme();
   const {
     data: nights,
     loading,
+    refreshing,
     issue,
     refresh,
     cached,
   } = useAccountQuery(getActiveNights, 'active-nights', true);
   return (
     <Screen
+      hidePermissionReminder={tour === '1'}
+      scrollRef={scroll}
+      onScroll={(event) => {
+        offset.current = event.nativeEvent.contentOffset.y;
+      }}
       refreshControl={
         status === 'signed-in' ? (
           <RefreshControl
-            refreshing={loading}
-            onRefresh={() => void refresh()}
+            refreshing={refreshing}
+            onRefresh={() => void refresh(true)}
             tintColor={colors.primary}
           />
         ) : undefined
@@ -55,7 +68,13 @@ export default function TonightScreen() {
       </View>
       <ScreenHeading title="Tonight" />
       {status === 'signed-in' ? (
-        <View style={{ gap: 12 }}>
+        <View
+          ref={(view) => {
+            targets.current.active = view;
+          }}
+          collapsable={false}
+          style={{ gap: 12 }}
+        >
           <Text accessibilityRole="header" style={typography.sectionTitle}>
             Active nights
           </Text>
@@ -143,12 +162,19 @@ export default function TonightScreen() {
       {status === 'signed-in' ? (
         <View style={{ gap: 14 }}>
           {nights?.length ? (
-            <PrimaryButton
-              label="Start another night"
-              icon="add"
-              variant="secondary"
-              onPress={() => router.push('/night/new')}
-            />
+            <View
+              ref={(view) => {
+                targets.current.start = view;
+              }}
+              collapsable={false}
+            >
+              <PrimaryButton
+                label="Start another night"
+                icon="add"
+                variant="secondary"
+                onPress={() => router.push('/night/new')}
+              />
+            </View>
           ) : (
             <Panel
               style={{ backgroundColor: colors.surface, padding: 24, gap: 8, overflow: 'hidden' }}
@@ -166,31 +192,83 @@ export default function TonightScreen() {
                 Ready for tonight?
               </Text>
               <NightArtwork compact={Boolean(nights?.length)} />
-              <PrimaryButton
-                label="Start a night"
-                icon="add"
-                onPress={() => router.push('/night/new')}
-              />
+              <View
+                ref={(view) => {
+                  targets.current.start = view;
+                }}
+                collapsable={false}
+              >
+                <PrimaryButton
+                  label="Start a night"
+                  icon="add"
+                  onPress={() => router.push('/night/new')}
+                />
+              </View>
             </Panel>
           )}
-          <Action
-            label="Join with an invite"
-            onPress={() => router.push('/join')}
-            style={{
-              flexDirection: 'row',
-              gap: 14,
-              alignItems: 'center',
-              padding: 18,
-              borderRadius: 22,
-              backgroundColor: colors.primarySoft,
+          <View
+            ref={(view) => {
+              targets.current.join = view;
             }}
+            collapsable={false}
           >
-            <Ionicons name="people-outline" size={24} color={colors.primary} accessible={false} />
-            <Text style={{ flex: 1, color: colors.primary, fontSize: 17, fontWeight: '600' }}>
-              Join with an invite
-            </Text>
-            <Ionicons name="arrow-forward" size={20} color={colors.primary} accessible={false} />
-          </Action>
+            <Action
+              label="Join with an invite"
+              onPress={() => router.push('/join')}
+              style={{
+                flexDirection: 'row',
+                gap: 14,
+                alignItems: 'center',
+                padding: 18,
+                borderRadius: 22,
+                backgroundColor: colors.primarySoft,
+              }}
+            >
+              <Ionicons name="people-outline" size={24} color={colors.primary} accessible={false} />
+              <Text style={{ flex: 1, color: colors.primary, fontSize: 17, fontWeight: '600' }}>
+                Join with an invite
+              </Text>
+              <Ionicons name="arrow-forward" size={20} color={colors.primary} accessible={false} />
+            </Action>
+          </View>
+          <Panel style={{ paddingVertical: 4, gap: 0 }}>
+            <View
+              ref={(view) => {
+                targets.current.notifications = view;
+              }}
+              collapsable={false}
+            >
+              <NavigationRow
+                label="Notifications"
+                icon="notifications-outline"
+                onPress={() => router.push('/notifications')}
+              />
+            </View>
+            <View
+              ref={(view) => {
+                targets.current.entries = view;
+              }}
+              collapsable={false}
+            >
+              <NavigationRow
+                label="Entries & memories"
+                icon="time-outline"
+                onPress={() => router.push('/history')}
+              />
+            </View>
+            <View
+              ref={(view) => {
+                targets.current.settings = view;
+              }}
+              collapsable={false}
+            >
+              <NavigationRow
+                label="Settings"
+                icon="settings-outline"
+                onPress={() => router.push('/account')}
+              />
+            </View>
+          </Panel>
         </View>
       ) : status === 'loading' ? (
         <LoadingPanel />
@@ -214,6 +292,14 @@ export default function TonightScreen() {
           DWD cannot determine sobriety or driving safety.
         </Text>
       </View>
+      {tour === '1' && status === 'signed-in' ? (
+        <FeatureTour
+          targets={targets}
+          scroll={scroll}
+          offset={offset}
+          onFinish={() => router.setParams({ tour: undefined })}
+        />
+      ) : null}
     </Screen>
   );
 }

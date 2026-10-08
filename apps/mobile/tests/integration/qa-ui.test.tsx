@@ -8,6 +8,8 @@ import { DismissibleNotice } from '@/components/dismissible-notice';
 import { DrinkLogButton } from '@/components/drink-log-button';
 import { PlanEditor } from '@/components/plan-editor';
 import { Notice, Screen } from '@/components/screen';
+import { SharedBottleFields } from '@/components/shared-bottle-fields';
+import { newBottleDraft } from '@/lib/night-features';
 
 type PanEvent = { translationX: number; velocityX: number };
 const runtime = vi.hoisted(() => ({
@@ -19,6 +21,7 @@ const runtime = vi.hoisted(() => ({
   editing: vi.fn(),
   log: vi.fn(),
   pan: null as null | {
+    start?: () => void;
     update?: (event: PanEvent) => void;
     end?: (event: PanEvent) => void;
     finalize?: (event: PanEvent, success: boolean) => void;
@@ -28,10 +31,12 @@ const runtime = vi.hoisted(() => ({
   timing: vi.fn(),
   spring: vi.fn(),
   offset: null as null | { get: () => number; set: (value: number) => void },
+  animatedStyle: null as null | (() => { transform: { translateX: number }[] }),
 }));
 vi.mock('react-native', () => ({
   Text: 'Text',
   View: 'View',
+  useWindowDimensions: () => ({ width: 390, height: 844, fontScale: 1 }),
   TextInput: 'TextInput',
   InputAccessoryView: 'InputAccessoryView',
   Pressable: 'Pressable',
@@ -64,8 +69,12 @@ vi.mock('react-native-worklets', () => ({ scheduleOnRN: (fn: () => void) => fn()
 vi.mock('react-native-reanimated', () => ({
   default: { View: 'AnimatedView' },
   cubicBezier: vi.fn(),
+  cancelAnimation: vi.fn(),
   useReducedMotion: () => runtime.reduced,
-  useAnimatedStyle: (fn: () => unknown) => fn(),
+  useAnimatedStyle: (fn: NonNullable<typeof runtime.animatedStyle>) => {
+    runtime.animatedStyle = fn;
+    return fn();
+  },
   useSharedValue: (initial: number) => {
     const ref = useRef(initial);
     const value = {
@@ -86,8 +95,9 @@ vi.mock('react-native-reanimated', () => ({
     complete?.(true);
     return value;
   },
-  withSpring: (value: number, config: unknown) => {
+  withSpring: (value: number, config: unknown, complete?: (finished: boolean) => void) => {
     runtime.spring(value, config);
+    complete?.(true);
     return value;
   },
 }));
@@ -104,6 +114,10 @@ vi.mock('react-native-gesture-handler', () => ({
         },
         failOffsetY: (value: number[]) => {
           pan.fail = value;
+          return builder;
+        },
+        onStart: (fn: () => void) => {
+          pan.start = fn;
           return builder;
         },
         onUpdate: (fn: (event: PanEvent) => void) => {
@@ -171,6 +185,36 @@ function text() {
 }
 
 describe('custom drink editor', () => {
+  it('keeps bottle details compact and opens strength fields for a custom mixture', async () => {
+    function Bottle() {
+      const [draft, setDraft] = useState(() => newBottleDraft('bottle'));
+      return (
+        <SharedBottleFields
+          draft={draft}
+          onChange={(patch) => setDraft((value) => ({ ...value, ...patch }))}
+        />
+      );
+    }
+    await mount(<Bottle />);
+    expect(
+      native('TextInput').some(
+        (field) => field.props['accessibilityLabel'] === 'Alcohol strength (%)',
+      ),
+    ).toBe(false);
+    await press('Drink type. Spirit');
+    await press('Cocktail');
+    expect(
+      native('TextInput').find(
+        (field) => field.props['accessibilityLabel'] === 'Alcohol strength (%)',
+      )?.props['value'],
+    ).toBe('');
+    await input('Alcohol strength (%)', '15');
+    expect(
+      native('TextInput').find(
+        (field) => field.props['accessibilityLabel'] === 'Alcohol strength (%)',
+      )?.props['value'],
+    ).toBe('15');
+  });
   it('validates inline, saves once with decimal input, and dismisses the keyboard', async () => {
     await mount(createElement(CustomDrinkForm, { onSave: runtime.save, onCancel: runtime.cancel }));
     await press('Save drink');
@@ -277,6 +321,66 @@ describe('custom drink editor', () => {
 });
 
 describe('temporary messages', () => {
+  it('does not restart the eight-second timer when the screen updates', async () => {
+    vi.useFakeTimers();
+    try {
+      await mount(
+        <Screen>
+          <Notice dismissible message="Drink logged." />
+        </Screen>,
+      );
+      await act(() => {
+        vi.advanceTimersByTime(6000);
+      });
+      await act(() =>
+        root?.update(
+          <Screen>
+            <Notice dismissible message="Drink logged." />
+            <Notice message="New activity" />
+          </Screen>,
+        ),
+      );
+      await act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(text()).not.toContain('Drink logged.');
+      expect(text()).toContain('New activity');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('continues an interrupted swipe from its on-screen position', async () => {
+    await mount(createElement(DismissibleNotice, { message: 'Drink logged.' }));
+    await act(() => {
+      runtime.pan?.start?.();
+      runtime.pan?.update?.({ translationX: 35, velocityX: 100 });
+      runtime.pan?.start?.();
+      runtime.pan?.update?.({ translationX: 5, velocityX: 100 });
+    });
+    expect(runtime.animatedStyle?.().transform[0]?.translateX).toBe(40);
+  });
+  it('floats messages outside scrolling content and the logging footer, then dismisses them', async () => {
+    vi.useFakeTimers();
+    try {
+      await mount(
+        <Screen footer={createElement('Text', null, 'Log drink')}>
+          <Notice dismissible message="Chaser logged." />
+        </Screen>,
+      );
+      const host = root?.root.findByProps({ host: true, message: 'Chaser logged.' });
+      expect(host?.parent?.props['style']).toMatchObject({ position: 'absolute', top: 8 });
+      expect(
+        native('ScrollView')[0]?.findAllByType('GestureDetector' as unknown as React.ComponentType),
+      ).toHaveLength(0);
+      await act(() => {
+        vi.advanceTimersByTime(8000);
+      });
+      expect(text()).not.toContain('Chaser logged.');
+      expect(text()).toContain('Log drink');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('dismisses a warning by swiping and shows a different new message', async () => {
     await mount(createElement(DismissibleNotice, { message: "You've logged too many drinks" }));
     expect(runtime.pan?.active).toEqual([-16, 16]);
@@ -297,11 +401,13 @@ describe('temporary messages', () => {
       runtime.pan?.update?.({ translationX: 30, velocityX: 100 });
       runtime.pan?.finalize?.({ translationX: 30, velocityX: 100 }, false);
     });
-    expect(runtime.offset?.get()).toBe(0);
+    expect(runtime.animatedStyle?.().transform[0]?.translateX).toBe(0);
     runtime.reduced = true;
     await act(() => root?.update(createElement(DismissibleNotice, { message: 'Saved.' })));
+    await act(() => runtime.pan?.update?.({ translationX: 60, velocityX: -900 }));
+    expect(runtime.animatedStyle?.().transform[0]?.translateX).toBe(0);
     await act(() => runtime.pan?.end?.({ translationX: 0, velocityX: -900 }));
-    expect(runtime.timing).toHaveBeenLastCalledWith(-400, { duration: 0 });
+    expect(root?.toJSON()).toBeNull();
     expect(root?.toJSON()).toBeNull();
   });
   it('does not make important persistent notices dismissible', async () => {

@@ -55,7 +55,7 @@ export default function BottlesScreen() {
     bottleId?: string;
   }>();
   const { colors } = useTheme();
-  const { snapshot, issue, refresh, loading } = useNight(nightId);
+  const { snapshot, issue, refresh, refreshing } = useNight(nightId);
   const scrollRef = useRef<ScrollView>(null);
   const access = snapshot ? nightAccess(snapshot, memberId ?? snapshot.currentMemberId) : null;
   return (
@@ -65,8 +65,8 @@ export default function BottlesScreen() {
       insetTop={false}
       refreshControl={
         <RefreshControl
-          refreshing={loading}
-          onRefresh={() => void refresh()}
+          refreshing={refreshing}
+          onRefresh={() => void refresh(true)}
           tintColor={colors.primary}
         />
       }

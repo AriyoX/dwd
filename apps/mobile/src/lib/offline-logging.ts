@@ -10,6 +10,7 @@ import {
   determinePlanStatus,
   requiredLogConfirmations,
   type CustomDrinkInput,
+  type AlcoholLog,
   type DrinkLogResult,
   type NightSnapshot,
   type WaterLogResult,
@@ -110,6 +111,13 @@ const RETRY_MESSAGE = "We'll save this and sync it when you're back online.";
 
 export class NativeLogOutbox {
   private active = true;
+  // Bridge the interval between the write response and the next read snapshot.
+  // Reads started after a write are authoritative, including an omitted/undone row.
+  private revision = 0;
+  private readonly accepted = new Map<
+    string,
+    { actor: string; revision: number; log: Extract<SendResult, { status: 'created' }>['log'] }
+  >();
   private readonly inFlight = new Map<string, Promise<NativeSyncOutcome>>();
   private replay: Promise<void> | null = null;
   private readonly removing = new Set<string>();
@@ -125,6 +133,45 @@ export class NativeLogOutbox {
 
   public dispose(): void {
     this.active = false;
+    this.accepted.clear();
+  }
+  public withAccepted(snapshot: NightSnapshot): NightSnapshot {
+    const logs = [...this.accepted.values()].filter(
+      ({ actor, log }) => actor === snapshot.currentUserId && log.nightId === snapshot.night.id,
+    );
+    if (!logs.length) return snapshot;
+    return {
+      ...snapshot,
+      members: snapshot.members.map((member) => {
+        const known = new Set(
+          [...member.drinkLogs, ...member.waterLogs].map((log) => log.idempotencyKey),
+        );
+        const missing = logs
+          .filter(({ log }) => log.nightMemberId === member.id && !known.has(log.idempotencyKey))
+          .map(({ log }) => log);
+        return {
+          ...member,
+          drinkLogs: [
+            ...member.drinkLogs,
+            ...missing.filter((log): log is AlcoholLog => 'ethanolGrams' in log),
+          ],
+          waterLogs: [...member.waterLogs, ...missing.filter((log) => !('ethanolGrams' in log))],
+        };
+      }),
+    };
+  }
+  public acceptedVersion(): number {
+    return this.revision;
+  }
+  public reconcileAccepted(snapshot: NightSnapshot, readVersion: number): void {
+    for (const [key, entry] of this.accepted) {
+      if (
+        entry.actor === snapshot.currentUserId &&
+        entry.log.nightId === snapshot.night.id &&
+        entry.revision <= readVersion
+      )
+        this.accepted.delete(key);
+    }
   }
   public current(): boolean {
     return this.active && this.sender.current();
@@ -167,6 +214,11 @@ export class NativeLogOutbox {
       const result = await withRequestTimeout((signal) => this.sender.send(record, signal));
       if (!this.current()) return 'inactive';
       if (result.status === 'created' || result.status === 'duplicate') {
+        this.accepted.set(key, {
+          actor: record.actorUserId,
+          revision: ++this.revision,
+          log: result.log,
+        });
         try {
           this.store.remove(key);
         } catch {
@@ -277,6 +329,7 @@ export class NativeLogOutbox {
             this.sender.delete(result.log.id, record.kind, signal),
           );
           if (!this.current()) return;
+          this.accepted.delete(key);
         } else if (result.status === 'temporarily_failed') {
           throw new Error('Connect to the internet so we can check and remove this entry.');
         }

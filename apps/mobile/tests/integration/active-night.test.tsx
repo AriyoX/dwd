@@ -177,7 +177,7 @@ describe('active night controls', () => {
       params: { memberId: 'member' },
     });
     expect(button('Edit plan')).toBeUndefined();
-    await press('More night options');
+    await press('Night options');
     expect(button('Edit plan')).toBeDefined();
     expect(button('Add missed entries')).toBeDefined();
   });

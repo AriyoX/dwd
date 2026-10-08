@@ -383,7 +383,7 @@ function Setup({ owner }: { owner: string }) {
             <>
               <Disclosure
                 title="Log for a guest"
-                detail={draft.guests.length ? `${draft.guests.length} added` : 'Optional'}
+                {...(draft.guests.length ? { detail: `${draft.guests.length} added` } : {})}
                 defaultExpanded={draft.guests.length > 0}
                 disabled={frozen || editing}
               >

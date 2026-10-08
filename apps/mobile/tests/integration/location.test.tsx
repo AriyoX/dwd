@@ -30,6 +30,7 @@ vi.mock('react-native', () => ({
 vi.mock('expo-location', () => ({
   PermissionStatus: { UNDETERMINED: 'undetermined' },
   Accuracy: { Lowest: 1 },
+  hasServicesEnabledAsync: () => Promise.resolve(true),
   getForegroundPermissionsAsync: runtime.permission,
   requestForegroundPermissionsAsync: runtime.request,
   getCurrentPositionAsync: runtime.position,
@@ -49,7 +50,7 @@ function Probe() {
   value = useCountryLocation();
   return null;
 }
-const denied = { granted: false, status: 'denied' };
+const denied = { granted: false, canAskAgain: true, status: 'denied' };
 const granted = { granted: true, status: 'granted' };
 const kenya = { coords: { latitude: -1.2864, longitude: 36.8172 } };
 beforeEach(() => {

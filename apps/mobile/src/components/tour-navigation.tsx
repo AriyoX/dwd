@@ -1,19 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useConnectivity } from '@/providers/connectivity-provider';
-import {
-  readTourProgress,
-  rememberTourSeen,
-  shouldStartTour,
-  tourSeenKey,
-} from '@/lib/practice-tour';
+import { rememberTourSeen, shouldStartTour, tourSeenKey } from '@/lib/practice-tour';
 import { withRequestTimeout } from '@/lib/request-timeout';
+import { PermissionContext } from '@/providers/permission-context';
 
 export function TourNavigation() {
   const { session, client, access } = useSupabase();
   const { online } = useConnectivity();
+  const permissions = useContext(PermissionContext);
+  const permissionsPending = permissions ? !permissions.ready || permissions.busy : false;
   const pathname = usePathname();
   const navigation = useRootNavigationState();
   const router = useRouter();
@@ -25,6 +23,7 @@ export function TourNavigation() {
     // Let authentication, invitations and push deep links finish before touring.
     if (
       !navigation.key ||
+      permissionsPending ||
       access !== 'ready' ||
       !owner ||
       pathname !== '/' ||
@@ -32,7 +31,7 @@ export function TourNavigation() {
     )
       return;
     const timer = setTimeout(() => {
-      if (!shouldStartTour(globalThis.localStorage, owner, accountSeen)) return;
+      if (!shouldStartTour(globalThis.localStorage, owner)) return;
       shown.current.add(owner);
       try {
         rememberTourSeen(globalThis.localStorage, owner);
@@ -42,7 +41,7 @@ export function TourNavigation() {
       router.push('/tour');
     }, 0);
     return () => clearTimeout(timer);
-  }, [navigation.key, access, owner, pathname, accountSeen, router]);
+  }, [navigation.key, access, owner, pathname, accountSeen, router, permissionsPending]);
   useEffect(() => {
     if (!owner || !client || access !== 'ready' || accountSeen || online === false) return;
     let active = true;
@@ -53,9 +52,7 @@ export function TourNavigation() {
           !shown.current.has(owner) &&
           globalThis.localStorage.getItem(tourSeenKey(owner)) !== 'true'
         ) {
-          const progress = readTourProgress(globalThis.localStorage, owner);
-          if (!progress || progress.status === 'active') return;
-          rememberTourSeen(globalThis.localStorage, owner);
+          return;
         }
         saving.current = true;
         // Match the web's display preference. This is never an authorization claim.

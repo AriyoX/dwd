@@ -42,9 +42,9 @@ export default function NightScreen() {
   const { colors, typography } = useTheme();
   const { records } = useOffline();
   const { online } = useConnectivity();
-  const { snapshot, issue, refresh, now, loading, cached } = useNight(nightId);
-  const logging = useLogging(() => {
-    void refresh();
+  const { snapshot, issue, refresh, now, refreshing, cached } = useNight(nightId);
+  const logging = useLogging((remote) => {
+    if (remote) void refresh();
   }, snapshot);
   const [selection, setSelection] = useState<{
     destination: string | undefined;
@@ -267,8 +267,8 @@ export default function NightScreen() {
       }
       refreshControl={
         <RefreshControl
-          refreshing={loading}
-          onRefresh={() => void refresh()}
+          refreshing={refreshing}
+          onRefresh={() => void refresh(true)}
           tintColor={colors.primary}
         />
       }
@@ -461,11 +461,11 @@ export default function NightScreen() {
                   <Notice key={alert.id} dismissible message={alert.message} />
                 ))}
               {member ? (
-                <Disclosure key={`options:${member.id}`} title="More night options">
+                <Disclosure key={`options:${member.id}`} title="Night options">
                   {nightAccess(snapshot, member.id).canEdit ? (
-                    <PrimaryButton
+                    <NavigationRow
                       label="Edit plan"
-                      variant="quiet"
+                      icon="create-outline"
                       disabled={busy || logging.busy}
                       onPress={() =>
                         router.push({
@@ -482,10 +482,9 @@ export default function NightScreen() {
                     </Text>
                   ) : null}
                   {allowed ? (
-                    <PrimaryButton
+                    <NavigationRow
                       label="Add missed entries"
                       icon="time-outline"
-                      variant="quiet"
                       disabled={busy || logging.busy}
                       onPress={() =>
                         router.push({
@@ -495,16 +494,15 @@ export default function NightScreen() {
                       }
                     />
                   ) : null}
-                  <PrimaryButton
+                  <NavigationRow
                     label="Reminders"
                     icon="notifications-outline"
-                    variant="quiet"
                     onPress={() => router.push(`/night/${nightId}/reminders`)}
                   />
                   {Date.parse(snapshot.night.endsAt) <= now ? (
-                    <PrimaryButton
+                    <NavigationRow
                       label="Night check-in"
-                      variant="quiet"
+                      icon="moon-outline"
                       onPress={() => router.push(`/night/${nightId}/planned-end`)}
                     />
                   ) : null}

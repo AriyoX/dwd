@@ -12,7 +12,7 @@ import { bottleLogIssue, nightAccess } from '@/lib/night-features';
 import { useConnectivity } from '@/providers/connectivity-provider';
 import { entryFailureMessage } from '@/lib/entry-message';
 
-export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null) {
+export function useLogging(onSaved: (remote?: boolean) => void, snapshot?: NightSnapshot | null) {
   const { client, session } = useSupabase();
   const { outbox, retry } = useOffline();
   const { online } = useConnectivity();
@@ -130,7 +130,7 @@ export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null)
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
           () => undefined,
         );
-        onSaved();
+        onSaved(true);
         return true;
       }
       outbox.enqueue(record);
@@ -163,7 +163,7 @@ export function useLogging(onSaved: () => void, snapshot?: NightSnapshot | null)
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => undefined,
       );
-      onSaved();
+      onSaved(false);
       return true;
     } catch {
       if (current())

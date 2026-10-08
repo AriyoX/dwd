@@ -52,26 +52,39 @@ export function NightActivity({
       .map((log) => ({ ...log, kind: 'water' as const, label: 'Chaser', detail: null })),
   ].sort((a, b) => Date.parse(b.consumedAt) - Date.parse(a.consumedAt));
   return (
-    <View style={{ gap: 12 }}>
+    <View
+      style={{
+        gap: expanded ? 8 : 0,
+        backgroundColor: colors.surface,
+        borderRadius: 18,
+        paddingHorizontal: 16,
+        paddingBottom: expanded ? 12 : 0,
+      }}
+    >
       <Action
         label={`${expanded ? 'Hide' : 'View'} ${title.toLowerCase()}. ${entries.length + pending.length} entries${pending.length ? `, ${pending.length} saved on phone` : ''}`}
         expanded={expanded}
         onPress={() => setExpanded((value) => !value)}
         style={{ minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12 }}
       >
-        <Text style={[typography.sectionTitle, { flex: 1 }]}>
-          {title} · {entries.length + pending.length}
-        </Text>
-        {pending.length ? (
-          <Text style={{ color: colors.muted, fontSize: 13, flexShrink: 1 }}>
-            {pending.some(
-              (record) =>
-                record.status === 'permanent_failure' || record.status === 'needs_confirmation',
-            )
-              ? 'Review needed'
-              : `${pending.length} on phone`}
+        <View style={{ flex: 1, gap: 4, paddingVertical: 10 }}>
+          <Text style={{ color: colors.text, fontSize: 17, lineHeight: 22, fontWeight: '600' }}>
+            {title}
           </Text>
-        ) : null}
+          {pending.length ? (
+            <Text style={{ color: colors.muted, fontSize: 13, flexShrink: 1 }}>
+              {pending.some(
+                (record) =>
+                  record.status === 'permanent_failure' || record.status === 'needs_confirmation',
+              )
+                ? 'Review needed'
+                : `${pending.length} on phone`}
+            </Text>
+          ) : null}
+        </View>
+        <Text style={{ color: colors.muted, fontSize: 15, fontVariant: ['tabular-nums'] }}>
+          {entries.length + pending.length}
+        </Text>
         <Ionicons
           name={expanded ? 'chevron-up' : 'chevron-down'}
           size={20}
@@ -91,7 +104,7 @@ export function NightActivity({
               <Notice message="No entries yet" />
             </Panel>
           ) : entries.length ? (
-            <Panel style={{ gap: 0 }}>
+            <Panel style={{ gap: 0, padding: 0, borderWidth: 0 }}>
               {entries.map((entry, index) => (
                 <View
                   key={entry.id}

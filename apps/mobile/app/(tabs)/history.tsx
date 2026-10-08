@@ -29,7 +29,11 @@ export default function HistoryScreen() {
     (client: SupabaseClient<Database>) => getFinishedNights(client, page),
     [page],
   );
-  const { data, loading, issue, refresh } = useAccountQuery(load, `finished-nights:${page}`, true);
+  const { data, loading, refreshing, issue, refresh } = useAccountQuery(
+    load,
+    `finished-nights:${page}`,
+    true,
+  );
   const nights = data?.nights ?? [];
   const hasMore = data?.hasMore ?? false;
 
@@ -38,8 +42,8 @@ export default function HistoryScreen() {
       refreshControl={
         status === 'signed-in' ? (
           <RefreshControl
-            refreshing={loading}
-            onRefresh={() => void refresh()}
+            refreshing={refreshing}
+            onRefresh={() => void refresh(true)}
             tintColor={colors.primary}
           />
         ) : undefined

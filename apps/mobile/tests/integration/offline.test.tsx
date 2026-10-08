@@ -103,6 +103,7 @@ let auth: ReturnType<typeof useSupabase>;
 let queue: ReturnType<typeof useOffline>;
 let query: ReturnType<typeof useAccountQuery<string[]>>;
 const load = vi.fn<(client: SupabaseClient<Database>) => Promise<string[]>>();
+const onLoaded = vi.fn();
 const authListeners = new Set<(event: AuthChangeEvent, session: Session | null) => void>();
 function emit(event: AuthChangeEvent, session: Session | null) {
   for (const listener of authListeners) listener(event, session);
@@ -112,7 +113,14 @@ const profile = vi.fn();
 function Probe() {
   const authValue = useSupabase();
   const queueValue = useOffline();
-  const queryValue = useAccountQuery(load, 'active-nights', true);
+  // Deliberately inline: rerenders must not create another load/focus loop.
+  const queryValue = useAccountQuery(
+    (client) => load(client),
+    'active-nights',
+    true,
+    false,
+    onLoaded,
+  );
   useEffect(() => {
     auth = authValue;
     queue = queueValue;
@@ -332,6 +340,50 @@ describe('native offline provider and screen integration', () => {
     expect(query.data).toEqual(['fresh night']);
     expect(query.cached).toBe(false);
     expect(query.issue).toBeNull();
+  });
+
+  it('only shows pull-to-refresh progress for an explicit pull and ignores older responses', async () => {
+    load.mockResolvedValue(['initial night']);
+    await mount();
+    const initialCalls = load.mock.calls.length;
+    await update(() => queue.retry());
+    expect(load).toHaveBeenCalledTimes(initialCalls);
+    let background!: (value: string[]) => void;
+    load.mockReturnValueOnce(
+      new Promise((resolve) => {
+        background = resolve;
+      }),
+    );
+    let silent!: Promise<void>;
+    await update(() => {
+      silent = query.refresh();
+    });
+    expect(query.loading).toBe(true);
+    expect(query.refreshing).toBe(false);
+    expect(query.data).toEqual(['initial night']);
+    let pulled!: (value: string[]) => void;
+    load.mockReturnValueOnce(
+      new Promise((resolve) => {
+        pulled = resolve;
+      }),
+    );
+    let visible!: Promise<void>;
+    await update(() => {
+      visible = query.refresh(true);
+    });
+    expect(query.refreshing).toBe(true);
+    await update(async () => {
+      pulled(['latest night']);
+      await visible;
+    });
+    await update(async () => {
+      background(['older night']);
+      await silent;
+    });
+    expect(query.data).toEqual(['latest night']);
+    expect(query.refreshing).toBe(false);
+    expect(onLoaded).toHaveBeenLastCalledWith(['latest night']);
+    expect(onLoaded).not.toHaveBeenCalledWith(['older night']);
   });
 
   it('keeps pending entries compact and shows removal progress on the correct control', async () => {

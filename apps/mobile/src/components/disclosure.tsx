@@ -21,7 +21,15 @@ export function Disclosure({
   const { colors } = useTheme();
   const [expanded, setExpanded] = useState(defaultExpanded);
   return (
-    <View style={{ gap: expanded ? 12 : 0 }}>
+    <View
+      style={{
+        gap: expanded ? 8 : 0,
+        backgroundColor: colors.surface,
+        borderRadius: 18,
+        paddingHorizontal: 16,
+        paddingBottom: expanded ? 12 : 0,
+      }}
+    >
       <Action
         label={detail ? `${title}. ${detail}` : title}
         expanded={expanded}
@@ -30,7 +38,7 @@ export function Disclosure({
         style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12 }}
       >
         <View style={{ flex: 1, gap: 4 }}>
-          <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>{title}</Text>
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '600' }}>{title}</Text>
           {detail ? <Text style={{ color: colors.muted, fontSize: 14 }}>{detail}</Text> : null}
         </View>
         <Ionicons

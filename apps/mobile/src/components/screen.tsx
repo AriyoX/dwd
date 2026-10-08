@@ -9,13 +9,15 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import type { ReactNode, Ref } from 'react';
+import { useCallback, useState, type ReactNode, type Ref } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/providers/theme-provider';
 import { radii } from '@/theme/tokens';
 import { PrimaryButton } from './primary-button';
 import { SheetHeading } from './sheet-heading';
 import { DismissibleNotice } from './dismissible-notice';
+import { NoticeContext, type FloatingMessage } from './notice-context';
+import { PermissionReminder } from './permission-reminder';
 
 export function Screen({
   children,
@@ -25,6 +27,8 @@ export function Screen({
   footer,
   scrollRef,
   sheetTitle,
+  onScroll,
+  hidePermissionReminder = false,
 }: {
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
@@ -33,67 +37,108 @@ export function Screen({
   footer?: ReactNode;
   scrollRef?: Ref<ScrollView>;
   sheetTitle?: string;
+  onScroll?: ScrollViewProps['onScroll'];
+  hidePermissionReminder?: boolean;
 }) {
   const { colors } = useTheme();
+  const [messages, setMessages] = useState<FloatingMessage[]>([]);
+  const show = useCallback((message: FloatingMessage) => {
+    setMessages((current) =>
+      [
+        ...current.filter((item) => item.id !== message.id && item.message !== message.message),
+        message,
+      ].slice(-2),
+    );
+  }, []);
   return (
-    <SafeAreaView
-      edges={
-        footer
-          ? insetTop
-            ? ['top', 'bottom', 'left', 'right']
-            : ['bottom', 'left', 'right']
-          : insetTop
-            ? ['top', 'left', 'right']
-            : ['bottom', 'left', 'right']
-      }
-      style={{ flex: 1, backgroundColor: colors.background }}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' && footer ? 'padding' : undefined}
+    <NoticeContext.Provider value={show}>
+      <SafeAreaView
+        edges={
+          footer
+            ? insetTop
+              ? ['top', 'bottom', 'left', 'right']
+              : ['bottom', 'left', 'right']
+            : insetTop
+              ? ['top', 'left', 'right']
+              : ['bottom', 'left', 'right']
+        }
+        style={{ flex: 1, backgroundColor: colors.background }}
       >
-        {sheetTitle ? <SheetHeading title={sheetTitle} /> : null}
-        <ScrollView
-          ref={scrollRef}
-          automaticallyAdjustKeyboardInsets={!footer}
-          nestedScrollEnabled
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[
-            {
-              flexGrow: 1,
-              alignSelf: 'center',
-              width: '100%',
-              maxWidth: 600,
-              paddingHorizontal: 22,
-              paddingTop: 16,
-              paddingBottom: 40,
-              gap: 24,
-            },
-            contentStyle,
-          ]}
-          refreshControl={refreshControl}
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' && footer ? 'padding' : undefined}
         >
-          {children}
-        </ScrollView>
-        {footer ? (
+          {sheetTitle ? <SheetHeading title={sheetTitle} /> : null}
+          <ScrollView
+            ref={scrollRef}
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            automaticallyAdjustKeyboardInsets={!footer}
+            nestedScrollEnabled
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={[
+              {
+                flexGrow: 1,
+                alignSelf: 'center',
+                width: '100%',
+                maxWidth: 600,
+                paddingHorizontal: 22,
+                paddingTop: 16,
+                paddingBottom: 40,
+                gap: 24,
+              },
+              contentStyle,
+            ]}
+            refreshControl={refreshControl}
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+          {footer ? (
+            <View
+              style={{
+                alignSelf: 'center',
+                width: '100%',
+                maxWidth: 600,
+                paddingHorizontal: 22,
+                paddingTop: 12,
+                paddingBottom: 8,
+              }}
+            >
+              {footer}
+            </View>
+          ) : null}
           <View
+            pointerEvents="box-none"
             style={{
+              position: 'absolute',
+              top: 8,
+              left: 16,
+              right: 16,
+              gap: 8,
+              zIndex: 100,
+              maxWidth: 568,
               alignSelf: 'center',
-              width: '100%',
-              maxWidth: 600,
-              paddingHorizontal: 22,
-              paddingTop: 12,
-              paddingBottom: 8,
             }}
           >
-            {footer}
+            {hidePermissionReminder ? null : <PermissionReminder />}
+            {messages.map((message) => (
+              <DismissibleNotice
+                key={`${message.id}:${message.message}`}
+                host
+                message={message.message}
+                error={message.error}
+                onDismiss={() =>
+                  setMessages((current) => current.filter((item) => item.id !== message.id))
+                }
+              />
+            ))}
           </View>
-        ) : null}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </NoticeContext.Provider>
   );
 }
 export function Panel({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {

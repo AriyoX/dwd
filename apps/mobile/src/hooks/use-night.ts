@@ -1,23 +1,37 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { getNightSnapshot, getFinishedNightSummary } from '@dwd/data';
 import { REALTIME_SUBSCRIBE_STATES, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@dwd/core';
+import type { Database, NightSnapshot } from '@dwd/core';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useAccountQuery } from './use-account-query';
 import { useOffline } from '@/providers/offline-provider';
 
 export function useNight(nightId: string, recap = false) {
   const { client, session } = useSupabase();
-  const { activityVersion, retry } = useOffline();
+  const { activityVersion, retry, outbox } = useOffline();
   const accessToken = session?.access_token;
+  const readVersions = useRef(new WeakMap<NightSnapshot, number>());
   const load = useCallback(
-    (connection: SupabaseClient<Database>) =>
-      recap ? getFinishedNightSummary(connection, nightId) : getNightSnapshot(connection, nightId),
-    [nightId, recap],
+    async (connection: SupabaseClient<Database>) => {
+      const readVersion = outbox?.acceptedVersion() ?? 0;
+      const result = await (recap
+        ? getFinishedNightSummary(connection, nightId)
+        : getNightSnapshot(connection, nightId));
+      readVersions.current.set(result, readVersion);
+      return result;
+    },
+    [nightId, recap, outbox],
   );
-  const query = useAccountQuery(load, `${nightId}:${recap}`, true);
+  const onLoaded = useCallback(
+    (snapshot: NightSnapshot) => {
+      // Only an applied response may release the bridge. A superseded read cannot.
+      outbox?.reconcileAccepted(snapshot, readVersions.current.get(snapshot) ?? 0);
+    },
+    [outbox],
+  );
+  const query = useAccountQuery(load, `${nightId}:${recap}`, true, false, onLoaded);
   const refresh = query.refresh;
   useEffect(() => {
     if (activityVersion > 0) void refresh();
@@ -87,6 +101,8 @@ export function useNight(nightId: string, recap = false) {
         .catch(() => {
           if (active) setConnected(false);
         });
+      // Undone logs no longer pass SELECT policies, so Realtime may hide their update.
+      // Reconcile silently even with a healthy subscription to reflect remote undo.
       const reconcile = setInterval(invalidate, 15_000);
       return () => {
         active = false;
@@ -97,7 +113,13 @@ export function useNight(nightId: string, recap = false) {
     }, [client, accessToken, nightId, memberIds, recap, refresh, retry]),
   );
   const now = useNow();
-  return { ...query, snapshot: query.data, connected, now };
+  const snapshot = useMemo(
+    () => query.data && (outbox?.withAccepted(query.data) ?? query.data),
+    // A successful write updates the bridge without waiting for another read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [query.data, outbox, activityVersion],
+  );
+  return { ...query, snapshot, connected, now };
 }
 
 export function useNow() {

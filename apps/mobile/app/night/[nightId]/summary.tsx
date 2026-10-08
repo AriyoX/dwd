@@ -23,15 +23,15 @@ export default function SummaryScreen() {
   const { status } = useSupabase();
   const { records } = useOffline();
   const { colors, typography } = useTheme();
-  const { snapshot, issue, refresh, loading, cached } = useNight(nightId, true);
+  const { snapshot, issue, refresh, refreshing, cached } = useNight(nightId, true);
   const member = snapshot?.members.find((m) => m.id === snapshot.currentMemberId);
   return (
     <Screen
       insetTop={false}
       refreshControl={
         <RefreshControl
-          refreshing={loading}
-          onRefresh={() => void refresh()}
+          refreshing={refreshing}
+          onRefresh={() => void refresh(true)}
           tintColor={colors.primary}
         />
       }

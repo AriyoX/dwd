@@ -107,7 +107,7 @@ export function CustomDrinkForm({
       >
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {(['beer', 'wine', 'spirit', 'cocktail', 'other'] as const).map((category) => (
-            <View key={category} style={{ flexGrow: 1, flexBasis: '30%', minWidth: 90 }}>
+            <View key={category} style={{ flexGrow: 1, flexBasis: 140 }}>
               <Choice
                 compact
                 label={category.charAt(0).toUpperCase() + category.slice(1)}

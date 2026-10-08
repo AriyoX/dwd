@@ -19,6 +19,7 @@ import { LocationProvider } from '@/providers/location-provider';
 import { ConnectivityProvider } from '@/providers/connectivity-provider';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { TourNavigation } from '@/components/tour-navigation';
+import { PermissionsProvider } from '@/providers/permissions-provider';
 
 export default function RootLayout() {
   return (
@@ -30,7 +31,9 @@ export default function RootLayout() {
               <OnboardingProvider>
                 <NotificationsProvider>
                   <LocationProvider>
-                    <Navigation />
+                    <PermissionsProvider>
+                      <Navigation />
+                    </PermissionsProvider>
                   </LocationProvider>
                 </NotificationsProvider>
               </OnboardingProvider>

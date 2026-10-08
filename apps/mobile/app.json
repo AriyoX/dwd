@@ -29,7 +29,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Use location for local emergency numbers.",
+          "locationWhenInUsePermission": "Use your location for local emergency numbers and country-specific reminders.",
           "locationAlwaysPermission": false,
           "locationAlwaysAndWhenInUsePermission": false,
           "motionUsagePermission": false,

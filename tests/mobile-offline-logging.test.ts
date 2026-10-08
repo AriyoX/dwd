@@ -148,6 +148,46 @@ function deferred<T>() {
 describe('native durable outbox', () => {
   afterEach(() => vi.useRealTimers());
 
+  it('keeps drink and chaser counts stable between write acceptance and a fresh snapshot', async () => {
+    const f = fixture();
+    const stale = snapshot();
+    for (const entry of [record(), record(11, 'water')]) f.outbox.enqueue(entry);
+    const count = () => {
+      const view = f.outbox.withAccepted(stale);
+      return (
+        view.members.flatMap((member) => [...member.drinkLogs, ...member.waterLogs]).length +
+        pendingForSnapshot(view, f.store.getAll()).length
+      );
+    };
+    expect(count()).toBe(2);
+    await f.outbox.syncOne(id(10));
+    expect(count()).toBe(2);
+    await f.outbox.syncOne(id(11));
+    expect(f.store.getAll()).toEqual([]);
+    expect(count()).toBe(2);
+    const fresh = f.outbox.withAccepted(stale);
+    expect(f.outbox.withAccepted(fresh).members[0]?.drinkLogs).toHaveLength(1);
+    expect(f.outbox.withAccepted(fresh).members[0]?.waterLogs).toHaveLength(1);
+    // A canonical undo wins over the bridge, including on later reads.
+    const canonical = fresh.members[0]?.drinkLogs[0];
+    if (!canonical) throw new Error('Expected accepted drink');
+    canonical.deletedAt = time;
+    expect(
+      f.outbox.withAccepted(fresh).members[0]?.drinkLogs.filter((log) => !log.deletedAt),
+    ).toHaveLength(0);
+    expect(
+      f.outbox.withAccepted({ ...stale, currentUserId: id(99) }).members[0]?.drinkLogs,
+    ).toHaveLength(0);
+    // A read that started before the writes cannot remove either bridge.
+    f.outbox.reconcileAccepted(stale, 0);
+    expect(count()).toBe(2);
+    // Snapshot RPCs omit deleted logs. A read begun after acceptance retires the bridge.
+    f.outbox.reconcileAccepted(stale, f.outbox.acceptedVersion());
+    expect(count()).toBe(0);
+    f.outbox.dispose();
+    expect(f.outbox.withAccepted(stale)).toBe(stale);
+  });
+
   it('aborts a stalled Supabase request and retains its durable identity for retry', async () => {
     vi.useFakeTimers();
     const f = fixture();

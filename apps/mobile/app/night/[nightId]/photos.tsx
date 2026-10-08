@@ -228,8 +228,8 @@ function Memories({ owner, nightId }: { owner: string; nightId: string }) {
       insetTop={false}
       refreshControl={
         <RefreshControl
-          refreshing={query.loading}
-          onRefresh={() => void query.refresh()}
+          refreshing={query.refreshing}
+          onRefresh={() => void query.refresh(true)}
           tintColor={colors.primary}
         />
       }
