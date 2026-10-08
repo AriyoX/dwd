@@ -3,6 +3,42 @@ import { createClient } from '@supabase/supabase-js';
 import { test, expect, type Page } from '@playwright/test';
 import { parseBannerAds } from '@dwd/core';
 
+test('bundled campaigns rotate continuously, pause, resume, and respect reduced motion', async ({
+  page,
+}) => {
+  test.skip(
+    !process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] || Boolean(process.env['E2E_ADS_URL']),
+    'Run against the bundled feed without an external test feed.',
+  );
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await login(page);
+  const placement = page.getByRole('region', { name: 'Featured', exact: true });
+  await expect(placement.getByRole('link')).toHaveCount(4);
+  await placement.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
+  const dot = (index: number) =>
+    placement.getByRole('button', { name: `Show banner ${index} of 4` });
+  for (const next of [2, 3, 4, 1])
+    await expect(dot(next)).toHaveAttribute('aria-pressed', 'true', { timeout: 8000 });
+  await placement.getByRole('button', { name: 'Pause automatic banners' }).click();
+  await placement
+    .getByRole('button', { name: 'Resume automatic banners' })
+    .evaluate((button: HTMLElement) => button.blur());
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(6000);
+  await expect(dot(1)).toHaveAttribute('aria-pressed', 'true');
+  await placement.getByRole('button', { name: 'Resume automatic banners' }).click();
+  await page.mouse.move(0, 0);
+  await expect(dot(2)).toHaveAttribute('aria-pressed', 'true', { timeout: 8000 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForTimeout(6000);
+  await expect(dot(2)).toHaveAttribute('aria-pressed', 'true');
+  for (const image of await placement.locator('img').all())
+    await expect
+      .poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
+      .toBeGreaterThan(0);
+});
+
 async function login(page: Page) {
   const backend = process.env['E2E_SUPABASE_URL'] ?? '';
   if (!['localhost', '127.0.0.1'].includes(new URL(backend).hostname))
@@ -34,6 +70,7 @@ test('home banners snap, paginate, stay within the page, and preserve house dest
   test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local backend required.');
   const feedUrl = process.env['E2E_ADS_URL'];
   if (feedUrl) await page.route(feedUrl, (route) => route.fulfill({ status: 503, body: '' }));
+  else await page.route('**/tonight-ads.json', (route) => route.fulfill({ status: 503, body: '' }));
   await login(page);
   const placement = page.getByRole('region', { name: 'Featured', exact: true });
   await expect(placement).toBeVisible();

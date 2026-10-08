@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
-import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -22,14 +22,38 @@ export function TonightBanners() {
   const [ads, setAds] = useState(HOUSE_BANNERS);
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [touching, setTouching] = useState(false);
+  const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [issue, setIssue] = useState<string | null>(null);
   const scroll = useRef<ScrollView>(null);
   const cardWidth = Math.max(1, width - 28);
   const interval = cardWidth + GAP;
 
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', (state) =>
+      setForeground(state === 'active'),
+    );
+    return () => listener.remove();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      const feedUrl = process.env.EXPO_PUBLIC_DWD_ADS_URL;
+      if (ads.length < 2 || !width || paused || touching || !foreground || reducedMotion) return;
+      const timer = setTimeout(() => {
+        const next = (active + 1) % ads.length;
+        // Native ScrollView owns the animation; JS only schedules each new card.
+        scroll.current?.scrollTo({ x: next * interval, animated: next !== 0 });
+        setActive(next);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }, [active, ads, width, interval, paused, touching, foreground, reducedMotion]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const feedUrl =
+        process.env.EXPO_PUBLIC_DWD_ADS_URL ?? 'https://dwdug.vercel.app/tonight-ads.json';
       if (!feedUrl) return;
       const controller = new AbortController();
       const replaceAds = (next: BannerAd[]) => {
@@ -63,6 +87,9 @@ export function TonightBanners() {
   return (
     <View
       style={{ gap: 10 }}
+      onTouchStart={() => setTouching(true)}
+      onTouchEnd={() => setTouching(false)}
+      onTouchCancel={() => setTouching(false)}
       onLayout={({ nativeEvent }) => {
         if (nativeEvent.layout.width === width) return;
         setWidth(nativeEvent.layout.width);
@@ -70,12 +97,28 @@ export function TonightBanners() {
         scroll.current?.scrollTo({ x: 0, animated: false });
       }}
     >
-      <Text
-        accessibilityRole="header"
-        style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}
-      >
-        Featured
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text
+          accessibilityRole="header"
+          style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}
+        >
+          Featured
+        </Text>
+        {ads.length > 1 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={paused ? 'Resume automatic banners' : 'Pause automatic banners'}
+            onPress={() => setPaused((value) => !value)}
+            style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons
+              name={paused ? 'play-outline' : 'pause-outline'}
+              size={18}
+              color={colors.primary}
+            />
+          </Pressable>
+        ) : null}
+      </View>
       {width > 0 ? (
         <ScrollView
           ref={scroll}

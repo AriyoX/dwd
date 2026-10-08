@@ -1,8 +1,12 @@
 # Tonight banners and connecting ads
 
-The mobile Tonight page and web home page have a horizontal banner carousel below the main actions and above the safety footer. Cards snap when swiped, show part of the next banner, and have tappable page dots. The web carousel also has previous/next controls for mouse and keyboard users. Banners scroll with the page.
+The mobile home tab and web home page have a horizontal banner carousel below the main actions and above the safety footer. Cards snap when swiped, show part of the next banner, and have tappable page dots. The web carousel also has previous/next controls for mouse and keyboard users. Banners scroll with the page.
 
-Until sponsors are connected, three DWD house banners fill the space. Real campaigns are marked **Sponsored · advertiser**. There is no ad network SDK or revenue tracking installed.
+Multiple banners advance every five seconds and repeat from the first banner after the last. Both clients have a pause/resume control. Rotation pauses during touch interaction, when the mobile screen loses focus or the app is backgrounded, and on web hover, keyboard focus, hidden tabs, or when the carousel is offscreen. Reduced-motion settings disable automatic rotation; manual navigation still works.
+
+The web defaults to the repository's `/tonight-ads.json`, with DWD-hosted artwork served from the current deployment. Merging the feed and `public/ads` files into main and deploying publishes all four current campaigns. An external `NEXT_PUBLIC_DWD_ADS_URL` overrides that default. Mobile defaults to `https://dwdug.vercel.app/tonight-ads.json` when its feed variable is unset, so those campaigns become available after the website deployment. Installed mobile apps need a build containing this carousel code.
+
+If the sponsor feed is unavailable or invalid, three DWD house banners fill the space. Real campaigns are marked **Sponsored · advertiser**. There is no ad network SDK or revenue tracking installed.
 
 ## Connect sponsors now
 
@@ -68,7 +72,7 @@ The feed receives no account token, profile, drink log, or device coordinates. I
 ### Disable or recover
 
 - Publish `{ "ads": [] }` to hide the placement.
-- Leave the client's ads URL blank to use only the bundled DWD house banners.
+- Leave the web feed URL blank to use the bundled `/tonight-ads.json`. Leaving the mobile feed variable unset uses the DWD website feed; explicitly setting it to an empty string uses house banners.
 - Offline requests, HTTP errors, malformed feeds, and requests exceeding six seconds fall back to house banners. Invalid entries and duplicate IDs are skipped; a feed containing only invalid entries also falls back. Starting or joining a night does not wait for ads.
 - Only HTTPS links without embedded usernames/passwords are accepted. App deep links, HTTP URLs, and script URLs are rejected.
 

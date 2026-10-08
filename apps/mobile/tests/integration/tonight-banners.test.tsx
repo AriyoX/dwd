@@ -10,6 +10,9 @@ const runtime = vi.hoisted(() => ({
   scroll: vi.fn(),
   fetch: vi.fn(),
   reduced: false,
+  appState: (_state: string): void => {
+    void _state;
+  },
 }));
 vi.mock('react-native', () => ({
   View: 'View',
@@ -18,6 +21,13 @@ vi.mock('react-native', () => ({
   Pressable: 'Pressable',
   ScrollView: 'ScrollView',
   Linking: { openURL: runtime.open },
+  AppState: {
+    currentState: 'active',
+    addEventListener: (_event: string, callback: (state: string) => void) => {
+      runtime.appState = callback;
+      return { remove: vi.fn() };
+    },
+  },
 }));
 vi.mock('expo-router', async () => {
   const { useEffect } = await import('react');
@@ -109,6 +119,14 @@ describe('Tonight banner placement', () => {
     expect(runtime.push).not.toHaveBeenCalled();
   });
 
+  it('uses the deployed DWD feed by default when no mobile override is set', async () => {
+    vi.stubEnv('EXPO_PUBLIC_DWD_ADS_URL', undefined);
+    runtime.fetch.mockResolvedValue({ ok: true, json: () => ({ ads: [campaign] }) });
+    await mount();
+    expect(runtime.fetch.mock.calls[0]?.[0]).toBe('https://dwdug.vercel.app/tonight-ads.json');
+    expect(banners()).toHaveLength(1);
+  });
+
   it('hides the placement when the publisher sends an empty feed', async () => {
     vi.stubEnv('EXPO_PUBLIC_DWD_ADS_URL', 'https://dwd.example/ads.json');
     runtime.fetch.mockResolvedValue({ ok: true, json: () => ({ ads: [] }) });
@@ -149,7 +167,9 @@ describe('Tonight banner placement', () => {
   it('supports pagination with reduced motion and updates the selected dot after a swipe', async () => {
     runtime.reduced = true;
     await mount();
-    const dots = native('Pressable');
+    const dots = native('Pressable').filter((node) =>
+      String(node.props['accessibilityLabel']).startsWith('Show banner'),
+    );
     await act(() => (dots[2]?.props['onPress'] as () => void)());
     expect(runtime.scroll).toHaveBeenLastCalledWith({ x: 688, animated: false });
     expect(dots[2]?.props['accessibilityState']).toEqual({ selected: true });
@@ -168,5 +188,69 @@ describe('Tonight banner placement', () => {
     await mount();
     await act(() => (banners()[0]?.props['onPress'] as () => void)());
     expect(one('Notice').props['message']).toBe('Could not open this link. Try again.');
+  });
+
+  it('cycles all four campaigns, wraps, pauses, and stops in the background', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('EXPO_PUBLIC_DWD_ADS_URL', 'https://dwd.example/ads.json');
+    runtime.fetch.mockResolvedValue({
+      ok: true,
+      json: () => ({
+        ads: Array.from({ length: 4 }, (_, index) => ({ ...campaign, id: `partner-${index}` })),
+      }),
+    });
+    await mount();
+    runtime.scroll.mockClear();
+    for (const next of [1, 2, 3, 0]) {
+      await act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(runtime.scroll).toHaveBeenLastCalledWith({ x: next * 344, animated: next !== 0 });
+    }
+    const pause = () =>
+      native('Pressable').find((node) =>
+        String(node.props['accessibilityLabel']).includes('automatic banners'),
+      );
+    await act(() => (pause()?.props['onPress'] as () => void)());
+    runtime.scroll.mockClear();
+    await act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+    expect(runtime.scroll).not.toHaveBeenCalled();
+    await act(() => (pause()?.props['onPress'] as () => void)());
+    await act(() => runtime.appState('background'));
+    await act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+    expect(runtime.scroll).not.toHaveBeenCalled();
+    await act(() => runtime.appState('active'));
+    await act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(runtime.scroll).toHaveBeenLastCalledWith({ x: 344, animated: true });
+  });
+
+  it('does not rotate automatically with reduced motion or during touch interaction', async () => {
+    vi.useFakeTimers();
+    runtime.reduced = true;
+    await mount();
+    runtime.scroll.mockClear();
+    await act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+    expect(runtime.scroll).not.toHaveBeenCalled();
+    runtime.reduced = false;
+    await act(() => root?.update(createElement(TonightBanners)));
+    const view = native('View').find((node) => node.props['onLayout']);
+    await act(() => (view?.props['onTouchStart'] as () => void)());
+    await act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+    expect(runtime.scroll).not.toHaveBeenCalled();
+    await act(() => (view?.props['onTouchEnd'] as () => void)());
+    await act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(runtime.scroll).toHaveBeenLastCalledWith({ x: 344, animated: true });
   });
 });
