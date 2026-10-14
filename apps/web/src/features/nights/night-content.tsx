@@ -12,6 +12,7 @@ import {
   bottleDrinkWord,
   type SharedBottle,
   type Night,
+  hasUnknownAmounts,
 } from '@dwd/core';
 import type { PendingDrinkLog } from '@dwd/contracts';
 import { Card } from '@/components/ui/card';
@@ -20,6 +21,7 @@ import { TimedNotice } from '@/components/feedback/timed-notice';
 import { withPendingDrinks } from './logged-drinks';
 import { BottleProgress } from '@/features/bottles/bottle-shelf';
 import { BottleMainHint } from '@/features/bottles/bottle-main-hint';
+import { QuickNightActivity } from '@/features/quick-log/night-activity';
 export { DrinkChooser } from './drink-chooser';
 
 export function ParticipantSwitcher({
@@ -85,6 +87,7 @@ export function TonightView({
   now,
   onEditPlan,
   onDismissAlert,
+  onRefresh,
   managed = false,
 }: {
   bottle?: SharedBottle | undefined;
@@ -92,6 +95,7 @@ export function TonightView({
   now?: Date;
   onEditPlan?: () => void;
   onDismissAlert?: (id: string) => void;
+  onRefresh?: () => Promise<void>;
   managed?: boolean | undefined;
   member: MemberSnapshot;
   alerts: NightSnapshot['alerts'];
@@ -110,7 +114,7 @@ export function TonightView({
   const planStatus = determinePlanStatus(totals.ethanolGrams, planTotal);
   const quick = member.planItems.find((item) => item.isQuickLog) ?? member.planItems[0];
   const pacing =
-    night && now
+    night && now && !hasUnknownAmounts(member.quickLogs)
       ? calculatePlanPacing(member.planItems, drinks, member.id, night.startsAt, night.endsAt, now)
       : null;
   return (
@@ -138,34 +142,45 @@ export function TonightView({
           <span
             className={`pill${totals.ethanolGrams > 0 && planStatus !== 'within_plan' ? ' pill-warning' : ''}`}
           >
-            {member.planSetupCompletedAt === null
-              ? 'Plan not set'
-              : planTotal === 0 && totals.ethanolGrams === 0
-                ? 'Chaser only'
-                : planStatus === 'exceeded'
-                  ? 'Over plan'
-                  : planStatus === 'reached'
-                    ? 'Plan reached'
-                    : 'Within plan'}
+            {hasUnknownAmounts(member.quickLogs)
+              ? 'Amounts incomplete'
+              : member.planSetupCompletedAt === null
+                ? 'Plan not set'
+                : planTotal === 0 && totals.ethanolGrams === 0
+                  ? 'Chaser only'
+                  : planStatus === 'exceeded'
+                    ? 'Over plan'
+                    : planStatus === 'reached'
+                      ? 'Plan reached'
+                      : 'Within plan'}
           </span>
         </div>
         <div>
           <strong data-testid="drink-count" className="big-count">
             {totals.alcoholCount}
           </strong>
-          <span className="muted"> drinks logged</span>
+          <span className="muted">
+            {' '}
+            {hasUnknownAmounts(member.quickLogs) ? 'detailed drinks logged' : 'drinks logged'}
+          </span>
           {totals.alcoholCount > 0 && (
             <p className="muted small">{formatCategories(totals.categoryCounts)}</p>
           )}
           {totals.ethanolGrams > 0 && (
             <p className="muted small">
               {totals.standardDrinkEquivalent} standard drinks · 10 g alcohol each
+              {hasUnknownAmounts(member.quickLogs) ? ' · Measured subtotal only, incomplete' : ''}
             </p>
           )}
           {pendingAlcohol + pendingWater === 0 ? null : (
             <p className="pill pill-warning">{pendingAlcohol + pendingWater} waiting to save</p>
           )}
         </div>
+        <QuickNightActivity
+          member={member}
+          {...(member.userId ? { accountId: member.userId } : {})}
+          {...(onRefresh ? { refresh: onRefresh } : {})}
+        />
         {quick && (
           <div className="main-drink row-between">
             <div>
@@ -277,6 +292,7 @@ export function ParticipantCard({
   checkInState,
   onCheckIn,
   onDismissAlert,
+  onRefresh,
 }: {
   member: MemberSnapshot;
   isSelf?: boolean;
@@ -295,6 +311,7 @@ export function ParticipantCard({
   checkInState?: 'idle' | 'sending' | 'sent' | 'error' | undefined;
   onCheckIn?: (() => void) | undefined;
   onDismissAlert?: (id: string) => void;
+  onRefresh?: () => Promise<void>;
 }) {
   const totals = calculateMemberTotals(member.drinkLogs, member.waterLogs);
   const pendingAlcoholEntries = pendingLogs.flatMap((record) => {
@@ -312,9 +329,13 @@ export function ParticipantCard({
   const breakdown = buildDrinkBreakdown(member.drinkLogs, pendingAlcoholEntries);
   const planned = member.planItems.reduce((sum, item) => sum + item.plannedQuantity, 0);
   const quick = member.planItems.find((item) => item.isQuickLog) ?? member.planItems[0];
-  const lastActivity = [...member.drinkLogs, ...member.waterLogs].sort(
-    (a, b) => Date.parse(b.consumedAt) - Date.parse(a.consumedAt),
-  )[0];
+  const lastActivity = [
+    ...member.drinkLogs,
+    ...member.waterLogs,
+    ...(member.quickLogs ?? [])
+      .filter((e) => !e.deletedAt)
+      .map((e) => ({ ...e, consumedAt: e.recordedAt })),
+  ].sort((a, b) => Date.parse(b.consumedAt) - Date.parse(a.consumedAt))[0];
   return (
     <Card className="participant-card stack">
       <div className="participant-heading">
@@ -344,7 +365,7 @@ export function ParticipantCard({
       </div>
       <dl className="participant-stats">
         <div>
-          <dt>Drinks</dt>
+          <dt>{hasUnknownAmounts(member.quickLogs) ? 'Detailed drinks' : 'Drinks'}</dt>
           <dd>{totals.alcoholCount + pendingAlcohol}</dd>
         </div>
         <div>
@@ -356,6 +377,11 @@ export function ParticipantCard({
           <dd>{member.planSetupCompletedAt === null ? '—' : planned}</dd>
         </div>
       </dl>
+      <QuickNightActivity
+        member={member}
+        {...(isSelf && member.userId ? { accountId: member.userId } : {})}
+        {...(onRefresh ? { refresh: onRefresh } : {})}
+      />
       <div className="participant-activity muted small">
         <span>
           {member.planSetupCompletedAt === null

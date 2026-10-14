@@ -6,10 +6,12 @@ export function NightMetrics({
   drinks,
   water,
   compact = false,
+  measured = false,
 }: {
   drinks: number;
   water: number;
   compact?: boolean;
+  measured?: boolean;
 }) {
   const { colors } = useTheme();
   return (
@@ -17,7 +19,7 @@ export function NightMetrics({
       {[
         {
           count: drinks,
-          label: drinks === 1 ? 'drink' : 'drinks',
+          label: `${measured ? 'detailed ' : ''}${drinks === 1 ? 'drink' : 'drinks'}`,
           icon: 'wine-outline' as const,
           ink: colors.text,
           fill: colors.surfaceSoft,

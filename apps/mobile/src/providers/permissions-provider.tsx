@@ -8,11 +8,19 @@ import { useCountryLocation } from './location-provider';
 import { useNotifications } from './notifications-provider';
 import { useSupabase } from './supabase-provider';
 import { PermissionContext } from './permission-context';
+import { usePathname } from 'expo-router';
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
   const location = useCountryLocation();
   const push = useNotifications();
   const { session, access } = useSupabase();
+  const pathname = usePathname();
+  const quickPath =
+    pathname.startsWith('/quick-') ||
+    pathname === '/' ||
+    pathname === '/welcome' ||
+    pathname === '/onboarding' ||
+    pathname.startsWith('/auth');
   const [ready, setReady] = useState(false);
   const [notificationsOff, setNotificationsOff] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -138,6 +146,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     alive.current = true;
+    if (access !== 'ready' || quickPath) return;
     void check(true);
     let backgrounded = AppState.currentState === 'background';
     const listener = AppState.addEventListener('change', (next) => {
@@ -153,11 +162,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       alive.current = false;
       listener.remove();
     };
-  }, [check]);
-  const owner = session?.user.id;
-  useEffect(() => {
-    if (ready && access === 'ready') void check(false);
-  }, [ready, owner, access, check]);
+  }, [check, access, quickPath, session?.user.id]);
   return (
     <PermissionContext.Provider
       value={{

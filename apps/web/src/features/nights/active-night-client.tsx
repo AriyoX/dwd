@@ -1064,6 +1064,7 @@ function ActiveNightView({
             onAdd={isHost ? () => setGuestOpen(true) : undefined}
           />
           <TonightView
+            onRefresh={refresh}
             bottle={mainBottle}
             member={selectedMember}
             managed={selectedMember.managedByUserId === snapshot.currentUserId}
@@ -1110,6 +1111,7 @@ function ActiveNightView({
               member.memberType === 'guest' && member.managedByUserId === snapshot.currentUserId;
             return (
               <ParticipantCard
+                onRefresh={refresh}
                 key={member.id}
                 member={member}
                 isSelf={member.userId === snapshot.currentUserId}

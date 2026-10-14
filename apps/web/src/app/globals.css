@@ -2016,6 +2016,14 @@ p {
 body:has(.segment-nav) .theme-toggle {
   bottom: calc(94px + var(--safe-bottom));
 }
+/* Keep appearance controls from covering the logger's full-width actions. */
+body:has(.quick-log-shell) .theme-toggle {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: fit-content;
+  margin: 0 16px max(16px, var(--safe-bottom)) auto;
+}
 .auth-main,
 .page-shell:not(.active-night-shell) {
   padding-bottom: calc(80px + var(--safe-bottom));

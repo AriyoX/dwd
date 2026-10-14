@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { LoginForm } from '@/features/auth/auth-form';
 import { safeReturnPath } from '@/lib/navigation';
+import { QuickLogEntry } from '@/features/quick-log/entry-point';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
@@ -16,6 +17,7 @@ export default async function LoginPage({
       <header>
         <h1>Welcome back.</h1>
       </header>
+      <QuickLogEntry />
       {params.error === 'google' && (
         <p className="error-box" role="alert">
           Google sign-in wasn’t completed. Try again or use email.

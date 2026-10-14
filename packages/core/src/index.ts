@@ -18,3 +18,4 @@ export * from './types/database';
 export * from './types/domain';
 export * from './types/realtime';
 export * from './warnings/warnings';
+export * from './quick-log/quick-log';

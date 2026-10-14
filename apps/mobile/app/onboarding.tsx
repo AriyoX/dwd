@@ -80,6 +80,11 @@ export default function OnboardingScreen() {
       }
     >
       <AuthHeader />
+      <PrimaryButton
+        label="Quick Log"
+        variant="secondary"
+        onPress={() => router.push('/quick-log')}
+      />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View
           accessible

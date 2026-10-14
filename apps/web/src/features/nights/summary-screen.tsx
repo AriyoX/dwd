@@ -6,11 +6,13 @@ import {
   calculateMemberTotals,
   calculatePlanTotal,
   formatNightDateTime,
+  hasUnknownAmounts,
   type NightSnapshot,
 } from '@dwd/core';
 import { Card } from '@/components/ui/card';
 import { Wordmark } from '@/components/layout/wordmark';
 import { MemoriesGallery } from '@/features/photos/memories-gallery';
+import { QuickNightActivity } from '@/features/quick-log/night-activity';
 
 export function SummaryScreen({
   snapshot,
@@ -149,7 +151,10 @@ export function SummaryScreen({
                     <div>
                       <Wine size={20} aria-hidden="true" />
                       <strong>{totals.alcoholCount}</strong>
-                      <span>{totals.alcoholCount === 1 ? 'drink' : 'drinks'}</span>
+                      <span>
+                        {hasUnknownAmounts(member.quickLogs) ? 'detailed ' : ''}
+                        {totals.alcoholCount === 1 ? 'drink' : 'drinks'}
+                      </span>
                     </div>
                     <div>
                       <Droplets size={20} aria-hidden="true" />
@@ -160,14 +165,26 @@ export function SummaryScreen({
                   <p className="muted small">
                     {buildDrinkBreakdown(member.drinkLogs)
                       .map((entry) => `${entry.count} ${entry.label}`)
-                      .join(' · ') || 'No alcoholic drinks added'}
+                      .join(' · ') ||
+                      (hasUnknownAmounts(member.quickLogs)
+                        ? 'No detailed drinks recorded'
+                        : 'No alcoholic drinks added')}
                   </p>
+                  <QuickNightActivity member={member} />
                   <details className="recap-details">
                     <summary>Drink details</summary>
                     <div className="summary-grid">
                       <SummaryValue
-                        label="Alcohol in your drinks"
-                        value={`${totals.ethanolGrams.toFixed(1)} g`}
+                        label={
+                          hasUnknownAmounts(member.quickLogs)
+                            ? 'Measured alcohol subtotal · incomplete'
+                            : 'Alcohol in your drinks'
+                        }
+                        value={
+                          hasUnknownAmounts(member.quickLogs) && totals.alcoholCount === 0
+                            ? 'Amount not recorded'
+                            : `${totals.ethanolGrams.toFixed(1)} g`
+                        }
                       />
                       <SummaryValue
                         label="Alcohol in your plan"

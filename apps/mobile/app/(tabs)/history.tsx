@@ -1,3 +1,4 @@
+import { quickTotalsLabel } from '@dwd/core';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -56,6 +57,11 @@ export default function HistoryScreen() {
     >
       <Brand />
       <ScreenHeading title="Entries" />
+      <PrimaryButton
+        label="Past quick sessions on this device"
+        variant="secondary"
+        onPress={() => router.push('/quick-history')}
+      />
       {status === 'signed-in' && (offline.records.length || offline.issue) ? (
         <NightActivity title="Saved entries" timezone="UTC" />
       ) : null}
@@ -187,6 +193,18 @@ function HistoryCard({ night, index }: { night: FinishedNight; index: number }) 
           {date.toLocaleDateString('en', { month: 'long', year: 'numeric', timeZone })}
         </Text>
         <Text style={styles.nightTitle}>{night.title}</Text>
+        {(night.quickDrinkCount ?? 0) +
+          (night.quickShotCount ?? 0) +
+          (night.quickChaserCount ?? 0) >
+        0 ? (
+          <Text style={styles.meta}>
+            Quick Log ·{' '}
+            {quickTotalsLabel(
+              (night.quickDrinkCount ?? 0) + (night.quickShotCount ?? 0),
+              night.quickChaserCount ?? 0,
+            )}
+          </Text>
+        ) : null}
         <View style={styles.counts}>
           <View style={styles.count}>
             <Ionicons name="wine-outline" color={colors.muted} size={15} accessible={false} />

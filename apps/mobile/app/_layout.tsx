@@ -97,6 +97,10 @@ function Navigation() {
           }}
         >
           <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="quick-log" options={{ headerShown: false }} />
+          <Stack.Screen name="quick-history" options={{ title: 'Quick Log history' }} />
+          <Stack.Screen name="quick-transfer" options={{ title: 'Add to a night' }} />
+          <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
           <Stack.Protected guard={access !== 'ready'}>
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="auth/index" options={{ headerShown: false }} />
@@ -122,7 +126,6 @@ function Navigation() {
             <Stack.Screen name="reminders" options={{ ...sheet, title: 'Reminders' }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="night/new" options={{ title: 'Start a night' }} />
-            <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
             <Stack.Screen name="night/[nightId]/index" options={{ title: 'Tonight' }} />
             <Stack.Screen name="night/[nightId]/report" options={{ title: 'Report or block' }} />
             <Stack.Screen name="night/[nightId]/log" options={{ ...sheet, title: 'Log drink' }} />

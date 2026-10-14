@@ -5,7 +5,12 @@ import type { Database } from '@dwd/core';
 const protectedPrefixes = ['/home', '/night', '/history', '/account', '/feedback'];
 
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
-  if (request.nextUrl.pathname === '/demo') return NextResponse.next({ request });
+  if (
+    request.nextUrl.pathname === '/demo' ||
+    request.nextUrl.pathname === '/quick-log' ||
+    request.nextUrl.pathname.startsWith('/quick-log/')
+  )
+    return NextResponse.next({ request });
   const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
   const key = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
 

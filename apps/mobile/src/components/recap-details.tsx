@@ -6,6 +6,7 @@ import {
   calculateMemberTotals,
   calculatePlanTotal,
   formatNightDateTime,
+  hasUnknownAmounts,
   type MemberSnapshot,
   type NightSnapshot,
 } from '@dwd/core';
@@ -13,6 +14,7 @@ import { useTheme } from '@/providers/theme-provider';
 import { Action } from './primary-button';
 import { Notice, Panel } from './screen';
 import { NightMetrics } from './night-metrics';
+import { QuickNightActivity } from './quick-night-activity';
 
 export function RecapTimeline({ snapshot }: { snapshot: NightSnapshot }) {
   const { colors, typography } = useTheme();
@@ -139,7 +141,12 @@ function MemberRecap({
           <Text style={typography.body}>{role}</Text>
         </View>
       </View>
-      <NightMetrics drinks={totals.alcoholCount} water={totals.waterCount} />
+      <NightMetrics
+        drinks={totals.alcoholCount}
+        water={totals.waterCount}
+        measured={hasUnknownAmounts(member.quickLogs)}
+      />
+      <QuickNightActivity member={member} />
       <Action
         label={`Drink details for ${member.displayName}`}
         expanded={expanded}
@@ -168,9 +175,26 @@ function MemberRecap({
               </View>
             ))
           ) : (
-            <Notice message="No alcoholic drinks logged" />
+            <Notice
+              message={
+                hasUnknownAmounts(member.quickLogs)
+                  ? 'No detailed drinks logged'
+                  : 'No alcoholic drinks logged'
+              }
+            />
           )}
-          <Detail label="Alcohol in drinks" value={`${totals.ethanolGrams.toFixed(1)} g`} />
+          <Detail
+            label={
+              hasUnknownAmounts(member.quickLogs)
+                ? 'Measured alcohol subtotal · incomplete'
+                : 'Alcohol in drinks'
+            }
+            value={
+              hasUnknownAmounts(member.quickLogs) && totals.alcoholCount === 0
+                ? 'Amount not recorded'
+                : `${totals.ethanolGrams.toFixed(1)} g`
+            }
+          />
           <Detail
             label="Alcohol in plan"
             value={plan === 0 ? 'Chaser only' : `${plan.toFixed(1)} g`}

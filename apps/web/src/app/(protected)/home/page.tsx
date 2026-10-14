@@ -8,6 +8,7 @@ import { AccountMenu } from '@/components/layout/account-menu';
 import { JoinCodeForm } from '@/features/nights/join-code-form';
 import { TonightBanners } from '@/features/ads/tonight-banners';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { QuickLogEntry } from '@/features/quick-log/entry-point';
 
 export default async function HomePage() {
   const client = await createServerSupabaseClient();
@@ -36,6 +37,7 @@ export default async function HomePage() {
         </span>
       </header>
       <div className="stack-lg">
+        <QuickLogEntry {...(userId ? { accountId: userId } : {})} />
         <Link data-tour="history" className="text-link" href="/history">
           Night history
         </Link>

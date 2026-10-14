@@ -15,10 +15,12 @@ const runtime = vi.hoisted(() => ({
   settings: vi.fn(),
   services: vi.fn(),
   state: 'active',
+  path: '/account',
   listeners: new Set<(value: string) => void>(),
   session: null as null | { user: { id: string } },
   location: { enabled: false, permission: 'unknown', servicesEnabled: true, busy: false },
 }));
+vi.mock('expo-router', () => ({ usePathname: () => runtime.path }));
 vi.mock('react-native', () => ({
   Platform: { OS: 'ios' },
   Linking: { openSettings: runtime.settings },
@@ -88,7 +90,8 @@ beforeEach(() => {
       values.set(key, value);
     },
   });
-  runtime.session = null;
+  runtime.session = { user: { id: 'owner' } };
+  runtime.path = '/account';
   runtime.state = 'active';
   runtime.pushRead.mockResolvedValue(undetermined);
   runtime.locationRead.mockResolvedValue(undetermined);
@@ -106,7 +109,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 describe('native permission startup', () => {
-  it('asks before sign-in and waits for notifications to close before requesting location', async () => {
+  it('asks on account screens and waits for notifications to close before requesting location', async () => {
     let answer!: (value: typeof denied) => void;
     runtime.pushAsk.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -140,8 +143,9 @@ describe('native permission startup', () => {
   it('registers an earlier OS grant after sign-in and reminds again on a later app opening', async () => {
     runtime.pushRead.mockResolvedValue(granted);
     runtime.locationRead.mockResolvedValue(granted);
+    runtime.session = null;
     await render();
-    expect(runtime.locate).toHaveBeenCalledOnce();
+    expect(runtime.locate).not.toHaveBeenCalled();
     expect(runtime.enable).not.toHaveBeenCalled();
     runtime.session = { user: { id: 'owner' } };
     await render();
@@ -159,6 +163,13 @@ describe('native permission startup', () => {
     expect(value.dismissed).toBe(false);
     expect(value.notificationsOff).toBe(true);
     expect(runtime.pushAsk).not.toHaveBeenCalled();
+  });
+  it('does not prompt or wait for permissions on the public quick logger, even when signed in', async () => {
+    runtime.path = '/quick-log';
+    await render();
+    expect(runtime.pushAsk).not.toHaveBeenCalled();
+    expect(runtime.locationAsk).not.toHaveBeenCalled();
+    expect(runtime.enable).not.toHaveBeenCalled();
   });
   it('opens Settings for disabled location services even with a location grant', async () => {
     runtime.pushRead.mockResolvedValue(granted);

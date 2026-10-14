@@ -1,3 +1,4 @@
+import { quickTotalsLabel } from '@dwd/core';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpRight, Droplets, Moon, Wine } from 'lucide-react';
 import { formatNightDateTime, type FinishedNight } from '@dwd/core';
@@ -96,6 +97,18 @@ export function HistoryScreen({
                         })}
                       </span>
                       <strong>{night.title}</strong>
+                      {(night.quickDrinkCount ?? 0) +
+                        (night.quickShotCount ?? 0) +
+                        (night.quickChaserCount ?? 0) >
+                      0 ? (
+                        <span className="muted small">
+                          Quick Log ·{' '}
+                          {quickTotalsLabel(
+                            (night.quickDrinkCount ?? 0) + (night.quickShotCount ?? 0),
+                            night.quickChaserCount ?? 0,
+                          )}
+                        </span>
+                      ) : null}
                       <span className="visually-hidden">
                         Ended {formatNightDateTime(night.endedAt, night.timezone)}
                       </span>

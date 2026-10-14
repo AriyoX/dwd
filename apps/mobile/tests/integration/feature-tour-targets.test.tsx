@@ -31,6 +31,9 @@ vi.mock('@/components/brand', () => ({ Brand: 'Brand' }));
 vi.mock('@/components/night-artwork', () => ({ NightArtwork: 'NightArtwork' }));
 vi.mock('@/components/tonight-banners', () => ({ TonightBanners: 'TonightBanners' }));
 vi.mock('@/components/night-activity', () => ({ NightActivity: 'NightActivity' }));
+vi.mock('@/hooks/use-quick-log', () => ({
+  useQuickLog: () => ({ state: { record: { activeSessionId: null, sessions: [] } } }),
+}));
 vi.mock('@/components/appearance-picker', () => ({ AppearancePicker: 'AppearancePicker' }));
 vi.mock('@/components/disclosure', () => ({ Disclosure: 'Disclosure' }));
 vi.mock('@/components/settings-section', () => ({ SettingsSection: 'SettingsSection' }));

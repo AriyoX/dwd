@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 import type { NightSnapshot } from '@dwd/core';
+import { hasQuickLogs, quickCountLabel } from '@dwd/core';
 import { removeManagedGuest } from '@dwd/data';
 import { useNightAction } from '@/hooks/use-night-action';
 import { confirmAction } from '@/lib/confirm';
@@ -84,6 +85,11 @@ export function NightPeople({
                 {member.drinkLogs.filter((l) => !l.deletedAt).length} drinks ·{' '}
                 {member.waterLogs.filter((l) => !l.deletedAt).length} chasers
               </Text>
+              {hasQuickLogs(member.quickLogs) ? (
+                <Text style={typography.body}>
+                  Quick Log · {quickCountLabel(member.quickLogs ?? [])} · Amount not recorded
+                </Text>
+              ) : null}
               <Text style={typography.body}>
                 {member.planSetupCompletedAt === null
                   ? 'No plan yet'

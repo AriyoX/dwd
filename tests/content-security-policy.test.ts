@@ -17,7 +17,7 @@ describe('configured backend content security policy', () => {
         ?.flatMap((rule) => rule.headers)
         .find((header) => header.key === 'Content-Security-Policy')?.value;
       expect(policy).toBeDefined();
-      const directives = policy?.split('; ').map((part) => part.split(' '));
+      const directives = policy?.split('; ').map((part) => part.split(' ').filter(Boolean));
       expect(directives?.find(([name]) => name === 'img-src')).toEqual([
         'img-src',
         "'self'",

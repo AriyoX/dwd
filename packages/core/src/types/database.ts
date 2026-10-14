@@ -183,6 +183,42 @@ export type Database = {
   };
   public: {
     Tables: {
+      quick_night_logs: {
+        Row: {
+          id: string;
+          night_id: string;
+          night_member_id: string;
+          actor_user_id: string | null;
+          source_session_id: string;
+          source_entry_id: string;
+          source_revision: number;
+          source_kind: string;
+          source_sequence: number;
+          kind: string;
+          recorded_at: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          night_id: string;
+          night_member_id: string;
+          actor_user_id?: string | null;
+          source_session_id: string;
+          source_entry_id: string;
+          source_revision: number;
+          source_kind: string;
+          source_sequence: number;
+          kind: string;
+          recorded_at: string;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: { kind?: string; updated_at?: string; deleted_at?: string | null };
+        Relationships: [];
+      };
       account_deletions: {
         Row: {
           claim_id: string | null;
@@ -1178,6 +1214,17 @@ export type Database = {
     };
     Functions: {
       acknowledge_check_in: { Args: { p_request_id: string }; Returns: Json };
+      import_quick_log: {
+        Args: {
+          p_operation_id: string;
+          p_session_id: string;
+          p_night_id: string;
+          p_member_id: string;
+          p_entries: Json;
+        };
+        Returns: Json;
+      };
+      correct_quick_log: { Args: { p_entry_id: string; p_kind: string }; Returns: Json };
       start_night_out_recoverable: {
         Args: {
           p_creation_key: string;

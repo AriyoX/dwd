@@ -259,6 +259,11 @@ function AuthForm({
         <LoadingPanel />
       ) : mode === 'reset' && passwordSaved ? (
         <View style={{ gap: 20 }}>
+          <PrimaryButton
+            label="Quick Log"
+            variant="secondary"
+            onPress={() => router.push('/quick-log')}
+          />
           <Text accessibilityLiveRegion="polite" style={typography.body}>
             Password updated. Sign out to finish, then sign in with your new password.
           </Text>

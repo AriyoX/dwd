@@ -38,6 +38,7 @@ export function legacyAuthRoute(mode: unknown) {
 // Public callback and legal screens remain reachable during every account state.
 // Product routes are also guarded by Stack.Protected, including their back history.
 export function authRedirect(access: AccessState, pathname: string, introductionSeen: boolean) {
+  if (['/quick-log', '/quick-history', '/quick-transfer'].includes(pathname)) return null;
   if (pathname === '/auth/callback' || pathname === '/legal') return null;
   if (pathname === '/delete-account' && (access === 'ready' || access === 'profile')) return null;
   if (access === 'restoring') return null;
