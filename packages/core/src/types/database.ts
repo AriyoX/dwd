@@ -1224,6 +1224,8 @@ export type Database = {
         };
         Returns: Json;
       };
+      sync_quick_log: { Args: { p_session: Json; p_entries: Json }; Returns: Json };
+      get_quick_log_sessions: { Args: { p_page?: number }; Returns: Json };
       correct_quick_log: { Args: { p_entry_id: string; p_kind: string }; Returns: Json };
       start_night_out_recoverable: {
         Args: {

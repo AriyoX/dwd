@@ -25,7 +25,7 @@ async function login(page: Page, user: Awaited<ReturnType<typeof account>>) {
   await page.getByLabel('Password', { exact: true }).fill(user.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByRole('link', { name: /Start a night/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start Tonight', exact: true })).toBeVisible();
 }
 
 test('the last partial pour can be logged and undone without editing the plan', async ({
@@ -172,7 +172,8 @@ test('bottle quantity to one-tap tracking, joining, undo and adding another bott
   const host = await account('Ari');
   const friend = await account('Sam');
   await login(page, host);
-  await page.getByRole('link', { name: /Start a night/ }).click();
+  await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
+  await page.getByRole('link', { name: /Plan a Night.*Make a night/ }).click();
   await page.getByLabel('Night name').fill('Bottle night');
   await page.getByRole('button', { name: 'With friends', exact: true }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();

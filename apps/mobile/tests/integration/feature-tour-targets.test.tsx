@@ -91,9 +91,7 @@ describe('tour targets on real screens', () => {
     await mount(TonightScreen, nights);
     expect(targetIds()).toEqual(['start', 'join']);
     expect(
-      root?.root
-        .findByProps({ id: 'start' })
-        .findAllByProps({ label: nights.length ? 'Start another night' : 'Start a night' }),
+      root?.root.findByProps({ id: 'start' }).findAllByProps({ label: 'Start Tonight' }),
     ).toHaveLength(1);
     expect(
       root?.root.findByProps({ id: 'join' }).findAllByProps({ label: 'Join with an invite' }),

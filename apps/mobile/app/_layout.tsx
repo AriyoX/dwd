@@ -21,6 +21,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { TourNavigation } from '@/components/tour-navigation';
 import { PermissionsProvider } from '@/providers/permissions-provider';
 import { FeatureTourProvider } from '@/providers/feature-tour-provider';
+import { QuickSyncProvider } from '@/providers/quick-sync-provider';
 
 export default function RootLayout() {
   return (
@@ -28,17 +29,19 @@ export default function RootLayout() {
       <ThemeProvider>
         <SupabaseProvider>
           <ConnectivityProvider>
-            <OfflineProvider>
-              <OnboardingProvider>
-                <NotificationsProvider>
-                  <LocationProvider>
-                    <PermissionsProvider>
-                      <Navigation />
-                    </PermissionsProvider>
-                  </LocationProvider>
-                </NotificationsProvider>
-              </OnboardingProvider>
-            </OfflineProvider>
+            <QuickSyncProvider>
+              <OfflineProvider>
+                <OnboardingProvider>
+                  <NotificationsProvider>
+                    <LocationProvider>
+                      <PermissionsProvider>
+                        <Navigation />
+                      </PermissionsProvider>
+                    </LocationProvider>
+                  </NotificationsProvider>
+                </OnboardingProvider>
+              </OfflineProvider>
+            </QuickSyncProvider>
           </ConnectivityProvider>
         </SupabaseProvider>
       </ThemeProvider>
@@ -98,6 +101,10 @@ function Navigation() {
         >
           <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
           <Stack.Screen name="quick-log" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="quick-benefits"
+            options={{ ...sheet, title: 'More of your night.' }}
+          />
           <Stack.Screen name="quick-history" options={{ title: 'Quick Log history' }} />
           <Stack.Screen name="quick-transfer" options={{ title: 'Add to a night' }} />
           <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
@@ -118,6 +125,7 @@ function Navigation() {
             <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
           </Stack.Protected>
           <Stack.Protected guard={access === 'ready'}>
+            <Stack.Screen name="start-tonight" options={{ ...sheet, title: 'Start Tonight' }} />
             <Stack.Screen name="tour" options={{ title: 'Explore DWD' }} />
             <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
             <Stack.Screen name="profile" options={{ ...sheet, title: 'Edit profile' }} />

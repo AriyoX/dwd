@@ -14,6 +14,7 @@ import { quickScope, type Database } from '@dwd/core';
 import type { QuickLogStore } from '@dwd/contracts';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { browserLocks, browserQuickStore, quickWriterName } from './local';
+import { useAccountQuickSync } from './account-sync';
 
 const Context = createContext<{
   store: QuickLogStore | null;
@@ -23,6 +24,8 @@ const Context = createContext<{
   client: SupabaseClient<Database> | null;
   retry: () => void;
   pinGuest: () => void;
+  syncIssue: string | null;
+  retrySync: () => void;
 } | null>(null);
 export function QuickLogProvider({ children }: { children: ReactNode }) {
   const params = useSearchParams();
@@ -43,17 +46,31 @@ export function QuickLogProvider({ children }: { children: ReactNode }) {
     issue: string | null;
   }>({ store: null, writable: false, issue: null });
   const [attempt, setAttempt] = useState(0);
-  const scope =
+  let scope =
     params.get('scope') === 'guest' || (pinnedGuest && params.get('scope') !== 'account')
       ? 'guest'
       : quickScope(session?.user.id);
+  if (scope === 'guest' && session) {
+    const guest = browserQuickStore('guest');
+    const selected =
+      guest.session(params.get('sessionId')) ??
+      [...guest.getSnapshot().record.sessions]
+        .reverse()
+        .find((s) => s.claimedBy === session.user.id);
+    if (
+      selected?.claimedBy === session.user.id &&
+      browserQuickStore(quickScope(session.user.id)).session(selected.id)
+    )
+      scope = quickScope(session.user.id);
+  }
+  const sync = useAccountQuickSync(session, client, handle.store, handle.writable);
   function pinGuest() {
     if (params.get('scope') === 'guest' || pinRequested.current) return;
     pinRequested.current = true;
     setPinnedGuest(true);
     const next = new URLSearchParams(params);
     next.set('scope', 'guest');
-    window.history.replaceState(null, '', `/quick-log?${next.toString()}`);
+    window.history.replaceState(null, '', `${window.location.pathname}?${next.toString()}`);
   }
   const ageConfirmed = session?.user.user_metadata['age_confirmed'] === true;
   useEffect(() => {
@@ -173,7 +190,15 @@ export function QuickLogProvider({ children }: { children: ReactNode }) {
     handle.store?.scope === scope ? handle : { store: null, writable: false, issue: null };
   return (
     <Context.Provider
-      value={{ ...current, session, client, pinGuest, retry: () => setAttempt((n) => n + 1) }}
+      value={{
+        ...current,
+        session,
+        client,
+        pinGuest,
+        syncIssue: sync.issue,
+        retrySync: sync.retrySync,
+        retry: () => setAttempt((n) => n + 1),
+      }}
     >
       {children}
     </Context.Provider>

@@ -58,47 +58,47 @@ export default function TonightScreen() {
         </Text>
       </View>
       <ScreenHeading title="Tonight" />
-      <Action
-        label={currentQuick ? 'Resume Quick Log' : 'Quick Log'}
-        onPress={() =>
-          router.push(currentQuick?.scope === 'guest' ? '/quick-log?scope=guest' : '/quick-log')
-        }
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 14,
-          padding: 18,
-          borderRadius: 22,
-          borderWidth: 1,
-          borderColor: colors.outline,
-          backgroundColor: colors.surface,
-        }}
-      >
-        <View
+      {currentQuick ? (
+        <Action
+          label="Resume Quick Log"
+          onPress={() =>
+            router.push(currentQuick.scope === 'guest' ? '/quick-log?scope=guest' : '/quick-log')
+          }
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: colors.primarySoft,
+            flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: 14,
+            padding: 18,
+            borderRadius: 22,
+            borderWidth: 1,
+            borderColor: colors.outline,
+            backgroundColor: colors.surface,
           }}
         >
-          <Ionicons name="add" size={24} color={colors.primary} accessible={false} />
-        </View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text style={typography.sectionTitle}>
-            {currentQuick ? 'Resume Quick Log' : 'Quick Log'}
-          </Text>
-          {currentQuick ? (
-            <Text style={{ ...typography.body, color: colors.muted, fontSize: 13 }}>
-              {quickCountLabel(currentQuick.entries)}
-              {currentQuick.scope === 'guest' && status === 'signed-in' ? ' · Guest session' : ''}
-            </Text>
-          ) : null}
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.primary} accessible={false} />
-      </Action>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: colors.primarySoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="add" size={24} color={colors.primary} accessible={false} />
+          </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={typography.sectionTitle}>Resume Quick Log</Text>
+            {
+              <Text style={{ ...typography.body, color: colors.muted, fontSize: 13 }}>
+                {quickCountLabel(currentQuick.entries)}
+                {currentQuick.scope === 'guest' && status === 'signed-in' ? ' · Guest session' : ''}
+              </Text>
+            }
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.primary} accessible={false} />
+        </Action>
+      ) : null}
       {status === 'signed-in' ? (
         <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>
@@ -190,10 +190,10 @@ export default function TonightScreen() {
           {nights?.length ? (
             <TourTarget id="start">
               <PrimaryButton
-                label="Start another night"
+                label="Start Tonight"
                 icon="add"
                 variant="secondary"
-                onPress={() => router.push('/night/new')}
+                onPress={() => router.push('/start-tonight')}
               />
             </TourTarget>
           ) : (
@@ -215,9 +215,9 @@ export default function TonightScreen() {
               <NightArtwork compact={Boolean(nights?.length)} />
               <TourTarget id="start">
                 <PrimaryButton
-                  label="Start a night"
+                  label="Start Tonight"
                   icon="add"
-                  onPress={() => router.push('/night/new')}
+                  onPress={() => router.push('/start-tonight')}
                 />
               </TourTarget>
             </Panel>

@@ -23,6 +23,7 @@ export function safeDestination(value: unknown): string {
     [
       '/',
       '/night/new',
+      '/start-tonight',
       '/account',
       '/history',
       '/join',

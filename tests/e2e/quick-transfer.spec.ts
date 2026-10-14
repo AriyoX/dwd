@@ -66,7 +66,8 @@ test('signed-in Quick Log stays available and saves its handoff before night set
   await page.goto('/login');
   await signIn(page, user);
   await expect(page).toHaveURL(/\/home/);
-  await page.getByRole('link', { name: 'Quick Log', exact: true }).click();
+  await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
+  await page.getByRole('link', { name: /Quick Log.*Just keeping count/ }).click();
   const drink = page.getByRole('button', { name: 'Log one drink' });
   await expect(drink).toBeEnabled();
   await expect(page.getByRole('checkbox', { name: /18 or older/ })).not.toBeVisible();
@@ -158,7 +159,10 @@ test('create-and-transfer survives lost responses with one night and one importe
   });
   await page.getByRole('button', { name: 'Confirm and add logs' }).click();
   await expect(page.getByRole('alert').filter({ hasText: /Couldn’t confirm/ })).toBeVisible();
-  await page.reload();
+  // Return to the logger while the import receipt is unresolved. Account refresh
+  // may already know the Night destination; result recovery must remain reachable.
+  await page.goto('/quick-log?scope=account');
+  await page.getByRole('button', { name: 'Check adding logs to a night' }).click();
   await page.getByRole('button', { name: 'Check result and add logs' }).click();
   await expect(page).toHaveURL(new RegExp(`/night/${nightId}`));
   const { data, error } = await user.client.rpc('get_active_nights');

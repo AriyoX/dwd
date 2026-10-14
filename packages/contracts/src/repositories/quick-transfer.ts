@@ -45,7 +45,11 @@ export async function executeQuickTransfer(
         'Add logs to your own participant record.',
       ].includes(message);
     const rejectedValidation = code.startsWith('22') && !message.includes('This request changed');
-    if (rejectedAuthorization || rejectedValidation) store.transferRejected(operation.id);
+    const rejectedRevision =
+      code === '40001' &&
+      message === 'This Quick Log entry changed on another device. Review your entries.';
+    if (rejectedAuthorization || rejectedValidation || rejectedRevision)
+      store.transferRejected(operation.id);
     else store.transferUncertain(operation.id);
     throw error;
   } finally {

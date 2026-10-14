@@ -28,17 +28,45 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useBrowserQuickLog, useQuickStoreState } from './provider';
 import styles from './quick-log.module.css';
+import { AccountBenefits } from './account-benefits';
 
-export function QuickLogger({ history = false }: { history?: boolean }) {
+export function QuickLogger({
+  history = false,
+  homepage = false,
+}: {
+  history?: boolean;
+  homepage?: boolean;
+}) {
   const context = useBrowserQuickLog();
   if (!context.store) return <p role="status">Opening device logs…</p>;
   return (
-    <Logger key={`${context.store.scope}:${history}`} store={context.store} history={history} />
+    <Logger
+      key={`${context.store.scope}:${history}`}
+      store={context.store}
+      history={history}
+      homepage={homepage}
+    />
   );
 }
-function Logger({ store, history }: { store: QuickLogStore; history: boolean }) {
+function Logger({
+  store,
+  history,
+  homepage,
+}: {
+  store: QuickLogStore;
+  history: boolean;
+  homepage: boolean;
+}) {
   const state = useQuickStoreState(store);
-  const { writable, issue: storageIssue, retry, session: account, pinGuest } = useBrowserQuickLog();
+  const {
+    writable,
+    issue: storageIssue,
+    retry,
+    session: account,
+    pinGuest,
+    syncIssue,
+    retrySync,
+  } = useBrowserQuickLog();
   const params = useSearchParams();
   const router = useRouter();
   const [selected, setSelected] = useState(params.get('sessionId'));
@@ -62,6 +90,9 @@ function Logger({ store, history }: { store: QuickLogStore; history: boolean }) 
   const entries = [...(current?.entries ?? [])]
     .filter((e) => !e.removedAt)
     .sort((a, b) => b.sequence - a.sequence);
+  const historySessions = state.record.sessions
+    .filter((s) => (store.scope !== 'guest' || !s.claimedBy) && availableQuickEntries(s).length)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id));
   const canUndo =
     undo &&
     current?.state === 'active' &&
@@ -116,14 +147,18 @@ function Logger({ store, history }: { store: QuickLogStore; history: boolean }) 
   return (
     <div className={styles['logger']}>
       <header className={styles['header']}>
-        <Link
-          className="button button-ghost"
-          href={history ? `/quick-log${suffix}` : account ? '/home' : '/login'}
-          aria-label="Back"
-        >
-          <ArrowLeft size={22} aria-hidden="true" />
-        </Link>
-        <h1>{history ? 'Past quick sessions' : 'Quick Log'}</h1>
+        {!homepage ? (
+          <Link
+            className="button button-ghost"
+            href={history ? `/quick-log${suffix}` : account ? '/home' : '/login'}
+            aria-label="Back"
+          >
+            <ArrowLeft size={22} aria-hidden="true" />
+          </Link>
+        ) : null}
+        <h1 className={homepage ? styles['homepageHeading'] : undefined}>
+          {history ? 'Past quick sessions' : homepage ? 'Just log it.' : 'Quick Log'}
+        </h1>
         <details className={styles['options']}>
           <summary className="button button-ghost" aria-label="Session options">
             <MoreHorizontal size={24} aria-hidden="true" />
@@ -148,6 +183,11 @@ function Logger({ store, history }: { store: QuickLogStore; history: boolean }) 
               </Button>
             ) : null}
             <p className="muted small">{QUICK_LOG_RETENTION}</p>
+            {!history ? (
+              <Button type="button" variant="ghost" disabled={!enabled} onClick={() => log('shot')}>
+                Log a shot
+              </Button>
+            ) : null}
             {current ? (
               <p className="muted small">Started {new Date(current.createdAt).toLocaleString()}</p>
             ) : null}
@@ -174,6 +214,19 @@ function Logger({ store, history }: { store: QuickLogStore; history: boolean }) 
           </div>
         </details>
       </header>
+      {!account && !history ? (
+        <AccountBenefits
+          next={`/quick-log?scope=account${current ? `&sessionId=${current.id}` : ''}`}
+          beforeAuth={() =>
+            store.getSnapshot().record.sessions.length && !store.getSnapshot().saved
+              ? 'Save your logs on this device before signing in. They are still here.'
+              : null
+          }
+          retrySaving={() => {
+            if (writable) store.retrySave();
+          }}
+        />
+      ) : null}
       {storageIssue ? (
         <div className="notice-box" role="status">
           {storageIssue}
@@ -184,10 +237,18 @@ function Logger({ store, history }: { store: QuickLogStore; history: boolean }) 
       ) : null}
       {history ? (
         <>
-          {state.record.sessions.length ? (
-            [...state.record.sessions].reverse().map((s) => (
+          {historySessions.length ? (
+            historySessions.map((s) => (
               <Card key={s.id} className="stack">
-                <h2>{quickCountLabel(s.entries)}</h2>
+                <span className="pill">Quick Log session</span>
+                <h2>{quickCountLabel(availableQuickEntries(s))}</h2>
+                {availableQuickEntries(s).some((e) => e.kind === 'shot') ? (
+                  <p className="muted small">
+                    Includes {availableQuickEntries(s).filter((e) => e.kind === 'shot').length}{' '}
+                    shots.
+                  </p>
+                ) : null}
+                <p className="muted small">Drink sizes and alcohol strength not recorded.</p>
                 <p className="muted small">
                   {new Date(s.createdAt).toLocaleString()} ·{' '}
                   {s.state === 'active' ? 'In progress' : 'Finished'}
@@ -364,7 +425,10 @@ function Logger({ store, history }: { store: QuickLogStore; history: boolean }) 
             type="button"
             variant="secondary"
             disabled={
-              !writable || !current || !availableQuickEntries(current).length || state.blocked
+              !writable ||
+              !current ||
+              (!pending && !availableQuickEntries(current).length) ||
+              state.blocked
             }
             onClick={add}
           >
@@ -411,6 +475,14 @@ function Logger({ store, history }: { store: QuickLogStore; history: boolean }) 
           )}
         </>
       )}
+      {syncIssue && account ? (
+        <div className="notice-box" role="status">
+          {syncIssue}
+          <Button type="button" variant="ghost" onClick={retrySync}>
+            Retry account saving
+          </Button>
+        </div>
+      ) : null}
       {issue || state.issue ? (
         <div className="error-box" role="alert">
           {issue ?? state.issue}

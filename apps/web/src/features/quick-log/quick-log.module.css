@@ -3,6 +3,25 @@
   flex-direction: column;
   gap: 1rem;
 }
+.header .homepageHeading {
+  font-size: clamp(2rem, 7vw, 3rem);
+  line-height: 1.15;
+}
+.benefits {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.benefits li {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+.benefits svg {
+  flex-shrink: 0;
+  color: var(--primary);
+}
 .header {
   display: flex;
   align-items: center;

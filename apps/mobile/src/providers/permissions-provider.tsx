@@ -18,6 +18,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const quickPath =
     pathname.startsWith('/quick-') ||
     pathname === '/' ||
+    pathname === '/start-tonight' ||
     pathname === '/welcome' ||
     pathname === '/onboarding' ||
     pathname.startsWith('/auth');

@@ -215,23 +215,29 @@ describe('explicit Quick Log transfer', () => {
       own.store.prepareTransfer(own.store.session()!.id, randomUUID(), randomUUID(), randomUUID()),
     ).toThrow('account');
   });
-  it('unfreezes sources after a definitive authorization rejection, preserving the entries', async () => {
-    const f = setup();
-    await expect(
-      executeQuickTransfer(
-        f.store,
-        f.operation,
-        () => f.account,
-        true,
-        () =>
-          Promise.reject(
-            Object.assign(new Error('Add logs to your own participant record.'), { code: '42501' }),
-          ),
-      ),
-    ).rejects.toMatchObject({ code: '42501' });
-    expect(f.store.getSnapshot().record.operations[0]?.state).toBe('rejected');
-    expect(() =>
-      f.store.correct(f.operation.sessionId, f.operation.entries[0]!.id, 'shot'),
-    ).not.toThrow();
-  });
+  it.each([
+    { code: '42501', message: 'Add logs to your own participant record.' },
+    {
+      code: '40001',
+      message: 'This Quick Log entry changed on another device. Review your entries.',
+    },
+  ])(
+    'unfreezes sources after a definitive $code rejection, preserving the entries',
+    async ({ code, message }) => {
+      const f = setup();
+      await expect(
+        executeQuickTransfer(
+          f.store,
+          f.operation,
+          () => f.account,
+          true,
+          () => Promise.reject(Object.assign(new Error(message), { code })),
+        ),
+      ).rejects.toMatchObject({ code });
+      expect(f.store.getSnapshot().record.operations[0]?.state).toBe('rejected');
+      expect(() =>
+        f.store.correct(f.operation.sessionId, f.operation.entries[0]!.id, 'shot'),
+      ).not.toThrow();
+    },
+  );
 });

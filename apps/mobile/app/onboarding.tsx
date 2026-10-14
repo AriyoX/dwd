@@ -81,9 +81,12 @@ export default function OnboardingScreen() {
     >
       <AuthHeader />
       <PrimaryButton
-        label="Quick Log"
+        label="Start logging as a guest"
         variant="secondary"
-        onPress={() => router.push('/quick-log')}
+        onPress={() => {
+          complete();
+          router.push('/quick-log');
+        }}
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View

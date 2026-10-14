@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const QUICK_LOG_VERSION = 3;
 export const QUICK_LOG_STALE_MS = 12 * 60 * 60 * 1000;
 export const QUICK_LOG_RETENTION =
-  'Clearing app or browser data, or uninstalling, can remove logs that haven’t been added to a night. Other devices, browsers, and the DWD app keep separate logs.';
+  'Guest logs stay on this device. Sign in to save them to your account. Keep this device’s data until account saving is confirmed.';
 export const QUICK_LOG_AMOUNTS = 'Counts only; drink sizes and strength aren’t recorded.';
 export type QuickScope = 'guest' | `account:${string}`;
 export const quickScope = (accountId?: string | null): QuickScope =>
@@ -37,6 +37,7 @@ export const quickSessionSchema = z
     id: z.uuid(),
     schemaVersion: z.literal(3),
     scope: scopeSchema,
+    claimedBy: z.uuid().nullable().default(null),
     createdAt: timestamp,
     updatedAt: timestamp,
     finishedAt: timestamp.nullable(),
@@ -115,6 +116,7 @@ export const quickRecordSchema = z
     sessions: z.array(quickSessionSchema),
     operations: z.array(quickTransferSchema),
     intent: quickIntentSchema.nullable(),
+    synced: z.record(z.string(), z.string()).default({}),
   })
   .strict()
   .superRefine((record, ctx) => {
@@ -132,7 +134,11 @@ export const quickRecordSchema = z
       ids.add(session.id);
       const sequences = new Set<number>();
       for (const entry of session.entries) {
-        if (ids.has(entry.id) || entry.sessionId !== session.id || sequences.has(entry.sequence))
+        if (
+          ids.has(entry.id) ||
+          entry.sessionId !== session.id ||
+          (record.scope === 'guest' && sequences.has(entry.sequence))
+        )
           ctx.addIssue({ code: 'custom', message: 'Invalid entry identity/order.' });
         ids.add(entry.id);
         sequences.add(entry.sequence);
@@ -196,6 +202,7 @@ export function emptyQuickRecord(scope: QuickScope): QuickRecord {
     sessions: [],
     operations: [],
     intent: null,
+    synced: {},
   };
 }
 
@@ -295,6 +302,34 @@ export function quickTotalsLabel(drinks: number, chasers: number) {
 export function availableQuickEntries(session?: QuickSession) {
   return (session?.entries ?? []).filter((e) => !e.removedAt && !e.destination);
 }
+/** Concurrent devices can append at the same source position; IDs provide a stable tie-break. */
+export function compareQuickEntries(
+  a: Pick<QuickEntry, 'sequence' | 'recordedAt' | 'id'>,
+  b: Pick<QuickEntry, 'sequence' | 'recordedAt' | 'id'>,
+) {
+  return (
+    a.sequence - b.sequence ||
+    Date.parse(a.recordedAt) - Date.parse(b.recordedAt) ||
+    a.id.localeCompare(b.id)
+  );
+}
+/** Exact comparison includes tombstones and source identity; no measured values are inferred. */
+export function quickSyncFingerprint(session: QuickSession) {
+  return JSON.stringify({
+    id: session.id,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    finishedAt: session.finishedAt,
+    state: session.state,
+    entries: session.entries,
+  });
+}
+export const quickAccountBenefits = [
+  'Night history across your devices',
+  'Photo memories from your nights',
+  'Plan and manage your nights',
+  'Join invitations and track with friends',
+] as const;
 export function unresolvedQuickTransfers(record: QuickRecord) {
   return record.operations.filter((o) => o.state === 'prepared' || o.state === 'uncertain');
 }

@@ -24,10 +24,12 @@ import { Notice, Panel, Screen } from '@/components/screen';
 import { Choice } from '@/components/choice';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { LegalLinks } from '@/components/auth-chrome';
+import { useQuickSync } from '@/providers/quick-sync-provider';
 
 export default function QuickLogScreen() {
   const params = useLocalSearchParams<{ scope?: string; sessionId?: string }>();
-  const { scope } = useQuickLog(params.scope === 'guest');
+  const { scope } = useQuickLog(params.scope === 'guest', params.sessionId);
   return (
     <Logger
       key={`${scope}:${params.sessionId ?? ''}`}
@@ -37,8 +39,9 @@ export default function QuickLogScreen() {
   );
 }
 function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | undefined }) {
-  const { store, state, scope } = useQuickLog(guest);
+  const { store, state, scope } = useQuickLog(guest, selectedId);
   const { session: account } = useSupabase();
+  const { issue: syncIssue, retrySync } = useQuickSync();
   const { colors, typography } = useTheme();
   const router = useRouter();
   const reduced = useReducedMotion();
@@ -162,6 +165,12 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
             }
           />
           <Text style={typography.body}>{QUICK_LOG_RETENTION}</Text>
+          <PrimaryButton
+            label="Log a shot"
+            variant="quiet"
+            disabled={!writable || !state.record.eligible}
+            onPress={() => log('shot')}
+          />
           {current ? (
             <Text style={typography.body}>
               Started {new Date(current.createdAt).toLocaleString()}
@@ -380,7 +389,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
       <PrimaryButton
         label={pending ? 'Check adding logs to a night' : 'Add to a night'}
         variant="secondary"
-        disabled={!current || !availableQuickEntries(current).length || state.blocked}
+        disabled={!current || (!pending && !availableQuickEntries(current).length) || state.blocked}
         onPress={() =>
           run(() => {
             if (!current) return;
@@ -442,6 +451,36 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
           ) : null}
         </>
       )}
+      {!account ? (
+        <PrimaryButton
+          label="Sign in / Create account"
+          variant="quiet"
+          onPress={() =>
+            run(() => {
+              if (store.getSnapshot().record.sessions.length && !store.getSnapshot().saved)
+                throw new Error(
+                  'Save your logs on this device before signing in. They are still here.',
+                );
+              router.push({
+                pathname: '/quick-benefits',
+                params: {
+                  next: `/quick-log?scope=account${current ? `&sessionId=${current.id}` : ''}`,
+                },
+              });
+            })
+          }
+        />
+      ) : null}
+      {account && syncIssue ? (
+        <Panel>
+          <Notice message={syncIssue} />
+          <PrimaryButton label="Retry account saving" variant="quiet" onPress={retrySync} />
+        </Panel>
+      ) : null}
+      <LegalLinks />
+      <Text style={{ ...typography.body, color: colors.muted, fontSize: 12 }}>
+        Take your time. DWD cannot determine sobriety or driving safety.
+      </Text>
     </Screen>
   );
 }

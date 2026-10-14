@@ -1,5 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { quickReceiptSchema, type Database, type QuickTransfer } from '@dwd/core';
+import {
+  quickReceiptSchema,
+  quickSessionSchema,
+  type QuickSession,
+  type Database,
+  type QuickTransfer,
+} from '@dwd/core';
 import { toJson, unwrapRpc } from '../shared/rpc';
 
 export async function importQuickLogs(client: SupabaseClient<Database>, operation: QuickTransfer) {
@@ -19,4 +25,33 @@ export async function correctNightQuickLog(
 ) {
   const { data, error } = await client.rpc('correct_quick_log', { p_entry_id: id, p_kind: kind });
   return unwrapRpc(data, error);
+}
+export async function saveQuickSession(
+  client: SupabaseClient<Database>,
+  session: QuickSession,
+  entries: QuickSession['entries'],
+) {
+  const { data, error } = await client.rpc('sync_quick_log', {
+    p_session: toJson({
+      id: session.id,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      finishedAt: session.finishedAt,
+    }),
+    p_entries: toJson(entries),
+  });
+  return quickSessionSchema.parse(unwrapRpc(data, error));
+}
+export async function getQuickSessions(client: SupabaseClient<Database>) {
+  const sessions: QuickSession[] = [];
+  for (let page = 0; ; page++) {
+    const { data, error } = await client.rpc(
+      'get_quick_log_sessions',
+      { p_page: page },
+      { get: true },
+    );
+    const batch = quickSessionSchema.array().parse(unwrapRpc(data, error));
+    sessions.push(...batch);
+    if (batch.length < 50) return sessions;
+  }
 }

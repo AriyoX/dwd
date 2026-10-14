@@ -35,7 +35,7 @@ function Transfer({
 }: {
   params: { scope?: string; sessionId?: string; nightId?: string };
 }) {
-  const { store, state, scope } = useQuickLog(params.scope === 'guest');
+  const { store, state, scope } = useQuickLog(params.scope === 'guest', params.sessionId);
   const { client, session } = useSupabase();
   const { online } = useConnectivity();
   const { typography } = useTheme();

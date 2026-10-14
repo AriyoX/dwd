@@ -44,6 +44,11 @@ export function HistoryScreen({
           </div>
         </header>
         {sample && <span className="pill">Tour practice</span>}
+        {!sample ? (
+          <Link href="/quick-log/history?scope=account" className="button button-secondary">
+            Quick Log history
+          </Link>
+        ) : null}
         {result === null ? (
           <Card className="stack">
             <p role="alert">Could not load your history. Check your connection and retry.</p>

@@ -1,5 +1,7 @@
 # Quick Log implementation
 
+The primary-entry integration and its current verification are documented in [Quick Log entry and account flows](quick-log-entry.md). The dated milestone notes below describe the earlier device-only release; account synchronization supersedes that release’s storage limits.
+
 Both milestones are implemented. Migration `20261013115257_quick_log_count_only_import.sql` was applied to the linked `drink-with-desire` remote (`kdplbebaotvgcvjggacz`) on 13 October 2026. The additive migration `20261014081225_quick_log_drinks_and_chasers.sql` was applied on 14 October 2026. Remote checks confirmed chaser constraints, import/correction support, finished-history counts and unchanged access restrictions. The UI changes are in the workspace; this review did not deploy the web app or submit an app-store build.
 
 ## Review follow-up: 13 October 2026
@@ -36,13 +38,13 @@ The Expo logger is `/quick-log`, with `/quick-history` and `/quick-transfer` as 
 
 Logging creates a session on the first tap, retains every deliberate Drink/Chaser tap, derives counts from entries, and persists exact Undo, corrections, removals, finishing and history. Returning after midnight keeps the session. After 12 hours without activity, the dated continue/start-new choice is a product heuristic, never an estimate of alcohol or sobriety.
 
-Guest storage and each signed-in account have separate scopes. Guest logging started before authentication finishes remains selected as guest logging. Signing in does not assign that history to an account or upload it. Account changes switch account scopes; signing out resumes guest data. An account user can explicitly open guest logs on the device.
+Guest storage and each account cache have separate scopes. Signing in automatically binds unclaimed guest sessions to that account and copies their stable identities, entries, Undo and destination intent into its cache. The current session stays active. Guest source copies remain on the device for recovery and retain their account binding. Signing out opens unclaimed guest logging; another account cannot adopt a bound source. Failed synchronization keeps unsynced account entries locally until the server confirms saving.
 
 The existing age rule is retained as a small inline acknowledgement for guests or accounts without an existing acknowledgement. Existing confirmed account metadata avoids repeating it. Logging never requires a profile, permissions, a tour, location, connectivity, or night setup. Startup permission requests are deferred away from welcome, authentication, Tonight and Quick Log.
 
 Native persistence reuses Expo SQLite's key-value store with its transactional synchronous update callback. A whole versioned scope record is the commit boundary. Web uses browser storage under an exclusive Web Lock, waits for another tab to release the writer, and reacquires after browser page restoration. Supported web logging needs a current browser in a secure context (HTTPS or localhost). Browsers without Web Locks can view records but cannot mutate them. A loaded page can keep logging offline; obtaining the site's assets for the first visit still requires a connection.
 
-Version 1 and 2 records migrate to version 3 without changing entry IDs, stored kinds, timestamps or transfer payloads. Earlier version 2 records without Undo metadata remain readable. Older clients reject version 3 instead of overwriting chasers they cannot understand. Invalid or unsupported records stay intact and block replacement; session information exposes the original data for recovery. Failed writes retain recoverable memory, show a failure notice, and offer Retry. Local storage is not advertised as encrypted. Clearing app/browser data or uninstalling can remove untransferred records. Web, native, and different devices do not have automatic DWD sharing or guest backup.
+Version 1 and 2 records migrate to version 3 without changing entry IDs, stored kinds, timestamps or transfer payloads. Earlier version 3 records receive empty synchronization metadata and unclaimed ownership defaults. Older strict parsers reject the additional fields instead of overwriting them. Invalid or unsupported records stay intact and block replacement; session information exposes the original data for recovery. Failed writes retain recoverable memory and offer Retry. Local storage is not advertised as encrypted. Clearing app/browser data or uninstalling can remove unsynced records. Guest data stays on its device; signed-in sessions now synchronize across devices through authenticated RPCs.
 
 ## Milestone 2: explicit authenticated transfer
 
@@ -126,6 +128,6 @@ These are local JavaScript/Hermes exports, not native app-store builds or physic
 - In airplane mode, keep logging and correcting. Add to a night should ask for connectivity and retain the session. Reconnect and confirm explicitly. Cancel sign-in and choose Not now after joining.
 - In actual Safari/Chrome, refresh and reopen, inspect browser persistence, test another tab's writer handoff, and try unavailable/quota-limited storage. Verify a different browser or native installation joins an invite without receiving or fabricating another context's local logs.
 
-Physical-device feel, OS lifecycle behavior, VoiceOver/TalkBack and actual storage restrictions remain manual checks. Optional water logging, widgets, watches, lock-screen actions, favourites and cloud backup remain outside this implementation.
+Physical-device feel, OS lifecycle behavior, VoiceOver/TalkBack and actual storage restrictions remain manual checks. Widgets, watches, lock-screen actions and favourites remain outside this implementation. Account Quick Log persistence is included in the primary-entry follow-up.
 
 Reference choices follow [Expo storage guidance](https://docs.expo.dev/develop/user-interface/store-data/), [Supabase functions](https://supabase.com/docs/guides/database/functions), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), and [PostgreSQL SQL function bodies](https://www.postgresql.org/docs/17/sql-createfunction.html).

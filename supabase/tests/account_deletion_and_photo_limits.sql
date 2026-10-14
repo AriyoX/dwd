@@ -19,10 +19,12 @@ insert into public.nights (id, host_user_id, creation_key, title, starts_at, ini
 values ('72000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000001', gen_random_uuid(),
   'Shared deletion night', clock_timestamp() - interval '2 hours', clock_timestamp() + interval '1 hour',
   clock_timestamp() + interval '1 hour', 'Africa/Nairobi');
-insert into public.night_members (id, night_id, user_id, display_name, member_type, role, managed_by_user_id) values
-  ('73000000-0000-4000-8000-000000000001', '72000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000001', 'Delete Host', 'account', 'host', null),
-  ('73000000-0000-4000-8000-000000000002', '72000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000002', 'Keep Friend', 'account', 'member', null),
-  ('73000000-0000-4000-8000-000000000003', '72000000-0000-4000-8000-000000000001', null, 'Host Guest', 'guest', 'member', '71000000-0000-4000-8000-000000000001');
+-- These memberships predate the deletion transaction, as they do in a due 30-day deletion.
+-- A clock_timestamp() default here can otherwise be later than the transaction's now().
+insert into public.night_members (id, night_id, user_id, display_name, member_type, role, managed_by_user_id, joined_at) values
+  ('73000000-0000-4000-8000-000000000001', '72000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000001', 'Delete Host', 'account', 'host', null, now() - interval '2 hours'),
+  ('73000000-0000-4000-8000-000000000002', '72000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000002', 'Keep Friend', 'account', 'member', null, now() - interval '2 hours'),
+  ('73000000-0000-4000-8000-000000000003', '72000000-0000-4000-8000-000000000001', null, 'Host Guest', 'guest', 'member', '71000000-0000-4000-8000-000000000001', now() - interval '2 hours');
 insert into public.night_end_time_changes (night_id, changed_by, previous_ends_at, new_ends_at)
 values ('72000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000001', clock_timestamp() + interval '1 hour', clock_timestamp() + interval '2 hours');
 insert into private.invite_revocations (user_id, request_key, night_id)

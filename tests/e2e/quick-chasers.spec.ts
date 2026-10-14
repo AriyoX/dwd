@@ -68,7 +68,7 @@ test('Home resumes a guest session after sign-in and a chaser-only import stays 
   await expect(page).toHaveURL(/\/home/);
   const resume = page.getByRole('link', { name: /Resume Quick Log/ });
   await expect(resume).toContainText('0 drinks · 1 chaser');
-  await expect(resume).toContainText('Guest session');
+  await expect(resume).not.toContainText('Guest session');
   const installHint = page.getByRole('complementary', { name: 'Install dwd' });
   if (await installHint.isVisible())
     await installHint.getByRole('button', { name: 'Not now', exact: true }).click();
@@ -84,7 +84,7 @@ test('Home resumes a guest session after sign-in and a chaser-only import stays 
       style: 'nextjs-portal { visibility: hidden; }',
     });
   await resume.click();
-  await expect(page).toHaveURL(/scope=guest/);
+  await expect(page).toHaveURL(/\/quick-log/);
   await page.getByRole('button', { name: 'Add to a night', exact: true }).click();
   await page.getByRole('button', { name: 'Chaser destination', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm and add logs', exact: true }).click();

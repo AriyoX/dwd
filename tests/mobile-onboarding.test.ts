@@ -134,6 +134,7 @@ describe('native product access', () => {
           'quick-log',
           'quick-history',
           'quick-transfer',
+          'quick-benefits',
         ].includes(route)
       )
         continue;

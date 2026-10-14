@@ -4,6 +4,10 @@ import {
   parseQuickRecord,
   quickEntryLocked,
   quickReceiptSchema,
+  quickScope,
+  quickSessionSchema,
+  quickSyncFingerprint,
+  compareQuickEntries,
   unresolvedQuickTransfers,
   type QuickEntry,
   type QuickIntent,
@@ -158,10 +162,15 @@ export class QuickLogStore {
     if (!this.state.record.eligible) throw new Error('Confirm the age requirement to log.');
     const at = this.now();
     const existing = this.session();
+    if (this.scope === 'guest' && existing?.claimedBy)
+      throw new Error(
+        'This session belongs to an account. Sign in to resume it, or finish it to start a new guest session.',
+      );
     const session: QuickSession = existing ?? {
       id: this.uuid(),
       schemaVersion: 3,
       scope: this.scope,
+      claimedBy: this.scope === 'guest' ? null : this.scope.slice(8),
       createdAt: at,
       updatedAt: at,
       finishedAt: null,
@@ -323,6 +332,8 @@ export class QuickLogStore {
   ): QuickTransfer {
     if (this.scope !== 'guest' && this.scope !== `account:${accountId}`)
       throw new Error('Use the account that owns these logs.');
+    const claimed = this.session(sessionId)?.claimedBy;
+    if (claimed && claimed !== accountId) throw new Error('Use the account that owns these logs.');
     const pending = unresolvedQuickTransfers(this.state.record).find(
       (o) => o.sessionId === sessionId,
     );
@@ -436,6 +447,112 @@ export class QuickLogStore {
             }
           : s,
       ),
+    });
+  }
+  bindGuestSession(sessionId: string, accountId: string) {
+    const session = this.session(sessionId);
+    if (
+      this.scope !== 'guest' ||
+      !session ||
+      (session.claimedBy && session.claimedBy !== accountId)
+    )
+      throw new Error('Use the account that owns these logs.');
+    if (
+      this.state.record.operations.some(
+        (o) => o.sessionId === sessionId && o.accountId !== accountId,
+      )
+    )
+      throw new Error('Use the account that started adding these logs.');
+    if (session.claimedBy === accountId) return;
+    this.commit({
+      ...this.state.record,
+      sessions: this.state.record.sessions.map((s) =>
+        s.id === sessionId ? { ...s, claimedBy: accountId } : s,
+      ),
+    });
+  }
+  /** Copy before retiring the guest source. Replaying after either write fails is safe. */
+  adoptGuestSession(source: QuickSession, guest: QuickRecord, accountId: string) {
+    if (this.scope !== quickScope(accountId) || source.claimedBy !== accountId)
+      throw new Error('Use the account that owns these logs.');
+    this.mergeAccountSession({ ...source, scope: this.scope }, true);
+    const operations = guest.operations.filter(
+      (o) => o.sessionId === source.id && o.accountId === accountId,
+    );
+    const record = this.state.record;
+    const next = {
+      ...record,
+      eligible: record.eligible || guest.eligible,
+      undo: guest.undo?.sessionId === source.id ? guest.undo : record.undo,
+      intent:
+        guest.intent?.sessionId === source.id &&
+        (!guest.intent.accountId || guest.intent.accountId === accountId)
+          ? { ...guest.intent, accountId }
+          : record.intent,
+      operations: [
+        ...record.operations,
+        ...operations.filter((o) => !record.operations.some((r) => r.id === o.id)),
+      ],
+    };
+    if (JSON.stringify(next) !== JSON.stringify(record)) this.commit(next);
+  }
+  retireGuestSession(sessionId: string, accountId: string) {
+    const source = this.session(sessionId);
+    if (!source || source.claimedBy !== accountId)
+      throw new Error('Use the account that owns these logs.');
+    // The account copy keeps the original lifecycle and recording timestamps.
+    this.finish(sessionId);
+  }
+  mergeAccountSession(value: QuickSession, preferActive = false) {
+    const remote = quickSessionSchema.parse(value);
+    if (
+      this.scope === 'guest' ||
+      remote.scope !== this.scope ||
+      remote.claimedBy !== this.scope.slice(8)
+    )
+      throw new Error('Unexpected Quick Log account.');
+    const local = this.session(remote.id);
+    const dirty = local && this.state.record.synced[local.id] !== quickSyncFingerprint(local);
+    const entries = new Map(remote.entries.map((e) => [e.id, e]));
+    for (const entry of local?.entries ?? []) {
+      const other = entries.get(entry.id);
+      if (!other || quickEntryLocked(this.state.record, entry) || entry.revision >= other.revision)
+        entries.set(entry.id, { ...entry, destination: other?.destination ?? entry.destination });
+    }
+    let merged = {
+      ...(dirty ? local : remote),
+      ...(!local ? remote : {}),
+      entries: [...entries.values()].sort(compareQuickEntries),
+    } as QuickSession;
+    let activeSessionId = this.state.record.activeSessionId;
+    const activate =
+      merged.state === 'active' &&
+      (!activeSessionId || activeSessionId === merged.id || preferActive);
+    let sessions = this.state.record.sessions.filter((s) => s.id !== merged.id);
+    if (activate) {
+      if (activeSessionId && activeSessionId !== merged.id)
+        sessions = sessions.map((s) =>
+          s.id === activeSessionId
+            ? {
+                ...s,
+                state: 'finished' as const,
+                finishedAt: remote.updatedAt,
+                updatedAt: remote.updatedAt,
+              }
+            : s,
+        );
+      activeSessionId = merged.id;
+    } else if (merged.state === 'active')
+      merged = { ...merged, state: 'finished', finishedAt: merged.updatedAt };
+    else if (activeSessionId === merged.id) activeSessionId = null;
+    const next = { ...this.state.record, activeSessionId, sessions: [...sessions, merged] };
+    if (JSON.stringify(next) !== JSON.stringify(this.state.record)) this.commit(next);
+  }
+  markAccountSynced(sessionId: string, fingerprint: string) {
+    if (this.state.record.synced[sessionId] === fingerprint) return;
+    this.commit({
+      ...this.state.record,
+      synced: { ...this.state.record.synced, [sessionId]: fingerprint },
     });
   }
 }

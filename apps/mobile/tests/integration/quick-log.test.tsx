@@ -5,11 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { lightTheme } from '@dwd/core';
 import QuickLogScreen from '../../app/quick-log';
 import QuickTransferScreen from '../../app/quick-transfer';
+import StartTonightScreen from '../../app/start-tonight';
+import QuickBenefitsScreen from '../../app/quick-benefits';
+import { QuickSyncProvider } from '@/providers/quick-sync-provider';
 import { nativeQuickOffer, nativeQuickStore } from '@/lib/quick-log';
 
 const runtime = vi.hoisted(() => ({
   values: new Map<string, string>(),
-  params: {} as { scope?: string; sessionId?: string },
+  params: {} as { scope?: string; sessionId?: string; next?: string },
   account: null as null | { user: { id: string } },
   router: {
     push: vi.fn(),
@@ -26,6 +29,8 @@ const runtime = vi.hoisted(() => ({
   failWrites: false,
   getNights: vi.fn(() => Promise.resolve([])),
   getSnapshot: vi.fn(),
+  remember: vi.fn(),
+  saveSession: vi.fn((_client: unknown, session: unknown) => Promise.resolve(session)),
 }));
 vi.mock('expo-router', () => ({
   useLocalSearchParams: () => runtime.params,
@@ -36,6 +41,7 @@ vi.mock('react-native', () => ({
   View: 'View',
   useWindowDimensions: () => ({ width: 390, height: 844, fontScale: 1, scale: 3 }),
   AccessibilityInfo: { announceForAccessibility: runtime.announce },
+  AppState: { addEventListener: () => ({ remove: vi.fn() }) },
 }));
 vi.mock('react-native-reanimated', () => ({ useReducedMotion: () => true }));
 vi.mock('expo-sqlite/localStorage/install', () => ({}));
@@ -64,9 +70,14 @@ vi.mock('@dwd/data', () => ({
   getActiveNights: runtime.getNights,
   getNightSnapshot: runtime.getSnapshot,
   importQuickLogs: vi.fn(),
+  saveQuickSession: runtime.saveSession,
+  getQuickSessions: () => Promise.resolve([]),
 }));
 vi.mock('@/providers/connectivity-provider', () => ({ useConnectivity: () => ({ online: true }) }));
-vi.mock('@/lib/auth-state', () => ({ authHandoff: () => ({ remember: vi.fn() }) }));
+vi.mock('@/lib/auth-state', async (original) => ({
+  ...(await original<Record<string, unknown>>()),
+  authHandoff: () => ({ remember: runtime.remember }),
+}));
 const client = {};
 vi.mock('@/providers/supabase-provider', () => ({
   useSupabase: () => {
@@ -100,6 +111,9 @@ vi.mock('@/components/choice', () => ({
     <button {...props}>{props.label}</button>
   ),
 }));
+vi.mock('@/components/auth-chrome', () => ({
+  LegalLinks: () => <footer>For adults 18+ · Terms · Privacy</footer>,
+}));
 let root: ReactTestRenderer | null = null;
 async function render() {
   await act(() => {
@@ -126,6 +140,8 @@ beforeEach(() => {
   runtime.router.push.mockClear();
   runtime.getNights.mockClear();
   runtime.getSnapshot.mockClear();
+  runtime.remember.mockClear();
+  runtime.saveSession.mockClear();
   runtime.haptic.mockClear();
   runtime.announce.mockClear();
   const guest = nativeQuickStore('guest');
@@ -136,6 +152,74 @@ afterEach(async () => {
   root = null;
 });
 describe('native public Quick Log', () => {
+  it('keeps unsaved guest entries in the logger before starting an authentication handoff', async () => {
+    nativeQuickStore('guest').acknowledgeEligibility();
+    await render();
+    runtime.failWrites = true;
+    await press('Log one drink');
+    await press('Sign in / Create account');
+    expect(runtime.router.push).not.toHaveBeenCalled();
+    expect(content()).toContain('1 drink · 0 chasers');
+    expect(content()).toContain('Save your logs on this device before signing in');
+    runtime.failWrites = false;
+    await press('Retry saving');
+    await press('Sign in / Create account');
+    expect(runtime.router.push).toHaveBeenCalled();
+  });
+  it('offers Quick Log or the existing planned setup from the native Start Tonight sheet', async () => {
+    await act(() => {
+      root = create(<StartTonightScreen />);
+    });
+    await press('Quick Log');
+    expect(runtime.router.replace).toHaveBeenLastCalledWith('/quick-log?scope=account');
+    await press('Plan a Night');
+    expect(runtime.router.replace).toHaveBeenLastCalledWith('/night/new');
+  });
+  it('discovers account benefits without losing the session or sign-in destination', async () => {
+    nativeQuickStore('guest').acknowledgeEligibility();
+    await render();
+    await press('Log one drink');
+    const id = nativeQuickStore('guest').session()?.id;
+    await press('Sign in / Create account');
+    expect(runtime.router.push).toHaveBeenLastCalledWith({
+      pathname: '/quick-benefits',
+      params: { next: `/quick-log?scope=account&sessionId=${id}` },
+    });
+    runtime.params = { next: `/quick-log?scope=account&sessionId=${id}` };
+    await act(() => root?.update(<QuickBenefitsScreen />));
+    expect(content()).toContain('Photo memories');
+    await press('Keep logging as a guest');
+    expect(nativeQuickStore('guest').session()?.entries).toHaveLength(1);
+    await press('Sign in');
+    expect(runtime.remember).toHaveBeenCalledWith(runtime.params.next);
+    expect(runtime.router.replace).toHaveBeenLastCalledWith('/auth/sign-in');
+  });
+  it('automatically associates guest entries on sign-in through the native provider and preserves the current logger', async () => {
+    nativeQuickStore('guest').acknowledgeEligibility();
+    await act(() => {
+      root = create(
+        <QuickSyncProvider>
+          <QuickLogScreen />
+        </QuickSyncProvider>,
+      );
+    });
+    await press('Log one drink');
+    await press('Chaser');
+    const id = nativeQuickStore('guest').session()?.id;
+    runtime.account = { user: { id: 'bd100000-0000-4000-8000-000000000077' } };
+    await act(() => {
+      root?.update(
+        <QuickSyncProvider>
+          <QuickLogScreen />
+        </QuickSyncProvider>,
+      );
+    });
+    expect(content()).toContain('1 drink · 1 chaser');
+    expect(nativeQuickStore(`account:${runtime.account.user.id}`).session()?.id).toBe(id);
+    expect(runtime.saveSession).toHaveBeenCalledOnce();
+    await press('Undo last action');
+    expect(content()).toContain('1 drink · 0 chasers');
+  });
   it('keeps drink and chaser actions independent, with corrections, Undo and finish on both', async () => {
     nativeQuickStore('guest').acknowledgeEligibility();
     await render();

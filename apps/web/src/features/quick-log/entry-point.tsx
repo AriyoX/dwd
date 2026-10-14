@@ -4,15 +4,19 @@ import { useEffect, useState } from 'react';
 import { quickCountLabel, quickScope } from '@dwd/core';
 import { ArrowRight, Plus } from 'lucide-react';
 import { browserQuickStore } from './local';
-export function QuickLogEntry({ accountId }: { accountId?: string }) {
+export function QuickLogEntry({
+  accountId,
+  resumeOnly = false,
+}: {
+  accountId?: string;
+  resumeOnly?: boolean;
+}) {
   const [entry, setEntry] = useState({ resume: false, guest: false, counts: '' });
   useEffect(() => {
     function update() {
       const own = browserQuickStore(quickScope(accountId));
       const guest = browserQuickStore('guest');
-      own.reload();
-      guest.reload();
-      const current = own.session() ?? guest.session();
+      const current = own.session() ?? (guest.session()?.claimedBy ? undefined : guest.session());
       setEntry({
         resume: Boolean(current),
         guest: Boolean(current && current.scope === 'guest' && accountId),
@@ -21,8 +25,17 @@ export function QuickLogEntry({ accountId }: { accountId?: string }) {
     }
     queueMicrotask(update);
     window.addEventListener('focus', update);
-    return () => window.removeEventListener('focus', update);
+    const own = browserQuickStore(quickScope(accountId)),
+      guest = browserQuickStore('guest');
+    const offOwn = own.subscribe(update),
+      offGuest = guest.subscribe(update);
+    return () => {
+      window.removeEventListener('focus', update);
+      offOwn();
+      offGuest();
+    };
   }, [accountId]);
+  if (resumeOnly && !entry.resume) return null;
   return (
     <Link className="resume-card" href={entry.guest ? '/quick-log?scope=guest' : '/quick-log'}>
       <span className="card-icon" style={{ margin: 0 }}>

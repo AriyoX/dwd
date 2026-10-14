@@ -58,7 +58,7 @@ export default function HistoryScreen() {
       <Brand />
       <ScreenHeading title="Entries" />
       <PrimaryButton
-        label="Past quick sessions on this device"
+        label="Quick Log history"
         variant="secondary"
         onPress={() => router.push('/quick-history')}
       />

@@ -18,6 +18,7 @@ export function clearDeletedAccountData(
     `dwd.mobile.tour.v1:${owner}`,
     tourSeenKey(owner),
     `dwd-tour-seen:${owner}`,
+    `dwd.quick-log.v1:account:${owner}`,
   ]);
   const prefixes = [
     `dwd.mobile.cache.v1:${owner}:`,
