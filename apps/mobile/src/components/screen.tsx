@@ -25,6 +25,7 @@ export function Screen({
   refreshControl,
   insetTop = true,
   footer,
+  floatingFooter = false,
   scrollRef,
   sheetTitle,
   onScroll,
@@ -35,6 +36,7 @@ export function Screen({
   refreshControl?: ScrollViewProps['refreshControl'];
   insetTop?: boolean;
   footer?: ReactNode;
+  floatingFooter?: boolean;
   scrollRef?: Ref<ScrollView>;
   sheetTitle?: string;
   onScroll?: ScrollViewProps['onScroll'];
@@ -42,6 +44,7 @@ export function Screen({
 }) {
   const { colors } = useTheme();
   const [messages, setMessages] = useState<FloatingMessage[]>([]);
+  const [footerHeight, setFooterHeight] = useState(0);
   const show = useCallback((message: FloatingMessage) => {
     setMessages((current) =>
       [
@@ -54,7 +57,7 @@ export function Screen({
     <NoticeContext.Provider value={show}>
       <SafeAreaView
         edges={
-          footer
+          footer || floatingFooter
             ? insetTop
               ? ['top', 'bottom', 'left', 'right']
               : ['bottom', 'left', 'right']
@@ -88,6 +91,7 @@ export function Screen({
                 gap: 24,
               },
               contentStyle,
+              floatingFooter && footer ? { paddingBottom: footerHeight + 36 } : undefined,
             ]}
             refreshControl={refreshControl}
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
@@ -98,14 +102,27 @@ export function Screen({
           </ScrollView>
           {footer ? (
             <View
-              style={{
-                alignSelf: 'center',
-                width: '100%',
-                maxWidth: 600,
-                paddingHorizontal: 22,
-                paddingTop: 12,
-                paddingBottom: 8,
-              }}
+              pointerEvents="box-none"
+              onLayout={({ nativeEvent }) => setFooterHeight(nativeEvent.layout.height)}
+              style={[
+                {
+                  alignSelf: 'center',
+                  width: '100%',
+                  maxWidth: 600,
+                  paddingHorizontal: 22,
+                  paddingTop: 12,
+                  paddingBottom: 8,
+                },
+                floatingFooter
+                  ? {
+                      position: 'absolute',
+                      bottom: 12,
+                      paddingHorizontal: 16,
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                    }
+                  : undefined,
+              ]}
             >
               {footer}
             </View>

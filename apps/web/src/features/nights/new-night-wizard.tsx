@@ -1,4 +1,5 @@
 'use client';
+import { rememberQuickDestination } from '@/features/quick-log/local';
 
 import { ArrowLeft, ArrowRight, Check, Clock3, User, UserPlus, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -264,7 +265,7 @@ export function NewNightWizard({ userId }: { userId: string }) {
     inFlight.current = true;
     setPending(true);
     try {
-      const result = await startNightAction(parsed.data, inviteToken);
+      const result = await startNightAction(parsed.data, inviteToken, userId);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -280,13 +281,20 @@ export function NewNightWizard({ userId }: { userId: string }) {
       } catch {
         /* Invitations remain available from the night if browser storage is disabled. */
       }
+      const quickOffer = await rememberQuickDestination(userId, result.data.nightId, 'create');
       try {
         localStorage.removeItem(nightDraftKey(userId));
       } catch {
         /* Creation key still prevents duplicates. */
       }
       setHasDraft(false);
-      router.push(`/night/${result.data.nightId}${withPeople ? '?invite=1' : ''}`);
+      if (quickOffer) {
+        router.replace(
+          `/quick-log/add?scope=${quickOffer.scope === 'guest' ? 'guest' : 'account'}&sessionId=${quickOffer.sessionId}&nightId=${result.data.nightId}`,
+        );
+        return;
+      }
+      router.replace(`/night/${result.data.nightId}${withPeople ? '?invite=1' : ''}`);
     } catch {
       setError('Couldn’t start the night. Check your connection and try again.');
     } finally {

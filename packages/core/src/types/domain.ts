@@ -1,4 +1,5 @@
 import type { CalendarRegion, CountryCode } from '../config/countries';
+import type { NightQuickLog } from '../quick-log/quick-log';
 
 export type DrinkCategory = 'beer' | 'wine' | 'spirit' | 'cocktail' | 'other';
 export type NightStatus = 'active' | 'ended';
@@ -123,6 +124,7 @@ export interface NightAlert {
 }
 
 export interface MemberSnapshot extends NightMember {
+  quickLogs?: NightQuickLog[];
   planItems: PlanItem[];
   drinkLogs: AlcoholLog[];
   waterLogs: WaterLog[];
@@ -140,6 +142,9 @@ export interface NightSnapshot {
 }
 
 export interface FinishedNight {
+  quickDrinkCount?: number;
+  quickShotCount?: number;
+  quickChaserCount?: number;
   id: string;
   title: string;
   startsAt: string;

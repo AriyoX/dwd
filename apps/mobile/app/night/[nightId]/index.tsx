@@ -11,6 +11,8 @@ import {
   canUserLeaveNight,
   bottlePlanProgress,
   calculateEthanolGrams,
+  hasUnknownAmounts,
+  quickCounts,
 } from '@dwd/core';
 import { endNight, extendNight, leaveNight, softDeleteActivity, visibleAlerts } from '@dwd/data';
 import { Choice } from '@/components/choice';
@@ -35,6 +37,7 @@ import { useConnectivity } from '@/providers/connectivity-provider';
 import { pendingForSnapshot } from '@/lib/offline-logging';
 import { ensureNightInvite } from '@/lib/automatic-invite';
 import { actorClient } from '@/lib/actor-client';
+import { QuickNightActivity } from '@/components/quick-night-activity';
 
 export default function NightScreen() {
   const { nightId, memberId } = useLocalSearchParams<{ nightId: string; memberId?: string }>();
@@ -347,23 +350,33 @@ export default function NightScreen() {
                 </View>
               ) : null}
               <Panel style={{ padding: 16, gap: 12 }}>
+                <QuickNightActivity member={member} refresh={refresh} />
                 <NightMetrics
                   compact
+
                   drinks={
-                    drinks.length + pending.filter((record) => record.kind === 'alcohol').length
+                    drinks.length +
+                    quickCounts(member.quickLogs ?? []).drink +
+                    pending.filter((record) => record.kind === 'alcohol').length
                   }
-                  water={water.length + pending.filter((record) => record.kind === 'water').length}
+                  water={
+                    water.length +
+                    quickCounts(member.quickLogs ?? []).chaser +
+                    pending.filter((record) => record.kind === 'water').length
+                  }
                 />
                 <Text style={typography.body}>
-                  {member.planSetupCompletedAt === null
-                    ? 'Choose a plan to start'
-                    : planned === 0
-                      ? 'Chaser-only plan'
-                      : planStatus === 'within_plan'
-                        ? 'Within your plan'
-                        : planStatus === 'reached'
-                          ? 'Plan reached'
-                          : 'Beyond your plan'}
+                  {hasUnknownAmounts(member.quickLogs)
+                    ? 'Some drink sizes are unknown. Plan progress cannot be shown.'
+                    : member.planSetupCompletedAt === null
+                      ? 'Choose a plan to start'
+                      : planned === 0
+                        ? 'Chaser-only plan'
+                        : planStatus === 'within_plan'
+                          ? 'Within your plan'
+                          : planStatus === 'reached'
+                            ? 'Plan reached'
+                            : 'Beyond your plan'}
                 </Text>
                 {member.planSetupCompletedAt === null &&
                 nightAccess(snapshot, member.id).canEdit ? (

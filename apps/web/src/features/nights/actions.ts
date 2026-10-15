@@ -39,6 +39,7 @@ async function authenticatedClient() {
 export async function startNightAction(
   input: StartNightInput,
   inviteToken?: string,
+  expectedAccountId?: string,
 ): Promise<
   NightActionResult<{ nightId: string; inviteUrl: string | null; inviteError: string | null }>
 > {
@@ -52,7 +53,15 @@ export async function startNightAction(
   }
   try {
     const client = await authenticatedClient();
-    const created = await startNightOut(client, parsed.data);
+    if (expectedAccountId) {
+      const { data, error } = await client.auth.getClaims();
+      if (error || data?.claims.sub !== expectedAccountId)
+        return {
+          ok: false,
+          error: 'Your account changed. Open this setup with the account that started it.',
+        };
+    }
+    const created = await startNightOut(client, parsed.data, true);
     if (!parsed.data.withPeople) {
       return { ok: true, data: { nightId: created.nightId, inviteUrl: null, inviteError: null } };
     }

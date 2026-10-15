@@ -1,5 +1,5 @@
 export const LEGAL_CONTACT = { name: 'Ariyo Ahumuza', email: 'ahumuzaariyo@gmail.com' };
-export const LEGAL_UPDATED = '6 October 2026';
+export const LEGAL_UPDATED = '14 October 2026';
 export interface LegalDocument {
   title: string;
   introduction: string;
@@ -45,6 +45,7 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       title: 'Device storage and security',
       paragraphs: [
+        'Guest Quick Log sessions and count-only entries stay on the device until you sign in. Signing in associates those sessions with your account and saves them to Supabase when connected, so they can appear in your account history across devices. Logs remain locally recoverable while saving is pending. Quick Log does not record drink sizes or alcohol strength. Only you can read standalone account sessions; choosing to add entries to a shared night makes those entries visible under that night’s access rules.',
         'Web authentication uses cookies. Mobile authentication tokens are stored in the platform’s encrypted secure storage. Pending entries, unfinished setups, support drafts, cached account/night data and theme/tour preferences may be stored locally so you can continue offline. Those local records are not all encrypted by DWD; use a trusted device and its screen lock.',
         'Signing out normally keeps account-separated pending entries for later recovery. Confirmed account deletion clears that account’s saved app data on the requesting mobile device. Browser records and copies on other devices must be cleared on each device. Clear website data or uninstall the app when retiring a device. Server access uses authenticated access rules and HTTPS. No service can guarantee absolute security.',
       ],

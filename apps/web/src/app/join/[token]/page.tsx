@@ -9,6 +9,7 @@ import { JoinInvitation } from '@/features/invites/join-invitation';
 import { previewInvite } from '@/features/invites/actions';
 import { allowInviteLookup } from '@/features/invites/rate-limit.server';
 import { getAuthenticatedUserId } from '@/lib/supabase/server';
+import { QuickReturnLink } from '@/features/quick-log/return-link';
 
 export const metadata: Metadata = { title: 'Join a night' };
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,14 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
             <a className="button button-primary" href={next}>
               Retry invitation
             </a>
+            {preview.reason === 'full' && userId === null ? (
+              <Link
+                className="button button-secondary"
+                href={`/login?next=${encodeURIComponent(next)}`}
+              >
+                Already joined? Sign in to open your night
+              </Link>
+            ) : null}
             <Link className="button button-secondary" href="/home">
               Go to home
             </Link>
@@ -85,7 +94,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
                 </Link>
               </div>
             ) : (
-              <JoinInvitation token={token} />
+              <JoinInvitation token={token} nightTitle={preview.nightTitle} accountId={userId} />
             )}
             <a className="button button-secondary" href={`dwd://join/${encodeURIComponent(token)}`}>
               Open in DWD app
@@ -93,6 +102,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
           </Card>
         )}
       </div>
+      <QuickReturnLink accountId={userId} />
     </main>
   );
 }

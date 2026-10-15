@@ -4,6 +4,7 @@ import { lightTheme } from '@dwd/core';
 import './globals.css';
 import { themeCss } from '@/lib/theme';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
+import { AccountQuickSync } from '@/features/quick-log/account-sync';
 
 export const metadata: Metadata = {
   title: { default: 'DWD', template: '%s · DWD' },
@@ -37,7 +38,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <style>{themeCss}</style>
         <script
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         {children}
+        <AccountQuickSync />
         <ThemeToggle />
       </body>
     </html>

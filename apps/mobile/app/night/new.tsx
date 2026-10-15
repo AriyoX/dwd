@@ -35,6 +35,7 @@ import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useConnectivity } from '@/providers/connectivity-provider';
 import { ensureNightInvite } from '@/lib/automatic-invite';
+import { nativeQuickOffer, nativeQuickStore } from '@/lib/quick-log';
 
 export default function NewNightScreen() {
   const { session } = useSupabase();
@@ -156,11 +157,6 @@ function Setup({ owner }: { owner: string }) {
       const result = await withRequestTimeout((signal) =>
         startNightOut(actorClient(client, session.access_token, signal), command, true),
       );
-      try {
-        completeNightSetup(globalThis.localStorage, next, result.nightId);
-      } catch {
-        /* Replaying the key returns the same night. */
-      }
       if (command.withPeople && result.snapshot.night.status === 'active') {
         // The night already exists if invitation delivery fails. Its saved
         // operation resumes automatically when Invite opens again.
@@ -173,6 +169,31 @@ function Setup({ owner }: { owner: string }) {
       }
       if (currentOwner.current !== owner || !mounted.current) return;
       attempt.current = null;
+      const offer = nativeQuickOffer(owner, 'create', result.nightId);
+      if (offer) {
+        const store = nativeQuickStore(offer.scope);
+        const intent = store.getSnapshot().record.intent;
+        if (intent && intent.accountId === owner) {
+          store.setIntent({ ...intent, nightId: result.nightId, destination: 'choose' });
+          if (!store.getSnapshot().saved)
+            throw new Error('Couldn’t save the destination. Retry this setup.');
+          completeNightSetup(globalThis.localStorage, next, result.nightId);
+          router.replace({
+            pathname: '/quick-transfer',
+            params: {
+              scope: offer.scope === 'guest' ? 'guest' : 'account',
+              sessionId: offer.sessionId,
+              nightId: result.nightId,
+            },
+          });
+          return;
+        }
+      }
+      try {
+        completeNightSetup(globalThis.localStorage, next, result.nightId);
+      } catch {
+        /* The creation key remains retry-safe. */
+      }
       router.replace(
         `/night/${result.nightId}${result.snapshot.night.status === 'ended' ? '/summary' : command.withPeople ? '/invite' : ''}`,
       );
@@ -457,7 +478,12 @@ function Setup({ owner }: { owner: string }) {
         <>
           <Panel>
             <Text style={typography.sectionTitle}>{draft.title}</Text>
-            <Text style={typography.body}>{formatNightDateTime(end, zone)}</Text>
+            <View
+              style={{ backgroundColor: colors.surfaceSoft, borderRadius: 16, padding: 14, gap: 4 }}
+            >
+              <Text style={typography.sectionTitle}>Planned finish</Text>
+              <Text style={typography.body}>{formatNightDateTime(end, zone)}</Text>
+            </View>
             <Text style={typography.body}>
               {draft.withPeople
                 ? draft.guests.length
@@ -496,10 +522,32 @@ function Setup({ owner }: { owner: string }) {
                 <Text style={typography.body}>Chaser only</Text>
               ) : (
                 person.items.map((item, i) => (
-                  <Text key={i} style={typography.body}>
-                    {item.plannedQuantity} × {item.label} · {item.volumeMl} ml · {item.abvPercent}%
-                    ABV{item.isQuickLog ? ' · main drink' : ''}
-                  </Text>
+                  <View
+                    key={i}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 14,
+                      padding: 14,
+                      borderRadius: 16,
+                      backgroundColor: colors.surfaceSoft,
+                    }}
+                  >
+                    <Text style={{ ...typography.heading, color: colors.primary }}>
+                      {item.plannedQuantity}
+                    </Text>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={typography.sectionTitle}>{item.label}</Text>
+                      <Text style={typography.body}>
+                        {item.volumeMl} ml · {item.abvPercent}%
+                      </Text>
+                      {item.isQuickLog ? (
+                        <Text style={{ ...typography.sectionTitle, color: colors.primary }}>
+                          Main drink
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
                 ))
               )}
             </Panel>

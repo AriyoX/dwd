@@ -11,3 +11,4 @@ export * from './photos/photos';
 export * from './plans/plans';
 export * from './realtime/reconcile';
 export * from './shared/rpc';
+export * from './quick-log/quick-log';

@@ -45,13 +45,21 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     version: number;
   } | null>(null);
   const [profileVersion, setProfileVersion] = useState(0);
-  const [recoveryUser, setRecoveryUser] = useState<string | null>(() =>
-    globalThis.localStorage.getItem(RECOVERY_KEY),
-  );
+  const [recoveryUser, setRecoveryUser] = useState<string | null>(() => {
+    try {
+      return globalThis.localStorage.getItem(RECOVERY_KEY);
+    } catch {
+      return null;
+    }
+  });
   const refreshProfile = useCallback(() => setProfileVersion((value) => value + 1), []);
   const markRecovery = useCallback((userId: string | null) => {
-    if (userId) globalThis.localStorage.setItem(RECOVERY_KEY, userId);
-    else globalThis.localStorage.removeItem(RECOVERY_KEY);
+    try {
+      if (userId) globalThis.localStorage.setItem(RECOVERY_KEY, userId);
+      else globalThis.localStorage.removeItem(RECOVERY_KEY);
+    } catch {
+      /* Keep account restoration from blocking device-only logging. */
+    }
     setRecoveryUser(userId);
   }, []);
   const owner = session?.user.id;

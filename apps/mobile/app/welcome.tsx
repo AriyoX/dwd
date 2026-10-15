@@ -14,6 +14,11 @@ export default function WelcomeScreen() {
   return (
     <Screen contentStyle={{ gap: 32, paddingBottom: 24 }}>
       <AuthHeader />
+      <PrimaryButton
+        label="Start logging as a guest"
+        large
+        onPress={() => router.push('/quick-log')}
+      />
       {access !== 'signed-out' ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <ActivityIndicator color={colors.primary} accessibilityLabel="Restoring your account" />

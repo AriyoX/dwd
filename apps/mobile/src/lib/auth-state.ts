@@ -7,10 +7,23 @@ export const RESEND_COOLDOWN = 60_000;
 
 export function safeDestination(value: unknown): string {
   if (typeof value !== 'string') return '/';
+  if (/^\/quick-(log|history|transfer)(\?|$)/.test(value)) {
+    const destination = new URL(value, 'dwd:///');
+    if (
+      [...destination.searchParams].every(([key, item]) =>
+        key === 'scope'
+          ? ['guest', 'account'].includes(item)
+          : ['sessionId', 'nightId'].includes(key) &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item),
+      )
+    )
+      return `${destination.pathname}${destination.search}`;
+  }
   if (
     [
       '/',
       '/night/new',
+      '/start-tonight',
       '/account',
       '/history',
       '/join',

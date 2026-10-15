@@ -4,6 +4,37 @@
   min-width: 0;
   margin-top: 32px;
 }
+.compact {
+  margin-top: 0;
+  gap: 0;
+}
+.hiddenHeading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.compact .banner {
+  flex-basis: 100%;
+  min-height: 108px;
+  padding: 14px 56px 14px 18px;
+  gap: 5px;
+  background: color-mix(in srgb, var(--banner-background) 78%, transparent);
+}
+.compact .artwork {
+  opacity: 0.75;
+}
+.compact .banner:last-child:not(:only-child) {
+  margin-right: 0;
+}
+.compact .title {
+  font-size: 1rem;
+  white-space: normal;
+}
+.compact .pagination button {
+  min-height: 44px;
+}
 
 .heading {
   display: flex;

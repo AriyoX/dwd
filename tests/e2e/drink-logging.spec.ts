@@ -16,7 +16,11 @@ test('main drink, simple alternate logging, notices and offline plan checks', as
   await page.getByRole('checkbox', { name: /I am 18 or older/ }).check();
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await page.getByRole('button', { name: 'Skip tour', exact: true }).click();
-  await page.getByRole('link', { name: /Start a night/ }).click();
+  await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: /^Plan a Night/ })
+    .click();
   await page.getByLabel('Night name').fill('Drink UX test');
   await page.locator('.wizard-timezone > summary').click();
   await page.getByLabel('Night time zone').fill('UTC');

@@ -5,7 +5,13 @@ import type { Database } from '@dwd/core';
 const protectedPrefixes = ['/home', '/night', '/history', '/account', '/feedback'];
 
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
-  if (request.nextUrl.pathname === '/demo') return NextResponse.next({ request });
+  if (
+    request.nextUrl.pathname === '/manifest.webmanifest' ||
+    request.nextUrl.pathname === '/demo' ||
+    request.nextUrl.pathname === '/quick-log' ||
+    request.nextUrl.pathname.startsWith('/quick-log/')
+  )
+    return NextResponse.next({ request });
   const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
   const key = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
 
@@ -28,7 +34,25 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     },
   });
 
-  const { data } = await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getClaims();
+  if (
+    error &&
+    ['refresh_token_not_found', 'refresh_token_already_used'].includes(error.code ?? '')
+  ) {
+    // Remove only this project's stale auth cookies, including chunked cookies.
+    // Keep unrelated preferences and all locally saved logs.
+    const authKey = `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
+    for (const { name } of request.cookies.getAll()) {
+      if (name === authKey || name.startsWith(`${authKey}.`)) {
+        request.cookies.delete(name);
+        response.cookies.set(name, '', { path: '/', maxAge: 0 });
+      }
+    }
+    const cleared = NextResponse.next({ request });
+    for (const cookie of response.cookies.getAll()) cleared.cookies.set(cookie);
+    cleared.headers.set('Cache-Control', 'private, no-store');
+    response = cleared;
+  }
   const redirectWithSession = (destination: URL) => {
     const redirected = NextResponse.redirect(destination);
     for (const cookie of response.cookies.getAll()) redirected.cookies.set(cookie);

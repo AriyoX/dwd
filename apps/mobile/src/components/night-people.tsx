@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 import type { NightSnapshot } from '@dwd/core';
+import { hasQuickLogs, quickCountLabel, quickCounts } from '@dwd/core';
 import { removeManagedGuest } from '@dwd/data';
 import { useNightAction } from '@/hooks/use-night-action';
 import { confirmAction } from '@/lib/confirm';
@@ -80,10 +81,27 @@ export function NightPeople({
                   </Text>
                 </View>
               </View>
-              <Text style={typography.body}>
-                {member.drinkLogs.filter((l) => !l.deletedAt).length} drinks ·{' '}
-                {member.waterLogs.filter((l) => !l.deletedAt).length} chasers
+              <Text
+                style={{
+                  ...typography.body,
+                  color: colors.text,
+                  padding: 12,
+                  borderRadius: 14,
+                  backgroundColor: colors.surfaceSoft,
+                }}
+              >
+                {member.drinkLogs.filter((l) => !l.deletedAt).length +
+                  quickCounts(member.quickLogs ?? []).drink}{' '}
+                drinks ·{' '}
+                {member.waterLogs.filter((l) => !l.deletedAt).length +
+                  quickCounts(member.quickLogs ?? []).chaser}{' '}
+                chasers
               </Text>
+              {hasQuickLogs(member.quickLogs) ? (
+                <Text style={typography.body}>
+                  Earlier · {quickCountLabel(member.quickLogs ?? [])}
+                </Text>
+              ) : null}
               <Text style={typography.body}>
                 {member.planSetupCompletedAt === null
                   ? 'No plan yet'

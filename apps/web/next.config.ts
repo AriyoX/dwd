@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { networkInterfaces } from 'node:os';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const rawBackend: unknown = process.env['NEXT_PUBLIC_SUPABASE_URL'];
@@ -32,6 +33,12 @@ const contentSecurityPolicy = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  // Allow this computer's LAN addresses for phone testing without opening all origins.
+  allowedDevOrigins: isDevelopment
+    ? Object.values(networkInterfaces()).flatMap((addresses) =>
+        (addresses ?? []).filter((address) => !address.internal).map((address) => address.address),
+      )
+    : [],
   ...(process.env.DWD_E2E === '1' ? { distDir: '.next-e2e' } : {}),
   reactStrictMode: true,
   transpilePackages: ['@dwd/core', '@dwd/contracts', '@dwd/data'],

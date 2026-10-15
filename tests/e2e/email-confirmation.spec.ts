@@ -58,7 +58,7 @@ test('a Supabase confirmation link signs in directly, including in a fresh brows
     // A protected route proves the new session reached the server cookies.
     await page.goto('/home');
     await expect(page).toHaveURL(/\/home$/);
-    await expect(page.getByRole('link', { name: /Start a night/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start Tonight', exact: true })).toBeVisible();
   } finally {
     await removeLocalUser(admin, data.user.id);
   }

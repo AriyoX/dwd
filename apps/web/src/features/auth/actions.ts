@@ -1,6 +1,6 @@
 'use server';
 
-import { redirect } from 'next/navigation';
+import { redirect, RedirectType } from 'next/navigation';
 import { z } from 'zod';
 import { loginSchema, signupSchema } from '@dwd/core';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -62,7 +62,7 @@ export async function loginAction(
   } catch {
     return { error: 'Couldn’t connect. Please try again.' };
   }
-  redirect(destination);
+  redirect(destination, RedirectType.replace);
 }
 
 export async function signupAction(

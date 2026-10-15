@@ -27,7 +27,7 @@ const palette = {
   amber: { background: '#493522', accent: '#F2CC94', text: '#FFF8ED' },
 };
 
-export function TonightBanners() {
+export function TonightBanners({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const { colors } = useTheme();
   const { fontScale } = useWindowDimensions();
@@ -41,7 +41,9 @@ export function TonightBanners() {
   const scroll = useRef<ScrollView>(null);
   const cardWidth = Math.max(1, width - 28);
   // Every card reserves the same space, including when accessibility text grows.
-  const cardHeight = Math.ceil(CARD_HEIGHT + TEXT_HEIGHT * (Math.max(1, fontScale) - 1));
+  const cardHeight = Math.ceil(
+    (compact ? 120 : CARD_HEIGHT) + (compact ? 74 : TEXT_HEIGHT) * (Math.max(1, fontScale) - 1),
+  );
   const interval = cardWidth + GAP;
 
   useEffect(() => {
@@ -100,7 +102,7 @@ export function TonightBanners() {
   if (!ads.length) return null;
   return (
     <View
-      style={{ gap: 10 }}
+      style={{ gap: compact ? 0 : 10 }}
       onTouchStart={() => setTouching(true)}
       onTouchEnd={() => setTouching(false)}
       onTouchCancel={() => setTouching(false)}
@@ -111,14 +113,18 @@ export function TonightBanners() {
         scroll.current?.scrollTo({ x: 0, animated: false });
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text
-          accessibilityRole="header"
-          style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}
+      {!compact ? (
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
         >
-          Featured
-        </Text>
-      </View>
+          <Text
+            accessibilityRole="header"
+            style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}
+          >
+            Featured
+          </Text>
+        </View>
+      ) : null}
       {width > 0 ? (
         <ScrollView
           ref={scroll}
@@ -155,6 +161,7 @@ export function TonightBanners() {
               ad={ad}
               width={cardWidth}
               height={cardHeight}
+              compact={compact}
               position={`${index + 1} of ${ads.length}`}
               onPress={() => {
                 setIssue(null);
@@ -181,8 +188,8 @@ export function TonightBanners() {
                 setActive(index);
               }}
               style={{
-                minWidth: 40,
-                minHeight: 40,
+                minWidth: 44,
+                minHeight: 44,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -210,12 +217,14 @@ function BannerCard({
   height,
   position,
   onPress,
+  compact,
 }: {
   ad: BannerAd;
   width: number;
   height: number;
   position: string;
   onPress: () => void;
+  compact: boolean;
 }) {
   const tone = palette[ad.tone];
   const [imageFailed, setImageFailed] = useState(false);
@@ -227,11 +236,12 @@ function BannerCard({
       containerStyle={{ width, height }}
       style={{
         height,
-        padding: 18,
+        padding: compact ? 12 : 18,
+        paddingRight: compact ? 52 : 18,
         borderRadius: 20,
-        backgroundColor: tone.background,
+        backgroundColor: compact ? `${tone.background}C7` : tone.background,
         overflow: 'hidden',
-        gap: 12,
+        gap: compact ? 4 : 12,
       }}
     >
       {hasImage ? (
@@ -242,7 +252,14 @@ function BannerCard({
             resizeMode="cover"
             accessible={false}
             onError={() => setImageFailed(true)}
-            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              opacity: compact ? 0.75 : 1,
+            }}
           />
           <View
             pointerEvents="none"
@@ -288,12 +305,12 @@ function BannerCard({
         {ad.sponsored ? `Sponsored · ${ad.advertiser}` : ad.advertiser}
       </Text>
       <Text
-        numberOfLines={3}
+        numberOfLines={compact ? 2 : 3}
         ellipsizeMode="tail"
         style={{
           color: tone.text,
-          fontSize: 22,
-          lineHeight: 27,
+          fontSize: compact ? 16 : 22,
+          lineHeight: compact ? 20 : 27,
           letterSpacing: -0.5,
           fontWeight: '700',
           maxWidth: '90%',

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Text } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import type { InvitationPreview } from '@dwd/core';
 import { getInvitePreview, redeemNightInvite } from '@dwd/data';
 import { PrimaryButton } from '@/components/primary-button';
@@ -10,6 +10,8 @@ import { hashInvite, parseInvite } from '@/lib/invites';
 import { authHandoff } from '@/lib/auth-state';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { QuickInviteOffer } from '@/components/quick-invite-offer';
+import { nativeQuickOffer } from '@/lib/quick-log';
 
 export default function JoinScreen() {
   const { token: linkedToken } = useLocalSearchParams<{ token?: string }>();
@@ -24,7 +26,10 @@ export default function JoinScreen() {
 
 function JoinForm({ linkedToken }: { linkedToken: string | undefined }) {
   const router = useRouter();
-  const { client, status } = useSupabase();
+  const { client, status, session } = useSupabase();
+  const [joined, setJoined] = useState<{ nightId: string; next: string; title: string } | null>(
+    null,
+  );
   const { typography } = useTheme();
   const [input, setInput] = useState(() =>
     linkedToken && parseInvite(linkedToken) ? linkedToken : '',
@@ -82,6 +87,15 @@ function JoinForm({ linkedToken }: { linkedToken: string | undefined }) {
       const result = await redeemNightInvite(client, tokenHash.current);
       if (!mounted.current || version.current !== request) return;
       authHandoff().clear();
+      const next = result.needsPlan ? `/night/${result.nightId}/plan` : `/night/${result.nightId}`;
+      if (session && nativeQuickOffer(session.user.id)) {
+        setJoined({
+          nightId: result.nightId,
+          next,
+          title: preview?.valid ? preview.nightTitle : 'this night',
+        });
+        return;
+      }
       router.replace(
         result.needsPlan ? `/night/${result.nightId}/plan` : `/night/${result.nightId}`,
       );
@@ -95,61 +109,83 @@ function JoinForm({ linkedToken }: { linkedToken: string | undefined }) {
   }
   return (
     <Screen insetTop={false} sheetTitle="Join a night">
-      <Panel>
-        <TextField
-          label="Invite link or code"
-          value={input}
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={500}
-          onChangeText={(value) => {
-            version.current++;
-            tokenHash.current = null;
-            setInput(value);
-            setPreview(null);
-            setIssue(null);
-          }}
+      {joined && session ? (
+        <QuickInviteOffer
+          accountId={session.user.id}
+          nightId={joined.nightId}
+          nightTitle={joined.title}
+          onNotNow={() => router.replace(joined.next as Href)}
         />
-      </Panel>
-      {status !== 'signed-in' ? (
-        <Panel>
-          <Notice message="Sign in to join a night." />
+      ) : (
+        <>
+          <Panel>
+            <TextField
+              label="Invite link or code"
+              value={input}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={500}
+              onChangeText={(value) => {
+                version.current++;
+                tokenHash.current = null;
+                setInput(value);
+                setPreview(null);
+                setIssue(null);
+              }}
+            />
+          </Panel>
+          {status !== 'signed-in' ? (
+            <Panel>
+              <Notice message="Sign in to join a night." />
+              <PrimaryButton
+                label="Sign in"
+                onPress={() => {
+                  const token = parseInvite(input);
+                  if (token) authHandoff().remember(`/join?token=${token}`);
+                  router.push('/auth/sign-in');
+                }}
+              />
+            </Panel>
+          ) : (
+            <Panel>
+              {preview?.valid ? (
+                <>
+                  <Text accessibilityRole="header" style={typography.sectionTitle}>
+                    {preview.nightTitle}
+                  </Text>
+                  <Text style={typography.body}>
+                    Hosted by {preview.hostDisplayName} · Until{' '}
+                    {new Date(preview.endsAt).toLocaleTimeString([], {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      timeZone: preview.timezone,
+                    })}
+                  </Text>
+                  <PrimaryButton label="Join night" busy={busy} onPress={() => void join()} />
+                </>
+              ) : (
+                <PrimaryButton
+                  label={issue ? 'Try again' : 'Open invitation'}
+                  busy={busy}
+                  disabled={!input.trim()}
+                  onPress={() => void review()}
+                />
+              )}
+              {issue ? <Notice error message={issue} /> : null}
+            </Panel>
+          )}
           <PrimaryButton
-            label="Sign in"
+            label="Back to Quick Log"
+            variant="quiet"
             onPress={() => {
-              const token = parseInvite(input);
-              if (token) authHandoff().remember(`/join?token=${token}`);
-              router.push('/auth/sign-in');
+              const offer = session ? nativeQuickOffer(session.user.id) : null;
+              router.push({
+                pathname: '/quick-log',
+                params: { scope: offer?.scope === 'guest' || !session ? 'guest' : 'account' },
+              });
             }}
           />
-        </Panel>
-      ) : (
-        <Panel>
-          {preview?.valid ? (
-            <>
-              <Text accessibilityRole="header" style={typography.sectionTitle}>
-                {preview.nightTitle}
-              </Text>
-              <Text style={typography.body}>
-                Hosted by {preview.hostDisplayName} · Until{' '}
-                {new Date(preview.endsAt).toLocaleTimeString([], {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  timeZone: preview.timezone,
-                })}
-              </Text>
-              <PrimaryButton label="Join night" busy={busy} onPress={() => void join()} />
-            </>
-          ) : (
-            <PrimaryButton
-              label={issue ? 'Try again' : 'Open invitation'}
-              busy={busy}
-              disabled={!input.trim()}
-              onPress={() => void review()}
-            />
-          )}
-          {issue ? <Notice error message={issue} /> : null}
-        </Panel>
+        </>
       )}
     </Screen>
   );

@@ -30,6 +30,7 @@ vi.mock('@/features/auth/pending-confirmation', () => ({
 }));
 vi.mock('@/lib/supabase/env', () => ({ getSiteUrl: () => 'https://dwd.example' }));
 vi.mock('next/navigation', () => ({
+  RedirectType: { replace: 'replace' },
   redirect: (url: string) => {
     throw new Error(`redirect:${url}`);
   },

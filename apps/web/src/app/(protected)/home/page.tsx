@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Moon, Plus, Users } from 'lucide-react';
+import { ArrowRight, Moon, Users } from 'lucide-react';
 import { getActiveNights } from '@dwd/data';
 import { Card } from '@/components/ui/card';
 import { Wordmark } from '@/components/layout/wordmark';
@@ -8,6 +8,8 @@ import { AccountMenu } from '@/components/layout/account-menu';
 import { JoinCodeForm } from '@/features/nights/join-code-form';
 import { TonightBanners } from '@/features/ads/tonight-banners';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { QuickLogEntry } from '@/features/quick-log/entry-point';
+import { StartTonight } from '@/features/nights/start-tonight';
 
 export default async function HomePage() {
   const client = await createServerSupabaseClient();
@@ -36,6 +38,7 @@ export default async function HomePage() {
         </span>
       </header>
       <div className="stack-lg">
+        <QuickLogEntry resumeOnly {...(userId ? { accountId: userId } : {})} />
         <Link data-tour="history" className="text-link" href="/history">
           Night history
         </Link>
@@ -66,10 +69,7 @@ export default async function HomePage() {
           <Card className="start-card">
             <h2>A night of your own.</h2>
             <NightIllustration compact />
-            <Link data-tour="start" className="button button-primary" href="/night/new">
-              <Plus aria-hidden="true" size={19} /> Start a night{' '}
-              <ArrowRight aria-hidden="true" size={18} />
-            </Link>
+            <StartTonight />
           </Card>
           <Card className="join-card" id="join-night">
             <header>

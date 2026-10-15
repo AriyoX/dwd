@@ -31,6 +31,9 @@ vi.mock('@/components/brand', () => ({ Brand: 'Brand' }));
 vi.mock('@/components/night-artwork', () => ({ NightArtwork: 'NightArtwork' }));
 vi.mock('@/components/tonight-banners', () => ({ TonightBanners: 'TonightBanners' }));
 vi.mock('@/components/night-activity', () => ({ NightActivity: 'NightActivity' }));
+vi.mock('@/hooks/use-quick-log', () => ({
+  useQuickLog: () => ({ state: { record: { activeSessionId: null, sessions: [] } } }),
+}));
 vi.mock('@/components/appearance-picker', () => ({ AppearancePicker: 'AppearancePicker' }));
 vi.mock('@/components/disclosure', () => ({ Disclosure: 'Disclosure' }));
 vi.mock('@/components/settings-section', () => ({ SettingsSection: 'SettingsSection' }));
@@ -88,9 +91,7 @@ describe('tour targets on real screens', () => {
     await mount(TonightScreen, nights);
     expect(targetIds()).toEqual(['start', 'join']);
     expect(
-      root?.root
-        .findByProps({ id: 'start' })
-        .findAllByProps({ label: nights.length ? 'Start another night' : 'Start a night' }),
+      root?.root.findByProps({ id: 'start' }).findAllByProps({ label: 'Start Tonight' }),
     ).toHaveLength(1);
     expect(
       root?.root.findByProps({ id: 'join' }).findAllByProps({ label: 'Join with an invite' }),

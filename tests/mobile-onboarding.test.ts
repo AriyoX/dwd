@@ -124,7 +124,18 @@ describe('native product access', () => {
         continue;
       if (
         route.startsWith('auth/') ||
-        ['welcome', 'onboarding', 'legal', 'delete-account'].includes(route)
+        [
+          'welcome',
+          'onboarding',
+          'legal',
+          'local-help',
+          'delete-account',
+          'join',
+          'quick-log',
+          'quick-history',
+          'quick-transfer',
+          'quick-benefits',
+        ].includes(route)
       )
         continue;
       expect(protectedScreens.has(route.startsWith('(tabs)/') ? '(tabs)' : route), route).toBe(

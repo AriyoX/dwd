@@ -11,9 +11,16 @@ import { LoadingPanel, Notice, Panel, RetryPanel, ScreenHeading } from '@/compon
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
+import { useQuickLog } from '@/hooks/use-quick-log';
+import { quickCountLabel, quickLinkedNight } from '@dwd/core';
 
 export default function TonightScreen() {
   const router = useRouter();
+  const quick = useQuickLog();
+  const guestQuick = useQuickLog(true);
+  const currentQuick =
+    quick.state.record.sessions.find((s) => s.id === quick.state.record.activeSessionId) ??
+    guestQuick.state.record.sessions.find((s) => s.id === guestQuick.state.record.activeSessionId);
   const { status } = useSupabase();
   const { colors, typography } = useTheme();
   const {
@@ -51,6 +58,50 @@ export default function TonightScreen() {
         </Text>
       </View>
       <ScreenHeading title="Tonight" />
+      {currentQuick ? (
+        <Action
+          label="Resume Quick Log"
+          onPress={() =>
+            router.push(currentQuick.scope === 'guest' ? '/quick-log?scope=guest' : '/quick-log')
+          }
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+            padding: 18,
+            borderRadius: 30,
+            borderWidth: 1,
+            borderColor: colors.primary,
+            backgroundColor: colors.primarySoft,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+          }}
+        >
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: colors.primarySoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="add" size={24} color={colors.primary} accessible={false} />
+          </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={typography.sectionTitle}>Resume Quick Log</Text>
+            {
+              <Text style={{ ...typography.body, color: colors.muted, fontSize: 13 }}>
+                {quickLinkedNight(currentQuick)
+                  ? 'Linked to your night'
+                  : quickCountLabel(currentQuick.entries)}
+                {currentQuick.scope === 'guest' && status === 'signed-in' ? ' · Guest session' : ''}
+              </Text>
+            }
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.primary} accessible={false} />
+        </Action>
+      ) : null}
       {status === 'signed-in' ? (
         <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>
@@ -142,10 +193,10 @@ export default function TonightScreen() {
           {nights?.length ? (
             <TourTarget id="start">
               <PrimaryButton
-                label="Start another night"
+                label="Start Tonight"
                 icon="add"
                 variant="secondary"
-                onPress={() => router.push('/night/new')}
+                onPress={() => router.push('/start-tonight')}
               />
             </TourTarget>
           ) : (
@@ -167,9 +218,9 @@ export default function TonightScreen() {
               <NightArtwork compact={Boolean(nights?.length)} />
               <TourTarget id="start">
                 <PrimaryButton
-                  label="Start a night"
+                  label="Start Tonight"
                   icon="add"
-                  onPress={() => router.push('/night/new')}
+                  onPress={() => router.push('/start-tonight')}
                 />
               </TourTarget>
             </Panel>
