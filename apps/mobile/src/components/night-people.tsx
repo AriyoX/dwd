@@ -87,7 +87,7 @@ export function NightPeople({
               </Text>
               {hasQuickLogs(member.quickLogs) ? (
                 <Text style={typography.body}>
-                  Quick Log · {quickCountLabel(member.quickLogs ?? [])} · Amount not recorded
+                  Earlier · {quickCountLabel(member.quickLogs ?? [])}
                 </Text>
               ) : null}
               <Text style={typography.body}>

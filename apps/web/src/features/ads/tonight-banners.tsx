@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Megaphone, Moon } from 'lucide-react';
 import { HOUSE_BANNERS, isPublicHttpsUrl, parseBannerAds, type BannerAd } from '@dwd/core';
 import styles from './tonight-banners.module.css';
 
-export function TonightBanners() {
+export function TonightBanners({ compact = false }: { compact?: boolean }) {
   const [ads, setAds] = useState(HOUSE_BANNERS);
   const [active, setActive] = useState(0);
   const [hovered, setHovered] = useState(false);
@@ -127,7 +127,7 @@ export function TonightBanners() {
   return (
     <section
       ref={placement}
-      className={styles['placement']}
+      className={`${styles['placement']} ${compact ? styles['compact'] : ''}`}
       aria-labelledby={headingId}
       aria-roledescription="carousel"
       onPointerEnter={(event) => {
@@ -145,9 +145,9 @@ export function TonightBanners() {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
       }}
     >
-      <div className={styles['heading']}>
+      <div className={compact ? 'sr-only' : styles['heading']}>
         <h2 id={headingId}>Featured</h2>
-        {ads.length > 1 ? (
+        {!compact && ads.length > 1 ? (
           <div className={styles['arrows']}>
             <button
               type="button"
@@ -201,6 +201,7 @@ export function TonightBanners() {
             ad={ad}
             index={index}
             total={ads.length}
+            compact={compact}
           />
         ))}
       </div>
@@ -224,9 +225,21 @@ export function TonightBanners() {
   );
 }
 
-function BannerCard({ ad, index, total }: { ad: BannerAd; index: number; total: number }) {
+function BannerCard({
+  ad,
+  index,
+  total,
+  compact,
+}: {
+  ad: BannerAd;
+  index: number;
+  total: number;
+  compact: boolean;
+}) {
   const [imageFailed, setImageFailed] = useState(false);
-  const href = ad.url ?? (ad.route === '/join' ? '#join-night' : (ad.route ?? '/home'));
+  const href =
+    ad.url ??
+    (ad.route === '/join' ? (compact ? '/home#join-night' : '#join-night') : (ad.route ?? '/home'));
   const artwork = ad.imageUrl && !imageFailed;
   return (
     <Link

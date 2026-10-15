@@ -253,6 +253,7 @@ function AuthForm({
           </View>
         }
       />
+      {mode === 'login' || mode === 'signup' ? <QuickLogEntry /> : null}
       {status === 'unconfigured' ? (
         <Notice error message="DWD is unavailable. Try again." />
       ) : status === 'loading' || profilePending ? (
@@ -519,3 +520,4 @@ function AuthForm({
     </Screen>
   );
 }
+import { QuickLogEntry } from './quick-log-entry';

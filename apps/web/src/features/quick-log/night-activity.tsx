@@ -46,19 +46,19 @@ export function QuickNightActivity({
     }
   }
   return (
-    <section className="stack">
+    <section className="quick-history-card stack">
       <strong>Quick Log · {quickCountLabel(member.quickLogs ?? [])}</strong>
       {hasUnknownAmounts(member.quickLogs) ? (
         <p className="muted small">
-          Drink amounts not recorded. Measured alcohol subtotal is incomplete.
+          Earlier drinks have no size saved, so the alcohol total is partial.
         </p>
       ) : null}
       <details>
-        <summary>Quick Log entries</summary>
+        <summary>Earlier entries</summary>
         {member.quickLogs
           ?.filter((e) => !e.deletedAt)
           .map((e) => (
-            <div className="stack" key={e.id}>
+            <div className="quick-history-card stack" key={e.id}>
               <p>
                 Quick log · {quickKindLabel(e.kind)} · {new Date(e.recordedAt).toLocaleString()}
               </p>
@@ -83,7 +83,7 @@ export function QuickNightActivity({
                     disabled={busy}
                     onClick={() => void correct(e.id, 'remove')}
                   >
-                    Remove quick entry
+                    Remove
                   </Button>
                 </div>
               ) : null}

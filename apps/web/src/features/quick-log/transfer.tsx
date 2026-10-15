@@ -163,8 +163,7 @@ function Transfer({ store }: { store: QuickLogStore }) {
       <Card className="stack">
         <h2>{quickCountLabel(entries)}</h2>
         <p className="muted small">
-          Sizes and strengths remain unknown. These are recording times, not verified consumption
-          times.
+          Earlier drinks keep their counts. New drinks will use your night’s plan.
         </p>
         {availableQuickEntries(quick).length > 500 ? (
           <p className="muted small">
@@ -203,7 +202,7 @@ function Transfer({ store }: { store: QuickLogStore }) {
                 }
                 onClick={() => void add()}
               >
-                {busy ? 'Adding…' : pending ? 'Check result and add logs' : 'Confirm and add logs'}
+                {busy ? 'Adding…' : pending ? 'Check saved logs' : 'Add my logs'}
               </Button>
             </Card>
           ) : pending ? (
@@ -212,7 +211,7 @@ function Transfer({ store }: { store: QuickLogStore }) {
               disabled={!writable || busy || !online}
               onClick={() => void add()}
             >
-              Check result and add logs
+              Check saved logs
             </Button>
           ) : (
             <>

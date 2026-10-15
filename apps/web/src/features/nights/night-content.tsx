@@ -13,6 +13,7 @@ import {
   type SharedBottle,
   type Night,
   hasUnknownAmounts,
+  quickCounts,
 } from '@dwd/core';
 import type { PendingDrinkLog } from '@dwd/contracts';
 import { Card } from '@/components/ui/card';
@@ -143,7 +144,7 @@ export function TonightView({
             className={`pill${totals.ethanolGrams > 0 && planStatus !== 'within_plan' ? ' pill-warning' : ''}`}
           >
             {hasUnknownAmounts(member.quickLogs)
-              ? 'Amounts incomplete'
+              ? 'Some sizes unknown'
               : member.planSetupCompletedAt === null
                 ? 'Plan not set'
                 : planTotal === 0 && totals.ethanolGrams === 0
@@ -157,19 +158,16 @@ export function TonightView({
         </div>
         <div>
           <strong data-testid="drink-count" className="big-count">
-            {totals.alcoholCount}
+            {totals.alcoholCount + quickCounts(member.quickLogs ?? []).drink}
           </strong>
-          <span className="muted">
-            {' '}
-            {hasUnknownAmounts(member.quickLogs) ? 'detailed drinks logged' : 'drinks logged'}
-          </span>
+          <span className="muted"> drinks logged</span>
           {totals.alcoholCount > 0 && (
             <p className="muted small">{formatCategories(totals.categoryCounts)}</p>
           )}
           {totals.ethanolGrams > 0 && (
             <p className="muted small">
               {totals.standardDrinkEquivalent} standard drinks · 10 g alcohol each
-              {hasUnknownAmounts(member.quickLogs) ? ' · Measured subtotal only, incomplete' : ''}
+              {hasUnknownAmounts(member.quickLogs) ? ' · excludes drinks without a size' : ''}
             </p>
           )}
           {pendingAlcohol + pendingWater === 0 ? null : (
@@ -247,7 +245,8 @@ export function TonightView({
         </div>
         <div className="plan-summary" data-tour="plan">
           <span>
-            Your plan · {totals.waterCount + pendingWater}{' '}
+            Your plan ·{' '}
+            {totals.waterCount + pendingWater + quickCounts(member.quickLogs ?? []).chaser}{' '}
             {totals.waterCount + pendingWater === 1 ? 'chaser' : 'chasers'}
           </span>
           <strong>
@@ -365,12 +364,14 @@ export function ParticipantCard({
       </div>
       <dl className="participant-stats">
         <div>
-          <dt>{hasUnknownAmounts(member.quickLogs) ? 'Detailed drinks' : 'Drinks'}</dt>
-          <dd>{totals.alcoholCount + pendingAlcohol}</dd>
+          <dt>Drinks</dt>
+          <dd>
+            {totals.alcoholCount + pendingAlcohol + quickCounts(member.quickLogs ?? []).drink}
+          </dd>
         </div>
         <div>
           <dt>Chasers</dt>
-          <dd>{totals.waterCount + pendingWater}</dd>
+          <dd>{totals.waterCount + pendingWater + quickCounts(member.quickLogs ?? []).chaser}</dd>
         </div>
         <div>
           <dt>Planned drinks</dt>

@@ -26,6 +26,7 @@ import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { LegalLinks } from '@/components/auth-chrome';
 import { useQuickSync } from '@/providers/quick-sync-provider';
+import { TonightBanners } from '@/components/tonight-banners';
 
 export default function QuickLogScreen() {
   const params = useLocalSearchParams<{ scope?: string; sessionId?: string }>();
@@ -99,7 +100,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
         e.id === undo.entryId && e.revision === undo.revision && !quickEntryLocked(state.record, e),
     );
   return (
-    <Screen hidePermissionReminder contentStyle={{ gap: 16 }}>
+    <Screen hidePermissionReminder contentStyle={{ gap: 16 }} footer={<TonightBanners compact />}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Action
           label="Back"
@@ -184,23 +185,25 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
           ) : null}
         </Panel>
       ) : null}
-      <Text
-        accessibilityRole="header"
-        style={{
-          ...typography.heading,
-          fontSize: 28,
-          lineHeight: 36,
-          textAlign: 'center',
-          fontVariant: ['tabular-nums'],
-        }}
-      >
-        {quickCountLabel(entries)}
-      </Text>
-      {entries.length ? (
-        <Text style={{ ...typography.body, textAlign: 'center' }}>
-          {readOnly ? 'Session finished' : quickRelativeTime(current, now)}
+      <Panel style={{ gap: 6, paddingVertical: 16 }}>
+        <Text
+          accessibilityRole="header"
+          style={{
+            ...typography.heading,
+            fontSize: 28,
+            lineHeight: 36,
+            textAlign: 'center',
+            fontVariant: ['tabular-nums'],
+          }}
+        >
+          {quickCountLabel(entries)}
         </Text>
-      ) : null}
+        {entries.length ? (
+          <Text style={{ ...typography.body, textAlign: 'center' }}>
+            {readOnly ? 'Session finished' : quickRelativeTime(current, now)}
+          </Text>
+        ) : null}
+      </Panel>
       {stale && current ? (
         <Panel>
           <Text style={typography.body}>

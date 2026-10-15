@@ -3386,3 +3386,15 @@ body[data-tour-active='true'] .theme-toggle {
     font-size: 0.68rem;
   }
 }
+
+.quick-history-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+.review-list > div {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface-soft);
+}

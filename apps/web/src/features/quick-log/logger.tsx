@@ -30,6 +30,7 @@ import { Card } from '@/components/ui/card';
 import { useBrowserQuickLog, useQuickStoreState } from './provider';
 import styles from './quick-log.module.css';
 import { AccountBenefits } from './account-benefits';
+import { QuickLogAds } from './floating-ads';
 
 export function QuickLogger({
   history = false,
@@ -527,6 +528,7 @@ function Logger({
           ) : null}
         </div>
       ) : null}
+      {!history ? <QuickLogAds /> : null}
     </div>
   );
 }

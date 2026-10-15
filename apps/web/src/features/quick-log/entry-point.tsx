@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { quickCountLabel, quickScope } from '@dwd/core';
 import { ArrowRight, Plus } from 'lucide-react';
 import { browserQuickStore } from './local';
+import styles from './quick-log.module.css';
 export function QuickLogEntry({
   accountId,
   resumeOnly = false,
@@ -37,7 +38,10 @@ export function QuickLogEntry({
   }, [accountId]);
   if (resumeOnly && !entry.resume) return null;
   return (
-    <Link className="resume-card" href={entry.guest ? '/quick-log?scope=guest' : '/quick-log'}>
+    <Link
+      className={`resume-card ${styles['entryCard']}`}
+      href={entry.guest ? '/quick-log?scope=guest' : '/quick-log'}
+    >
       <span className="card-icon" style={{ margin: 0 }}>
         <Plus size={24} aria-hidden="true" />
       </span>

@@ -179,7 +179,7 @@ function Transfer({
       <ScreenHeading title="Add to a night" />
       <Panel>
         <Text style={typography.sectionTitle}>{quickCountLabel(entries)}</Text>
-        <Notice message="Sizes and strengths remain unknown. These are recording times, not verified consumption times." />
+        <Notice message="Earlier drinks keep their counts. New drinks will use your night’s plan." />
         {availableQuickEntries(quick).length > 500 ? (
           <Notice message="The first 500 entries will be added. You can add the remaining entries afterwards." />
         ) : null}
@@ -223,7 +223,7 @@ function Transfer({
                 }
               />
               <PrimaryButton
-                label={pending ? 'Check result and add logs' : 'Confirm and add logs'}
+                label={pending ? 'Check saved logs' : 'Add my logs'}
                 disabled={
                   !entries.length ||
                   online === false ||
@@ -235,7 +235,7 @@ function Transfer({
             </Panel>
           ) : pending ? (
             <PrimaryButton
-              label="Check result and add logs"
+              label="Check saved logs"
               busy={busy}
               disabled={online === false}
               onPress={() => void add()}

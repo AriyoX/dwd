@@ -478,7 +478,12 @@ function Setup({ owner }: { owner: string }) {
         <>
           <Panel>
             <Text style={typography.sectionTitle}>{draft.title}</Text>
-            <Text style={typography.body}>{formatNightDateTime(end, zone)}</Text>
+            <View
+              style={{ backgroundColor: colors.surfaceSoft, borderRadius: 16, padding: 14, gap: 4 }}
+            >
+              <Text style={typography.sectionTitle}>Planned finish</Text>
+              <Text style={typography.body}>{formatNightDateTime(end, zone)}</Text>
+            </View>
             <Text style={typography.body}>
               {draft.withPeople
                 ? draft.guests.length
@@ -517,10 +522,32 @@ function Setup({ owner }: { owner: string }) {
                 <Text style={typography.body}>Chaser only</Text>
               ) : (
                 person.items.map((item, i) => (
-                  <Text key={i} style={typography.body}>
-                    {item.plannedQuantity} × {item.label} · {item.volumeMl} ml · {item.abvPercent}%
-                    ABV{item.isQuickLog ? ' · main drink' : ''}
-                  </Text>
+                  <View
+                    key={i}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 14,
+                      padding: 14,
+                      borderRadius: 16,
+                      backgroundColor: colors.surfaceSoft,
+                    }}
+                  >
+                    <Text style={{ ...typography.heading, color: colors.primary }}>
+                      {item.plannedQuantity}
+                    </Text>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={typography.sectionTitle}>{item.label}</Text>
+                      <Text style={typography.body}>
+                        {item.volumeMl} ml · {item.abvPercent}%
+                      </Text>
+                      {item.isQuickLog ? (
+                        <Text style={{ ...typography.sectionTitle, color: colors.primary }}>
+                          Main drink
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
                 ))
               )}
             </Panel>

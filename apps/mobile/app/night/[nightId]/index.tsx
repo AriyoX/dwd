@@ -12,6 +12,7 @@ import {
   bottlePlanProgress,
   calculateEthanolGrams,
   hasUnknownAmounts,
+  quickCounts,
 } from '@dwd/core';
 import { endNight, extendNight, leaveNight, softDeleteActivity, visibleAlerts } from '@dwd/data';
 import { Choice } from '@/components/choice';
@@ -352,15 +353,21 @@ export default function NightScreen() {
                 <QuickNightActivity member={member} refresh={refresh} />
                 <NightMetrics
                   compact
-                  measured={hasUnknownAmounts(member.quickLogs)}
+
                   drinks={
-                    drinks.length + pending.filter((record) => record.kind === 'alcohol').length
+                    drinks.length +
+                    quickCounts(member.quickLogs ?? []).drink +
+                    pending.filter((record) => record.kind === 'alcohol').length
                   }
-                  water={water.length + pending.filter((record) => record.kind === 'water').length}
+                  water={
+                    water.length +
+                    quickCounts(member.quickLogs ?? []).chaser +
+                    pending.filter((record) => record.kind === 'water').length
+                  }
                 />
                 <Text style={typography.body}>
                   {hasUnknownAmounts(member.quickLogs)
-                    ? 'Amounts incomplete · plan comparison unavailable'
+                    ? 'Some drink sizes are unknown. Plan progress cannot be shown.'
                     : member.planSetupCompletedAt === null
                       ? 'Choose a plan to start'
                       : planned === 0

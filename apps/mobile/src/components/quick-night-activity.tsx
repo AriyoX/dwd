@@ -24,7 +24,7 @@ export function QuickNightActivity({
   refresh?: () => Promise<void>;
 }) {
   const { session, client } = useSupabase();
-  const { typography } = useTheme();
+  const { colors, typography } = useTheme();
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(Date.now);
@@ -48,20 +48,20 @@ export function QuickNightActivity({
     }
   }
   return (
-    <View style={{ gap: 12 }}>
+    <View style={{ gap: 10, padding: 14, borderRadius: 18, backgroundColor: colors.surfaceSoft }}>
       <Text style={typography.sectionTitle}>
         Quick Log · {quickCountLabel(member.quickLogs ?? [])}
       </Text>
       {hasUnknownAmounts(member.quickLogs) ? (
-        <Notice message="Drink amounts not recorded. Measured alcohol subtotal is incomplete." />
+        <Notice message="Earlier drinks have no size saved, so the alcohol total is partial." />
       ) : null}
       <Action
-        label="Quick Log entries"
+        label="Earlier entries"
         expanded={expanded}
         onPress={() => setExpanded((v) => !v)}
         style={{ justifyContent: 'center' }}
       >
-        <Text style={typography.body}>{expanded ? 'Hide' : 'View'} Quick Log entries</Text>
+        <Text style={typography.body}>{expanded ? 'Hide' : 'View'} Earlier entries</Text>
       </Action>
       {expanded &&
         member.quickLogs
@@ -85,7 +85,7 @@ export function QuickNightActivity({
                     onPress={() => void correct(e.id, quickCorrectionKind(e.kind))}
                   />
                   <PrimaryButton
-                    label="Remove quick entry"
+                    label="Remove"
                     variant="quiet"
                     disabled={busy}
                     onPress={() => void correct(e.id, 'remove')}
