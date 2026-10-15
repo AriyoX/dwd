@@ -35,7 +35,6 @@ function GuestSignIn({ store, writable }: { store: QuickLogStore; writable: bool
   const current = store.session(params.get('sessionId'));
   return (
     <AccountBenefits
-      label="Sign in"
       next={`/quick-log?scope=account${current ? `&sessionId=${current.id}` : ''}`}
       beforeAuth={() =>
         store.getSnapshot().record.sessions.length && !store.getSnapshot().saved

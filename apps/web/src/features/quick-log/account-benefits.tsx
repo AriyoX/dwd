@@ -9,12 +9,10 @@ import styles from './quick-log.module.css';
 
 export function AccountBenefits({
   next,
-  label = 'Sign in / Create account',
   beforeAuth,
   retrySaving,
 }: {
   next: string;
-  label?: string;
   beforeAuth?: () => string | null;
   retrySaving?: () => void;
 }) {
@@ -31,7 +29,7 @@ export function AccountBenefits({
   return (
     <>
       <Button type="button" variant="ghost" onClick={() => setOpen(true)}>
-        {label}
+        Sign in
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Save your nights">
         <ul className={styles['benefits']}>
