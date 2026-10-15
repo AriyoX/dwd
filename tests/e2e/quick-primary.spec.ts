@@ -82,7 +82,9 @@ test('the normal guest homepage is ready for logging, and discovery is dismissib
   await page.route('**/auth/v1/**', (route) => route.abort());
   await logGuest(page);
   await expect(page.getByRole('dialog')).not.toBeVisible();
-  await page.getByRole('button', { name: 'Sign in / Create account', exact: true }).click();
+  const header = page.locator('.topbar');
+  await expect(header.getByRole('button', { name: 'Get the App', exact: true })).toBeVisible();
+  await header.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Photo memories');
   await expect(page.getByRole('dialog')).toContainText('Join invitations');
   await page.getByRole('button', { name: 'Keep logging as a guest' }).click();
@@ -105,7 +107,7 @@ test('guest sign-in saves exactly once, resumes the same session and restores it
   test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local Supabase required.');
   const account = await user();
   const guest = await logGuest(page);
-  await page.getByRole('button', { name: 'Sign in / Create account', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('dialog').getByRole('link', { name: 'Sign in', exact: true }).click();
   await signIn(page, account);
   await expect(page).toHaveURL(/\/quick-log/);
@@ -173,7 +175,7 @@ test('guest logs survive new-account profile completion and failed synchronizati
   test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local Supabase required.');
   const account = await user(false);
   await logGuest(page);
-  await page.getByRole('button', { name: 'Sign in / Create account', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('dialog').getByRole('link', { name: 'Sign in', exact: true }).click();
   await page.route('**/rest/v1/rpc/sync_quick_log', (route) => route.abort());
   await signIn(page, account);
@@ -200,7 +202,7 @@ test('a guest creates an account from discovery and keeps all logs without Night
 }) => {
   test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local Supabase required.');
   await logGuest(page);
-  await page.getByRole('button', { name: 'Sign in / Create account', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('dialog').getByRole('link', { name: 'Create account', exact: true }).click();
   const email = `primary-signup-${randomUUID()}@example.test`,
     password = 'primary-signup-password-123';
@@ -244,7 +246,7 @@ test('account discovery keeps unsaved guest taps on the page until device saving
     };
   });
   await page.getByRole('button', { name: 'Log one drink' }).click();
-  await page.getByRole('button', { name: 'Sign in / Create account', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('link', { name: 'Sign in', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText(

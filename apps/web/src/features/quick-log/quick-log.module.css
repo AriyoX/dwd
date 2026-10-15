@@ -4,6 +4,19 @@
   gap: 1rem;
   min-width: 0;
 }
+.quickHeader {
+  gap: 8px;
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.headerActions > button {
+  min-height: 48px;
+  padding-inline: 8px;
+  white-space: nowrap;
+}
 .adDock {
   position: fixed;
   z-index: 25;

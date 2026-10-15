@@ -30,7 +30,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useBrowserQuickLog, useQuickStoreState } from './provider';
 import styles from './quick-log.module.css';
-import { AccountBenefits } from './account-benefits';
 import { QuickLogAds } from './floating-ads';
 import { LinkedQuickLogger } from './linked-logger';
 
@@ -265,19 +264,6 @@ function Logger({
           </div>
         </details>
       </header>
-      {!account && !history ? (
-        <AccountBenefits
-          next={`/quick-log?scope=account${current ? `&sessionId=${current.id}` : ''}`}
-          beforeAuth={() =>
-            store.getSnapshot().record.sessions.length && !store.getSnapshot().saved
-              ? 'Save your logs on this device before signing in. They are still here.'
-              : null
-          }
-          retrySaving={() => {
-            if (writable) store.retrySave();
-          }}
-        />
-      ) : null}
       {storageIssue ? (
         <div className="notice-box" role="status">
           {storageIssue}

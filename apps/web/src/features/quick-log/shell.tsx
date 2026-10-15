@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { Suspense, type ReactNode } from 'react';
-import { Wordmark } from '@/components/layout/wordmark';
 import { QuickLogProvider } from './provider';
-import { GetApp } from './account-benefits';
+import { QuickLogHeader } from './header';
 import { ConnectionProvider } from '@/providers/connection-provider';
 
 export function QuickLogShell({ children }: { children: ReactNode }) {
@@ -15,13 +14,12 @@ export function QuickLogShell({ children }: { children: ReactNode }) {
         paddingBottom: 'calc(48px + env(safe-area-inset-bottom) + var(--quick-ad-height, 0px))',
       }}
     >
-      <header className="topbar">
-        <Wordmark />
-        <GetApp />
-      </header>
       <Suspense fallback={<p role="status">Opening device logs…</p>}>
         <ConnectionProvider>
-          <QuickLogProvider>{children}</QuickLogProvider>
+          <QuickLogProvider>
+            <QuickLogHeader />
+            {children}
+          </QuickLogProvider>
         </ConnectionProvider>
       </Suspense>
       <footer className="app-footer">
