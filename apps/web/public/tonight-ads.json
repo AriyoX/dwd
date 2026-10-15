@@ -1,13 +1,17 @@
 {
   "ads": [
     {
-      "id": "sundiata-independence-2026",
-      "advertiser": "Sundiata Beach Resort",
-      "title": "Independence Oct 7–12: 30% off your 3rd night",
-      "cta": "Book your stay",
-      "url": "https://sundiataresort.com/",
-      "imageUrl": "https://dwdug.vercel.app/ads/sundiata.jpg",
-      "tone": "blue"
+      "id": "the-link-up-2026",
+      "advertiser": "The Link Up / Salama Springs",
+      "title": "THE LINK UP",
+      "description": "Good vibes. Great people. Unforgettable memories.",
+      "supportingText": "17 October 2026 · Salama Springs",
+      "cta": "Explore The Link Up",
+      "url": "https://dwdug.vercel.app/events/the-link-up",
+      "imageUrl": "https://dwdug.vercel.app/ads/link-up-banner.jpg",
+      "tone": "forest",
+      "sponsored": false,
+      "expiresAt": "2026-10-18T00:00:00+03:00"
     },
     {
       "id": "baby-steps-waitlist",
@@ -19,22 +23,33 @@
       "tone": "amber"
     },
     {
-      "id": "kuri-sunset-2026-10-10",
-      "advertiser": "Kuri Hotel",
-      "title": "Sunset at Kuri · Oct 10: Topia Twins, DJ Miracle & Chef Simples",
-      "cta": "Visit Kuri Hotel",
-      "url": "https://kurihotel.com/",
-      "imageUrl": "https://dwdug.vercel.app/ads/kuri-hotel.jpg",
-      "tone": "plum"
-    },
-    {
       "id": "super-badass-records-studio",
       "advertiser": "Super Badass Records",
       "title": "Record your next hit at Super Badass Records.",
       "cta": "Book a session",
-      "url": "https://sbr-website-git-main-ariyoxs-projects.vercel.app/contact",
+      "url": "https://superbadassrecords.com",
       "imageUrl": "https://dwdug.vercel.app/ads/sbr.jpg",
       "tone": "plum"
+    },
+    {
+      "id": "sundiata-beach-resort",
+      "advertiser": "Sundiata Beach Resort",
+      "title": "Escape to Sundiata Beach Resort",
+      "cta": "Explore the Resort",
+      "url": "https://sundiataresort.com/",
+      "imageUrl": "https://dwdug.vercel.app/ads/sundiata.jpg",
+      "tone": "blue",
+      "description": "Your next lakeside getaway awaits."
+    },
+    {
+      "id": "kuri-hotel",
+      "advertiser": "Kuri Hotel",
+      "title": "Discover Kuri Hotel",
+      "cta": "Explore Hotel",
+      "url": "https://kurihotel.com/",
+      "imageUrl": "https://dwdug.vercel.app/ads/kuri-hotel.jpg",
+      "tone": "plum",
+      "description": "Your next memorable stay starts here."
     }
   ]
 }

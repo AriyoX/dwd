@@ -14,19 +14,26 @@ const sponsoredBannerSchema = z.object({
   id: z.string().trim().min(1).max(80),
   advertiser: z.string().trim().min(1).max(60),
   title: z.string().trim().min(1).max(80),
+  description: z.string().trim().min(1).max(100).optional(),
+  supportingText: z.string().trim().min(1).max(80).optional(),
   cta: z.string().trim().min(1).max(30),
   url: httpsUrl,
   imageUrl: httpsUrl.optional(),
-  tone: z.enum(['plum', 'blue', 'amber']).default('plum'),
+  tone: z.enum(['plum', 'blue', 'amber', 'forest']).default('plum'),
+  sponsored: z.boolean().default(true),
+  expiresAt: z.iso.datetime({ offset: true }).optional(),
 });
 
 export interface BannerAd {
   id: string;
   advertiser: string;
   title: string;
+  description?: string | undefined;
+  supportingText?: string | undefined;
   cta: string;
-  tone: 'plum' | 'blue' | 'amber';
+  tone: 'plum' | 'blue' | 'amber' | 'forest';
   sponsored: boolean;
+  expiresAt?: string | undefined;
   url?: string;
   imageUrl?: string | undefined;
   route?: '/night/new' | '/join' | '/history';
@@ -63,7 +70,7 @@ export const HOUSE_BANNERS: BannerAd[] = [
   },
 ];
 
-export function parseBannerAds(value: unknown): BannerAd[] | null {
+export function parseBannerAds(value: unknown, now = Date.now()): BannerAd[] | null {
   const feed = z.object({ ads: z.array(z.unknown()).max(10) }).safeParse(value);
   if (!feed.success) return null;
   const seen = new Set<string>();
@@ -72,8 +79,10 @@ export function parseBannerAds(value: unknown): BannerAd[] | null {
     const parsed = sponsoredBannerSchema.safeParse(entry);
     if (!parsed.success || seen.has(parsed.data.id)) continue;
     seen.add(parsed.data.id);
-    ads.push({ ...parsed.data, sponsored: true });
+    if (parsed.data.expiresAt && Date.parse(parsed.data.expiresAt) <= now) continue;
+    ads.push(parsed.data);
   }
   // An explicitly empty feed disables the placement; a broken feed keeps house banners.
-  return feed.data.ads.length && !ads.length ? null : ads;
+  // Valid expired campaigns leave an empty placement rather than triggering a fallback.
+  return feed.data.ads.length && !seen.size ? null : ads;
 }

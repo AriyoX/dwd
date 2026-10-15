@@ -136,11 +136,52 @@
   --banner-text: #fff8ed;
 }
 
+.forest {
+  --banner-background: #081607;
+  --banner-accent: #bdaa68;
+  --banner-text: #f5efd7;
+}
+
+.banner.withDescription {
+  gap: 6px;
+}
+
+.forest .title {
+  font-weight: 850;
+  letter-spacing: -0.045em;
+}
+
+.forest .shade {
+  background: linear-gradient(90deg, rgb(3 16 7 / 92%), rgb(3 16 7 / 65%) 65%, rgb(3 16 7 / 12%));
+}
+
 .advertiser,
 .title,
+.description,
+.supportingText,
 .cta {
   position: relative;
   z-index: 1;
+}
+
+.description {
+  max-width: 85%;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.supportingText {
+  color: var(--banner-accent);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.compact .description {
+  display: none;
+}
+
+.compact .supportingText {
+  font-size: 0.65rem;
 }
 
 .advertiser {

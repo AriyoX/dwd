@@ -23,7 +23,10 @@ export function TonightBanners({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     const configuredFeed = process.env['NEXT_PUBLIC_DWD_ADS_URL']?.trim();
-    const feedUrl = configuredFeed || '/tonight-ads.json';
+    // The canonical DWD feed is bundled on every deployment, including local/preview.
+    const bundled =
+      !configuredFeed || configuredFeed === 'https://dwdug.vercel.app/tonight-ads.json';
+    const feedUrl = bundled ? '/tonight-ads.json' : configuredFeed;
     if (configuredFeed && !isPublicHttpsUrl(configuredFeed)) return;
     let controller: AbortController | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -31,7 +34,7 @@ export function TonightBanners({ compact = false }: { compact?: boolean }) {
     const replaceAds = (next: BannerAd[]) => {
       if (!mounted) return;
       setAds(
-        configuredFeed
+        !bundled
           ? next
           : next.map((ad) => {
               // The bundled feed's DWD artwork is also available on previews/local web.
@@ -80,6 +83,24 @@ export function TonightBanners({ compact = false }: { compact?: boolean }) {
       document.removeEventListener('visibilitychange', refresh);
     };
   }, []);
+
+  useEffect(() => {
+    const expiry = Math.min(
+      ...ads.flatMap((ad) => (ad.expiresAt ? [Date.parse(ad.expiresAt)] : [])),
+    );
+    if (!Number.isFinite(expiry)) return;
+    const timer = setTimeout(
+      () => {
+        setAds((current) =>
+          current.filter((ad) => !ad.expiresAt || Date.parse(ad.expiresAt) > Date.now()),
+        );
+        setActive(0);
+        track.current?.scrollTo({ left: 0, behavior: 'instant' });
+      },
+      Math.min(Math.max(0, expiry - Date.now()), 2_147_483_647),
+    );
+    return () => clearTimeout(timer);
+  }, [ads]);
 
   const show = useCallback((index: number, animate = true) => {
     const card = track.current?.children.item(index);
@@ -237,16 +258,23 @@ function BannerCard({
   compact: boolean;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const href =
+  const destination =
     ad.url ??
     (ad.route === '/join' ? (compact ? '/home#join-night' : '#join-night') : (ad.route ?? '/home'));
+  const href =
+    destination === 'https://dwdug.vercel.app/events/the-link-up'
+      ? '/events/the-link-up'
+      : destination;
+  const external = href.startsWith('https://');
   const artwork = ad.imageUrl && !imageFailed;
   return (
     <Link
-      className={`${styles['banner']} ${styles[ad.tone] ?? ''}`}
+      className={`${styles['banner']} ${styles[ad.tone] ?? ''} ${ad.description ? styles['withDescription'] : ''}`}
       href={href}
-      {...(ad.sponsored ? { target: '_blank', rel: 'sponsored noopener noreferrer' } : {})}
-      aria-label={`${ad.sponsored ? `Sponsored by ${ad.advertiser}. ` : ''}${ad.title}. ${ad.cta}. Banner ${index + 1} of ${total}${ad.sponsored ? '. Opens in a new tab' : ''}`}
+      {...(external
+        ? { target: '_blank', rel: `${ad.sponsored ? 'sponsored ' : ''}noopener noreferrer` }
+        : {})}
+      aria-label={`${ad.sponsored ? `Sponsored by ${ad.advertiser}` : `Promotion · ${ad.advertiser}`}. ${ad.title}. ${ad.description ?? ''} ${ad.supportingText ?? ''} ${ad.cta}. Banner ${index + 1} of ${total}${external ? '. Opens in a new tab' : ''}`}
     >
       {artwork ? (
         <>
@@ -268,9 +296,17 @@ function BannerCard({
         </span>
       )}
       <span className={styles['advertiser']}>
-        {ad.sponsored ? `Sponsored · ${ad.advertiser}` : ad.advertiser}
+        {ad.sponsored
+          ? `Sponsored · ${ad.advertiser}`
+          : ad.url
+            ? `Promotion · ${ad.advertiser}`
+            : ad.advertiser}
       </span>
       <strong className={styles['title']}>{ad.title}</strong>
+      {ad.description ? <span className={styles['description']}>{ad.description}</span> : null}
+      {ad.supportingText ? (
+        <span className={styles['supportingText']}>{ad.supportingText}</span>
+      ) : null}
       <span className={`${styles['cta']} ${artwork ? styles['imageCta'] : ''}`}>
         {ad.cta} <ArrowRight size={17} aria-hidden="true" />
       </span>

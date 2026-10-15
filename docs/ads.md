@@ -6,9 +6,17 @@ Mobile cards share a fixed height, with headlines limited to three lines and ima
 
 Multiple banners advance every five seconds and repeat from the first banner after the last. Rotation pauses during touch interaction, when the mobile screen loses focus or the app is backgrounded, and on web hover, keyboard focus, hidden tabs, or when the carousel is offscreen. Reduced-motion settings disable automatic rotation; manual navigation still works.
 
-The web defaults to the repository's `/tonight-ads.json`, with DWD-hosted artwork served from the current deployment. Merging the feed and `public/ads` files into main and deploying publishes all four current campaigns. An external `NEXT_PUBLIC_DWD_ADS_URL` overrides that default. Mobile defaults to `https://dwdug.vercel.app/tonight-ads.json` when its feed variable is unset, so those campaigns become available after the website deployment. Installed mobile apps need a build containing this carousel code.
+The web defaults to the repository's `/tonight-ads.json`, with DWD-hosted artwork served from the current deployment. Setting `NEXT_PUBLIC_DWD_ADS_URL` to the canonical `https://dwdug.vercel.app/tonight-ads.json` also uses the current deployment's file, so previews and local development do not fetch stale production campaigns. A different external feed URL overrides that default; update that feed with the repository JSON as part of deployment. Mobile defaults to the canonical production feed when its feed variable is unset, so campaign changes become available after the website deployment. Offline/invalid feeds continue to use the existing DWD house banners.
 
-If the sponsor feed is unavailable or invalid, three DWD house banners fill the space. Real campaigns are marked **Sponsored · advertiser**. There is no ad network SDK or revenue tracking installed.
+Paid campaigns are marked **Sponsored · advertiser**. Campaigns with `sponsored: false` use **Promotion · advertiser**, without paid sponsorship link attributes. There is no ad network SDK or revenue tracking installed.
+
+## October 2026 campaign update
+
+The feed order is **The Link Up → Baby Steps → Super Badass Records → Sundiata Beach Resort → Kuri Hotel**. Super Badass Records now links to `https://superbadassrecords.com`; Sundiata and Kuri retain their destinations and imagery with evergreen copy.
+
+The Link Up promotion links to the stable public `/events/the-link-up` page. It expires at **00:00 on 18 October 2026, East Africa Time** (`2026-10-18T00:00:00+03:00`), immediately after the event day. Shared parsing removes expired campaigns, and mounted carousels remove them when their expiration timer fires. This does not remove the landing page: printed QR codes remain valid. Publish the JSON, artwork, web code and shared parser together. **Ship a new mobile build** for the forest palette, promotion labeling, descriptions and expiration handling; older builds do not understand the new forest campaign and will skip it.
+
+The landing page uses lettering, foliage and a cocktail detail extracted from `public/ads/link-up.png`; the full poster is not displayed on the page. Upload and gallery buttons are intentionally disabled and labeled coming soon. The page links to the existing `/quick-log?scope=guest` experience. No storage, upload, moderation or gallery infrastructure is included; R2 configuration is unchanged. Future photo integration can replace `features/events/link-up-memories.tsx`.
 
 ## Connect sponsors now
 
@@ -57,15 +65,19 @@ On web, images are restricted by the Content Security Policy: list every campaig
 
 ### Campaign fields
 
-| Field        | Requirement                                              |
-| ------------ | -------------------------------------------------------- |
-| `id`         | Unique non-empty identifier, up to 80 characters.        |
-| `advertiser` | Display name, up to 60 characters.                       |
-| `title`      | Banner headline, up to 80 characters.                    |
-| `cta`        | Action label, up to 30 characters.                       |
-| `url`        | Public HTTPS destination opened on tap.                  |
-| `imageUrl`   | Optional public HTTPS image.                             |
-| `tone`       | Optional `plum`, `blue`, or `amber`; defaults to `plum`. |
+| Field            | Requirement                                                                |
+| ---------------- | -------------------------------------------------------------------------- |
+| `id`             | Unique non-empty identifier, up to 80 characters.                          |
+| `advertiser`     | Display name, up to 60 characters.                                         |
+| `title`          | Banner headline, up to 80 characters.                                      |
+| `description`    | Optional description, up to 100 characters; omitted on compact banners.    |
+| `supportingText` | Optional campaign detail, up to 80 characters; visible on compact banners. |
+| `cta`            | Action label, up to 30 characters.                                         |
+| `url`            | Public HTTPS destination opened on tap.                                    |
+| `imageUrl`       | Optional public HTTPS image.                                               |
+| `tone`           | Optional `plum`, `blue`, `amber`, or `forest`; defaults to `plum`.         |
+| `sponsored`      | Optional boolean; defaults to `true`. Set `false` for an unpaid promotion. |
+| `expiresAt`      | Optional ISO timestamp with timezone. Campaign is removed at this instant. |
 
 Keep campaigns in the desired display order, with at most 10 entries. Use landscape images, around 1200 × 600 pixels, with visual detail toward the right; the app adds a dark overlay and renders the headline and action. Omit `imageUrl` for a solid-color banner. Keep text out of the artwork so it stays readable at larger font sizes. Image loading failures retain the banner text and destination.
 

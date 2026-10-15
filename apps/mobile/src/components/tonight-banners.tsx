@@ -25,6 +25,7 @@ const palette = {
   plum: { background: '#482039', accent: '#E9B8CD', text: '#FFF5FA' },
   blue: { background: '#252F4C', accent: '#BCCDF7', text: '#F5F7FF' },
   amber: { background: '#493522', accent: '#F2CC94', text: '#FFF8ED' },
+  forest: { background: '#081607', accent: '#BDAA68', text: '#F5EFD7' },
 };
 
 export function TonightBanners({ compact = false }: { compact?: boolean }) {
@@ -42,7 +43,8 @@ export function TonightBanners({ compact = false }: { compact?: boolean }) {
   const cardWidth = Math.max(1, width - 28);
   // Every card reserves the same space, including when accessibility text grows.
   const cardHeight = Math.ceil(
-    (compact ? 120 : CARD_HEIGHT) + (compact ? 74 : TEXT_HEIGHT) * (Math.max(1, fontScale) - 1),
+    (compact ? 120 : CARD_HEIGHT) +
+      (compact ? 90 : TEXT_HEIGHT + 50) * (Math.max(1, fontScale) - 1),
   );
   const interval = cardWidth + GAP;
 
@@ -52,6 +54,24 @@ export function TonightBanners({ compact = false }: { compact?: boolean }) {
     );
     return () => listener.remove();
   }, []);
+
+  useEffect(() => {
+    const expiry = Math.min(
+      ...ads.flatMap((ad) => (ad.expiresAt ? [Date.parse(ad.expiresAt)] : [])),
+    );
+    if (!Number.isFinite(expiry)) return;
+    const timer = setTimeout(
+      () => {
+        setAds((current) =>
+          current.filter((ad) => !ad.expiresAt || Date.parse(ad.expiresAt) > Date.now()),
+        );
+        setActive(0);
+        scroll.current?.scrollTo({ x: 0, animated: false });
+      },
+      Math.min(Math.max(0, expiry - Date.now()), 2_147_483_647),
+    );
+    return () => clearTimeout(timer);
+  }, [ads]);
 
   useFocusEffect(
     useCallback(() => {
@@ -231,7 +251,7 @@ function BannerCard({
   const hasImage = Boolean(ad.imageUrl) && !imageFailed;
   return (
     <Action
-      label={`${ad.sponsored ? `Sponsored by ${ad.advertiser}` : ad.advertiser}. ${ad.title}. ${ad.cta}. Banner ${position}`}
+      label={`${ad.sponsored ? `Sponsored by ${ad.advertiser}` : ad.url ? `Promotion · ${ad.advertiser}` : ad.advertiser}. ${ad.title}. ${ad.description ?? ''} ${ad.supportingText ?? ''} ${ad.cta}. Banner ${position}`}
       onPress={onPress}
       containerStyle={{ width, height }}
       style={{
@@ -241,7 +261,7 @@ function BannerCard({
         borderRadius: 20,
         backgroundColor: compact ? `${tone.background}C7` : tone.background,
         overflow: 'hidden',
-        gap: compact ? 4 : 12,
+        gap: compact ? 4 : ad.description ? 5 : 12,
       }}
     >
       {hasImage ? (
@@ -269,7 +289,8 @@ function BannerCard({
               bottom: 0,
               left: 0,
               right: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.68)',
+              backgroundColor:
+                ad.tone === 'forest' ? 'rgba(3, 16, 7, 0.65)' : 'rgba(0, 0, 0, 0.68)',
             }}
           />
         </>
@@ -302,10 +323,14 @@ function BannerCard({
         ellipsizeMode="tail"
         style={{ color: tone.text, fontSize: 11, lineHeight: 16, fontWeight: '600' }}
       >
-        {ad.sponsored ? `Sponsored · ${ad.advertiser}` : ad.advertiser}
+        {ad.sponsored
+          ? `Sponsored · ${ad.advertiser}`
+          : ad.url
+            ? `Promotion · ${ad.advertiser}`
+            : ad.advertiser}
       </Text>
       <Text
-        numberOfLines={compact ? 2 : 3}
+        numberOfLines={compact || ad.description ? 2 : 3}
         ellipsizeMode="tail"
         style={{
           color: tone.text,
@@ -319,6 +344,22 @@ function BannerCard({
       >
         {ad.title}
       </Text>
+      {!compact && ad.description ? (
+        <Text
+          numberOfLines={2}
+          style={{ color: tone.text, fontSize: 12, lineHeight: 16, maxWidth: '90%' }}
+        >
+          {ad.description}
+        </Text>
+      ) : null}
+      {ad.supportingText ? (
+        <Text
+          numberOfLines={1}
+          style={{ color: tone.accent, fontSize: compact ? 10 : 11, lineHeight: 15 }}
+        >
+          {ad.supportingText}
+        </Text>
+      ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
         <Text
           numberOfLines={1}
