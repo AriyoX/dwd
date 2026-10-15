@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ChevronDown,
@@ -20,10 +20,11 @@ import {
   quickCorrectionKind,
   quickEntryLocked,
   quickRelativeTime,
+  compareQuickEntries,
   unresolvedQuickTransfers,
   type QuickKind,
 } from '@dwd/core';
-import type { QuickLogStore, QuickUndo } from '@dwd/contracts';
+import type { QuickLogStore } from '@dwd/contracts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useBrowserQuickLog, useQuickStoreState } from './provider';
@@ -38,10 +39,11 @@ export function QuickLogger({
   homepage?: boolean;
 }) {
   const context = useBrowserQuickLog();
+  const params = useSearchParams();
   if (!context.store) return <p role="status">Opening device logs…</p>;
   return (
     <Logger
-      key={`${context.store.scope}:${history}`}
+      key={`${context.store.scope}:${history}:${params.get('sessionId') ?? ''}`}
       store={context.store}
       history={history}
       homepage={homepage}
@@ -71,25 +73,44 @@ function Logger({
   const router = useRouter();
   const [selected, setSelected] = useState(params.get('sessionId'));
 
-  const [undo, setUndo] = useState<QuickUndo | null>(state.record.undo);
+  const undo = state.record.undo;
   const [message, setMessage] = useState('');
   const [issue, setIssue] = useState<string | null>(null);
-  const [continued, setContinued] = useState(false);
+  const [continued, setContinued] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now);
+  const options = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (options.current && !options.current.contains(event.target as Node))
+        options.current.open = false;
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && options.current?.open) {
+        options.current.open = false;
+        options.current.querySelector('summary')?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', escape);
+    };
+  }, []);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(timer);
   }, []);
   const current = store.session(selected);
   const suffix = `?scope=${store.scope === 'guest' ? 'guest' : 'account'}`;
-  const stale = !continued && isQuickSessionStale(current, now);
+  const stale = continued !== current?.id && isQuickSessionStale(current, now);
   const readOnly = current?.state === 'finished';
   const enabled =
     writable && state.hydrated && !state.blocked && !readOnly && !stale && state.record.eligible;
   const pending = unresolvedQuickTransfers(state.record).find((o) => o.sessionId === current?.id);
   const entries = [...(current?.entries ?? [])]
     .filter((e) => !e.removedAt)
-    .sort((a, b) => b.sequence - a.sequence);
+    .sort((a, b) => compareQuickEntries(b, a));
   const historySessions = state.record.sessions
     .filter((s) => (store.scope !== 'guest' || !s.claimedBy) && availableQuickEntries(s).length)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id));
@@ -108,9 +129,16 @@ function Logger({
       setIssue(e instanceof Error ? e.message : 'Couldn’t update this entry.');
     }
   }
+  function closeOptions() {
+    if (!options.current?.open) return;
+    if (options.current.contains(document.activeElement))
+      options.current.querySelector('summary')?.focus();
+    options.current.open = false;
+  }
   function log(kind: QuickKind) {
     run(() => {
-      setUndo(store.log(kind));
+      store.log(kind);
+      closeOptions();
       if (store.scope === 'guest') pinGuest();
       setSelected(null);
       setMessage(
@@ -122,10 +150,10 @@ function Logger({
   function startNew() {
     run(() => {
       store.startNew();
+      closeOptions();
       window.history.replaceState(null, '', `/quick-log${suffix}`);
       setSelected(null);
-      setUndo(null);
-      setContinued(true);
+      setContinued(null);
     });
   }
   function add() {
@@ -150,7 +178,7 @@ function Logger({
         {!homepage ? (
           <Link
             className="button button-ghost"
-            href={history ? `/quick-log${suffix}` : account ? '/home' : '/login'}
+            href={history ? `/quick-log${suffix}` : account ? '/home' : '/'}
             aria-label="Back"
           >
             <ArrowLeft size={22} aria-hidden="true" />
@@ -159,7 +187,7 @@ function Logger({
         <h1 className={homepage ? styles['homepageHeading'] : undefined}>
           {history ? 'Past quick sessions' : homepage ? 'Just log it.' : 'Quick Log'}
         </h1>
-        <details className={styles['options']}>
+        <details ref={options} className={styles['options']}>
           <summary className="button button-ghost" aria-label="Session options">
             <MoreHorizontal size={24} aria-hidden="true" />
           </summary>
@@ -271,9 +299,11 @@ function Logger({
                       if (
                         s.entries.length &&
                         !window.confirm(
-                          s.entries.some((e) => e.destination)
-                            ? 'Delete this local session? Entries already added to a night stay in that night.'
-                            : 'Delete this local session and its entries?',
+                          store.scope !== 'guest'
+                            ? 'Remove this device’s copy? Your account history is kept and may restore it when syncing.'
+                            : s.entries.some((e) => e.destination)
+                              ? 'Delete this local session? Entries already added to a night stay in that night.'
+                              : 'Delete this local session and its entries?',
                         )
                       )
                         return;
@@ -308,7 +338,7 @@ function Logger({
                   day: 'numeric',
                 })}
               </p>
-              <Button type="button" onClick={() => setContinued(true)}>
+              <Button type="button" onClick={() => setContinued(current.id)}>
                 Continue this session
               </Button>
               <Button type="button" variant="secondary" disabled={!writable} onClick={startNew}>
@@ -359,7 +389,6 @@ function Logger({
                 onClick={() =>
                   run(() => {
                     if (undo) store.undo(undo);
-                    setUndo(null);
                     setMessage('Action undone');
                   })
                 }
@@ -373,6 +402,7 @@ function Logger({
             <summary>
               Recent activity <ChevronDown size={18} aria-hidden="true" />
             </summary>
+            {!entries.length ? <p className="muted small">No entries yet.</p> : null}
             {entries.map((e) => (
               <div key={e.id} className={styles['entry']}>
                 <strong>
@@ -396,7 +426,7 @@ function Logger({
                       disabled={!writable}
                       onClick={() =>
                         run(() => {
-                          setUndo(store.correct(e.sessionId, e.id, quickCorrectionKind(e.kind)));
+                          store.correct(e.sessionId, e.id, quickCorrectionKind(e.kind));
                           setMessage('Entry corrected');
                         })
                       }
@@ -409,7 +439,7 @@ function Logger({
                       disabled={!writable}
                       onClick={() =>
                         run(() => {
-                          setUndo(store.correct(e.sessionId, e.id, 'remove'));
+                          store.correct(e.sessionId, e.id, 'remove');
                           setMessage('Entry removed');
                         })
                       }
@@ -444,7 +474,6 @@ function Logger({
                   if (current) {
                     store.finish(current.id);
                     setSelected(current.id);
-                    setUndo(null);
                     setMessage('Session finished');
                   }
                 })

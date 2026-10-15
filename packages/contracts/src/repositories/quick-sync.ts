@@ -27,6 +27,7 @@ export function associateGuestQuickLogs(
       continue;
     }
     guest.bindGuestSession(source.id, accountId);
+    if (!guest.getSnapshot().saved) guest.retrySave();
     if (!guest.getSnapshot().saved)
       throw new Error('Couldn’t save account ownership on this device. Your logs are kept.');
     const bound = guest.session(source.id);
@@ -114,16 +115,8 @@ export async function synchronizeQuickLogs({
         throw new Error('Your account did not confirm these entries. Your device copy is kept.');
       await mutate(() => {
         checkOwner();
-        const unchanged =
-          quickSyncFingerprint(account.session(session.id) ?? session) ===
-          quickSyncFingerprint(session);
-        account.mergeAccountSession(confirmed);
-        account.markAccountSynced(
-          session.id,
-          unchanged
-            ? quickSyncFingerprint(account.session(session.id) ?? confirmed)
-            : quickSyncFingerprint(session),
-        );
+        account.mergeAccountSession(confirmed, false, quickSyncFingerprint(session));
+        account.markAccountSynced(session.id, quickSyncFingerprint(confirmed));
       });
     }
     const remote = await list();
@@ -135,11 +128,7 @@ export async function synchronizeQuickLogs({
         const clean =
           !local || account.getSnapshot().record.synced[session.id] === quickSyncFingerprint(local);
         account.mergeAccountSession(session);
-        if (clean)
-          account.markAccountSynced(
-            session.id,
-            quickSyncFingerprint(account.session(session.id) ?? session),
-          );
+        if (clean) account.markAccountSynced(session.id, quickSyncFingerprint(session));
       }
     });
     return true;

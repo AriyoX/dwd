@@ -67,7 +67,10 @@ test('signed-in Quick Log stays available and saves its handoff before night set
   await signIn(page, user);
   await expect(page).toHaveURL(/\/home/);
   await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
-  await page.getByRole('link', { name: /Quick Log.*Just keeping count/ }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: /^Quick Log/ })
+    .click();
   const drink = page.getByRole('button', { name: 'Log one drink' });
   await expect(drink).toBeEnabled();
   await expect(page.getByRole('checkbox', { name: /18 or older/ })).not.toBeVisible();

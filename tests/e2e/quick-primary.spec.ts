@@ -155,11 +155,11 @@ test('Start Tonight opens Quick Log directly or the existing planned setup, whil
   await signIn(page, account);
   await expect(page.getByRole('link', { name: /Resume Quick Log/ })).not.toBeVisible();
   await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
-  await page.getByRole('link', { name: /Plan a Night.*Make a night/ }).click();
+  await page.getByRole('link', { name: /Plan a Night.*Detailed tracking/ }).click();
   await expect(page).toHaveURL(/\/night\/new/);
   await page.goto('/home');
   await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
-  await page.getByRole('link', { name: /Quick Log.*Just keeping count/ }).click();
+  await page.getByRole('link', { name: /Quick Log.*Keep count/ }).click();
   await expect(page.getByRole('button', { name: 'Log one drink' })).toBeEnabled();
   await page.getByRole('button', { name: 'Log one drink' }).click();
   await page.getByRole('link', { name: 'Back', exact: true }).click();

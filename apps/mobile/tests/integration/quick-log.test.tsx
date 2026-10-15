@@ -152,6 +152,27 @@ afterEach(async () => {
   root = null;
 });
 describe('native public Quick Log', () => {
+  it('updates Undo when the mounted store receives a recovered action', async () => {
+    const store = nativeQuickStore('guest');
+    store.acknowledgeEligibility();
+    await render();
+    await act(() => {
+      store.log('chaser');
+    });
+    expect(button('Undo last action')!.props['disabled']).toBe(false);
+    await press('Undo last action');
+    expect(content()).toContain('0 drinks · 0 chasers');
+  });
+  it('closes session options after logging a shot and explains empty activity', async () => {
+    nativeQuickStore('guest').acknowledgeEligibility();
+    await render();
+    await press('Recent activity');
+    expect(content()).toContain('No entries yet.');
+    await press('Session options');
+    await press('Log a shot');
+    expect(button('Log a shot')).toBeUndefined();
+    expect(content()).toContain('1 drink · 0 chasers');
+  });
   it('keeps unsaved guest entries in the logger before starting an authentication handoff', async () => {
     nativeQuickStore('guest').acknowledgeEligibility();
     await render();

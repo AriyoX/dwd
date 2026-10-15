@@ -2,7 +2,7 @@ import { Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { quickAccountBenefits } from '@dwd/core';
 import { PrimaryButton } from '@/components/primary-button';
-import { Screen, Panel, ScreenHeading } from '@/components/screen';
+import { Screen, Panel } from '@/components/screen';
 import { authHandoff, safeDestination } from '@/lib/auth-state';
 import { useTheme } from '@/providers/theme-provider';
 import { useState } from 'react';
@@ -22,9 +22,7 @@ export default function QuickBenefitsScreen() {
     }
   }
   return (
-    <Screen insetTop={false} hidePermissionReminder sheetTitle="More of your night.">
-      <ScreenHeading title="Save your nights" />
-      <Text style={typography.body}>Save your Quick Log and night history to your account.</Text>
+    <Screen insetTop={false} hidePermissionReminder sheetTitle="Save your nights">
       <Panel>
         {quickAccountBenefits.map((benefit) => (
           <Text key={benefit} style={typography.body}>

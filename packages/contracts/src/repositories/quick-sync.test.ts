@@ -68,6 +68,101 @@ function fixture() {
   };
 }
 describe('account Quick Log synchronization', () => {
+  it('persists local retirement of a second active remote session on the next sync', async () => {
+    const f = fixture();
+    f.guest.log('drink');
+    await f.run();
+    const active = f.account.session();
+    if (!active) throw new Error('Fixture');
+    const id = f.uuid();
+    const remote = {
+      ...active,
+      id,
+      entries: active.entries.map((e) => ({ ...e, id: f.uuid(), sessionId: id })),
+    };
+    f.saved.set(id, remote);
+    await f.run();
+    const local = f.account.session(id);
+    if (!local) throw new Error('Fixture');
+    expect(local.state).toBe('finished');
+    expect(Date.parse(local.updatedAt)).toBeGreaterThan(Date.parse(remote.updatedAt));
+    expect(f.account.getSnapshot().record.synced[id]).not.toBe(quickSyncFingerprint(local));
+    await f.run();
+    expect(f.saved.get(id)?.state).toBe('finished');
+  });
+  it('adopts guest entries, eligibility, Undo and transfer recovery in one durable write', () => {
+    const f = fixture();
+    f.guest.log('drink');
+    const session = f.guest.session();
+    if (!session) throw new Error('Fixture');
+    f.guest.setIntent({
+      sessionId: session.id,
+      accountId: owner,
+      nightId: null,
+      destination: 'invite',
+    });
+    f.guest.prepareTransfer(session.id, owner, f.uuid(), f.uuid());
+    f.guest.bindGuestSession(session.id, owner);
+    const write = vi.spyOn(f.storage, 'setItem');
+    const bound = f.guest.session();
+    if (!bound) throw new Error('Fixture');
+    f.account.adoptGuestSession(bound, f.guest.getSnapshot().record, owner);
+    expect(write).toHaveBeenCalledOnce();
+    const restored = new QuickLogStore(f.storage, quickScope(owner), f.uuid);
+    restored.hydrate();
+    expect(restored.getSnapshot().blocked).toBe(false);
+    expect(restored.getSnapshot().record.eligible).toBe(true);
+    expect(restored.getSnapshot().record.undo).toEqual(f.guest.getSnapshot().record.undo);
+    expect(restored.getSnapshot().record.intent?.destination).toBe('invite');
+    expect(restored.getSnapshot().record.operations).toEqual(
+      f.guest.getSnapshot().record.operations,
+    );
+  });
+  it('retries a failed guest ownership write without requiring a separate manual save', async () => {
+    const f = fixture();
+    f.guest.log('drink');
+    const write = vi.spyOn(f.storage, 'setItem').mockImplementation(() => {
+      throw new Error('Quota');
+    });
+    await expect(f.run()).rejects.toThrow(/ownership/);
+    expect(f.guest.session()?.claimedBy).toBe(owner);
+    write.mockRestore();
+    await f.run();
+    expect(f.account.session()?.entries).toHaveLength(1);
+    expect(f.guest.session()).toBeUndefined();
+  });
+  it('accepts a newer server lifecycle without claiming a stale active session is synced', async () => {
+    const f = fixture();
+    f.guest.log('drink');
+    f.save.mockImplementationOnce((session) => {
+      const at = new Date(Date.parse(session.updatedAt) + 1000).toISOString();
+      const receipt = { ...session, state: 'finished' as const, finishedAt: at, updatedAt: at };
+      f.saved.set(session.id, receipt);
+      return Promise.resolve(receipt);
+    });
+    await f.run();
+    expect(f.account.session()).toBeUndefined();
+    expect(f.account.getSnapshot().record.sessions[0]?.state).toBe('finished');
+  });
+  it('does not confirm frozen transfer revisions as backed up when the receipt is newer', async () => {
+    const f = fixture();
+    f.guest.log('drink');
+    await f.run(() => owner, false);
+    const session = f.account.session();
+    if (!session) throw new Error('Fixture');
+    f.account.prepareTransfer(session.id, owner, f.uuid(), f.uuid());
+    f.save.mockImplementationOnce((s) =>
+      Promise.resolve({
+        ...s,
+        entries: s.entries.map((e) => ({ ...e, revision: 2, kind: 'chaser' as const })),
+      }),
+    );
+    await f.run();
+    expect(f.account.session()?.entries[0]?.revision).toBe(1);
+    expect(f.account.getSnapshot().record.synced[session.id]).not.toBe(
+      quickSyncFingerprint(f.account.session() ?? session),
+    );
+  });
   it('keeps an unresolved transfer revision frozen when account refresh sees a newer remote edit', async () => {
     const f = fixture();
     f.guest.log('drink');

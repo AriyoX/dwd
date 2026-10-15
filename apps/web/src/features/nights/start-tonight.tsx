@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowRight, Plus, Moon } from 'lucide-react';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import styles from './start-tonight.module.css';
 export function StartTonight() {
   const [open, setOpen] = useState(false);
   return (
@@ -14,17 +15,25 @@ export function StartTonight() {
         <ArrowRight size={18} aria-hidden="true" />
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Start Tonight">
-        <Link className="card stack start-choice" href="/quick-log?scope=account">
-          <Plus size={26} aria-hidden="true" />
-          <h3>Quick Log</h3>
-          <strong>Just keeping count?</strong>
-          <p className="muted small">Log your drinks. No planning or setup.</p>
+        <Link className={`${styles['choice']} ${styles['quick']}`} href="/quick-log?scope=account">
+          <span className={styles['icon']}>
+            <Plus size={26} aria-hidden="true" />
+          </span>
+          <span className={styles['label']}>
+            <strong>Quick Log</strong>
+            <span className="muted small">Keep count. No setup.</span>
+          </span>
+          <ArrowRight size={20} aria-hidden="true" />
         </Link>
-        <Link className="card stack start-choice" href="/night/new">
-          <Moon size={26} aria-hidden="true" />
-          <h3>Plan a Night</h3>
-          <strong>Make a night of it.</strong>
-          <p className="muted small">Set up your night, track in detail and invite your mates.</p>
+        <Link className={styles['choice']} href="/night/new">
+          <span className={styles['icon']}>
+            <Moon size={26} aria-hidden="true" />
+          </span>
+          <span className={styles['label']}>
+            <strong>Plan a Night</strong>
+            <span className="muted small">Detailed tracking with your mates.</span>
+          </span>
+          <ArrowRight size={20} aria-hidden="true" />
         </Link>
       </Dialog>
     </>

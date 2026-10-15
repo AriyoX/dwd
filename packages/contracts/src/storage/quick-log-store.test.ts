@@ -8,6 +8,8 @@ import {
   parseQuickRecord,
   quickCounts,
   quickScope,
+  quickRelativeTime,
+  quickSyncFingerprint,
   type QuickScope,
 } from '@dwd/core';
 import { QuickLogStore, quickRecordKey } from './quick-log-store';
@@ -38,6 +40,42 @@ export function quickFixture(scope: QuickScope = 'guest', values = new Map<strin
   };
 }
 describe('device-only Quick Log', () => {
+  it('orders concurrent positions consistently and treats equivalent timestamp formats as the same backup', () => {
+    const f = quickFixture();
+    f.eligible();
+    f.store.log('drink');
+    f.time('2026-10-13T00:00:00.000Z');
+    f.store.log('chaser');
+    const session = f.store.session()!;
+    const tied = { ...session, entries: session.entries.map((e) => ({ ...e, sequence: 1 })) };
+    expect(quickRelativeTime(tied, Date.parse('2026-10-13T00:01:00Z'))).toBe(
+      'Last logged 1 min ago',
+    );
+    const alternate = {
+      ...tied,
+      createdAt: tied.createdAt.replace('.000Z', '+00:00'),
+      entries: [...tied.entries]
+        .reverse()
+        .map((e) => ({ ...e, recordedAt: e.recordedAt.replace('.000Z', '+00:00') })),
+    };
+    expect(quickSyncFingerprint(alternate)).toBe(quickSyncFingerprint(tied));
+  });
+  it('advances lifecycle timestamps for rapid actions and a clock moving backwards', () => {
+    const f = quickFixture();
+    f.eligible();
+    const { sessionId } = f.store.log('drink');
+    const logged = f.store.session()!.updatedAt;
+    f.store.finish(sessionId);
+    const finished = f.store.session(sessionId)!.updatedAt;
+    expect(Date.parse(finished)).toBeGreaterThan(Date.parse(logged));
+    f.time('2026-10-12T23:58:00.000Z');
+    f.store.reopen(sessionId);
+    const reopened = f.store.session()!.updatedAt;
+    expect(Date.parse(reopened)).toBeGreaterThan(Date.parse(finished));
+    f.store.log('chaser');
+    expect(Date.parse(f.store.session()!.updatedAt)).toBeGreaterThan(Date.parse(reopened));
+    expect(f.store.session()!.entries[1]!.recordedAt).toBe('2026-10-12T23:58:00.000Z');
+  });
   it('retains a failed deletion of the last session across reload and retry', () => {
     const f = quickFixture();
     f.eligible();

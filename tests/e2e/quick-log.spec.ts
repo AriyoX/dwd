@@ -1,5 +1,30 @@
 import { expect, test } from '@playwright/test';
 
+test('session options dismiss accessibly and guest Back returns to logging', async ({ page }) => {
+  await page.route('**/auth/v1/**', (route) => route.abort());
+  await page.goto('/quick-log');
+  await page.getByText('Recent activity', { exact: true }).click();
+  await expect(page.getByText('No entries yet.', { exact: true })).toBeVisible();
+  const options = page.getByLabel('Session options', { exact: true });
+  await options.click();
+  await page.keyboard.press('Escape');
+  await expect(options).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Log a shot' })).not.toBeVisible();
+  await options.click();
+  await page.getByRole('heading', { name: 'Quick Log', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Log a shot' })).not.toBeVisible();
+  // Eligibility disappears after acceptance; click and verify the logging state.
+  await page.getByRole('checkbox', { name: /18 or older/ }).click();
+  await expect(page.getByRole('button', { name: 'Log one drink' })).toBeEnabled();
+  await options.click();
+  await page.getByRole('button', { name: 'Log a shot' }).click();
+  await expect(page.getByRole('button', { name: 'Log a shot' })).not.toBeVisible();
+  await expect(page.getByText('1 drink · 0 chasers', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Just log it.' })).toBeVisible();
+  await expect(page.getByText('1 drink · 0 chasers', { exact: true })).toBeVisible();
+});
+
 test('public logging restores rapid taps, corrections and history with the backend unavailable', async ({
   page,
 }) => {
@@ -52,8 +77,11 @@ test('a second browser tab cannot overwrite the current logger', async ({ page, 
   await other.goto('/quick-log');
   await expect(other.getByText(/Quick Log is open in another tab/)).toBeVisible();
   await expect(other.getByRole('button', { name: 'Log one non-alcoholic chaser' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Log one non-alcoholic chaser' }).click();
   await page.close();
   await expect(other.getByRole('button', { name: 'Log one non-alcoholic chaser' })).toBeEnabled();
+  await other.getByRole('button', { name: 'Undo last action' }).click();
+  await expect(other.getByText('1 drink · 0 chasers', { exact: true })).toBeVisible();
   await other.getByRole('button', { name: 'Log one non-alcoholic chaser' }).click();
   await expect(other.getByText('1 drink · 1 chaser', { exact: true })).toBeVisible();
 });

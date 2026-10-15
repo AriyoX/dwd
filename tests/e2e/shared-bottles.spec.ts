@@ -173,7 +173,10 @@ test('bottle quantity to one-tap tracking, joining, undo and adding another bott
   const friend = await account('Sam');
   await login(page, host);
   await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
-  await page.getByRole('link', { name: /Plan a Night.*Make a night/ }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: /^Plan a Night/ })
+    .click();
   await page.getByLabel('Night name').fill('Bottle night');
   await page.getByRole('button', { name: 'With friends', exact: true }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();

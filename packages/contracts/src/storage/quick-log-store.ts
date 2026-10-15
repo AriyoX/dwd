@@ -158,6 +158,11 @@ export class QuickLogStore {
       (s) => s.id === (id ?? this.state.record.activeSessionId),
     );
   }
+  private updatedAfter(session: QuickSession, at = this.now()) {
+    // The server accepts lifecycle updates only when updatedAt increases. Two
+    // actions in one clock tick (or a clock moving backwards) must still persist.
+    return new Date(Math.max(Date.parse(at), Date.parse(session.updatedAt) + 1)).toISOString();
+  }
   log(kind: QuickKind): QuickUndo {
     if (!this.state.record.eligible) throw new Error('Confirm the age requirement to log.');
     const at = this.now();
@@ -188,7 +193,11 @@ export class QuickLogStore {
       removedAt: null,
       destination: null,
     };
-    const next = { ...session, updatedAt: at, entries: [...session.entries, entry] };
+    const next = {
+      ...session,
+      updatedAt: this.updatedAfter(session, at),
+      entries: [...session.entries, entry],
+    };
     const action: QuickUndo = {
       entryId: entry.id,
       sessionId: session.id,
@@ -233,7 +242,11 @@ export class QuickLogStore {
       undo: action,
       sessions: this.state.record.sessions.map((s) =>
         s.id === sessionId
-          ? { ...s, updatedAt: at, entries: s.entries.map((e) => (e.id === entryId ? updated : e)) }
+          ? {
+              ...s,
+              updatedAt: this.updatedAfter(s, at),
+              entries: s.entries.map((e) => (e.id === entryId ? updated : e)),
+            }
           : s,
       ),
     });
@@ -264,7 +277,7 @@ export class QuickLogStore {
         s.id === session.id
           ? {
               ...s,
-              updatedAt: at,
+              updatedAt: this.updatedAfter(s, at),
               entries: s.entries.map((e) => (e.id === entry.id ? updated : e)),
             }
           : s,
@@ -281,7 +294,9 @@ export class QuickLogStore {
       activeSessionId:
         this.state.record.activeSessionId === sessionId ? null : this.state.record.activeSessionId,
       sessions: this.state.record.sessions.map((s) =>
-        s.id === sessionId ? { ...s, state: 'finished', finishedAt: at, updatedAt: at } : s,
+        s.id === sessionId
+          ? { ...s, state: 'finished', finishedAt: at, updatedAt: this.updatedAfter(s, at) }
+          : s,
       ),
     });
   }
@@ -304,7 +319,9 @@ export class QuickLogStore {
       ...this.state.record,
       activeSessionId: sessionId,
       sessions: this.state.record.sessions.map((s) =>
-        s.id === sessionId ? { ...s, state: 'active', finishedAt: null, updatedAt: this.now() } : s,
+        s.id === sessionId
+          ? { ...s, state: 'active', finishedAt: null, updatedAt: this.updatedAfter(s) }
+          : s,
       ),
     });
   }
@@ -475,11 +492,12 @@ export class QuickLogStore {
   adoptGuestSession(source: QuickSession, guest: QuickRecord, accountId: string) {
     if (this.scope !== quickScope(accountId) || source.claimedBy !== accountId)
       throw new Error('Use the account that owns these logs.');
-    this.mergeAccountSession({ ...source, scope: this.scope }, true);
     const operations = guest.operations.filter(
       (o) => o.sessionId === source.id && o.accountId === accountId,
     );
-    const record = this.state.record;
+    // Persist the session and its recovery metadata together. A restart must never
+    // see an adopted session without the pending transfer or Undo that belongs to it.
+    const record = this.mergedAccountRecord({ ...source, scope: this.scope }, true);
     const next = {
       ...record,
       eligible: record.eligible || guest.eligible,
@@ -494,7 +512,7 @@ export class QuickLogStore {
         ...operations.filter((o) => !record.operations.some((r) => r.id === o.id)),
       ],
     };
-    if (JSON.stringify(next) !== JSON.stringify(record)) this.commit(next);
+    if (JSON.stringify(next) !== JSON.stringify(this.state.record)) this.commit(next);
   }
   retireGuestSession(sessionId: string, accountId: string) {
     const source = this.session(sessionId);
@@ -503,7 +521,11 @@ export class QuickLogStore {
     // The account copy keeps the original lifecycle and recording timestamps.
     this.finish(sessionId);
   }
-  mergeAccountSession(value: QuickSession, preferActive = false) {
+  mergeAccountSession(value: QuickSession, preferActive = false, acknowledged?: string) {
+    const next = this.mergedAccountRecord(value, preferActive, acknowledged);
+    if (JSON.stringify(next) !== JSON.stringify(this.state.record)) this.commit(next);
+  }
+  private mergedAccountRecord(value: QuickSession, preferActive = false, acknowledged?: string) {
     const remote = quickSessionSchema.parse(value);
     if (
       this.scope === 'guest' ||
@@ -512,7 +534,10 @@ export class QuickLogStore {
     )
       throw new Error('Unexpected Quick Log account.');
     const local = this.session(remote.id);
-    const dirty = local && this.state.record.synced[local.id] !== quickSyncFingerprint(local);
+    const dirty =
+      local &&
+      this.state.record.synced[local.id] !== quickSyncFingerprint(local) &&
+      acknowledged !== quickSyncFingerprint(local);
     const entries = new Map(remote.entries.map((e) => [e.id, e]));
     for (const entry of local?.entries ?? []) {
       const other = entries.get(entry.id);
@@ -536,17 +561,21 @@ export class QuickLogStore {
             ? {
                 ...s,
                 state: 'finished' as const,
-                finishedAt: remote.updatedAt,
-                updatedAt: remote.updatedAt,
+                finishedAt: this.now(),
+                updatedAt: this.updatedAfter(s),
               }
             : s,
         );
       activeSessionId = merged.id;
     } else if (merged.state === 'active')
-      merged = { ...merged, state: 'finished', finishedAt: merged.updatedAt };
+      merged = {
+        ...merged,
+        state: 'finished',
+        finishedAt: this.now(),
+        updatedAt: this.updatedAfter(merged),
+      };
     else if (activeSessionId === merged.id) activeSessionId = null;
-    const next = { ...this.state.record, activeSessionId, sessions: [...sessions, merged] };
-    if (JSON.stringify(next) !== JSON.stringify(this.state.record)) this.commit(next);
+    return { ...this.state.record, activeSessionId, sessions: [...sessions, merged] };
   }
   markAccountSynced(sessionId: string, fingerprint: string) {
     if (this.state.record.synced[sessionId] === fingerprint) return;

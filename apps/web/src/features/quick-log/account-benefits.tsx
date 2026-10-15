@@ -33,12 +33,7 @@ export function AccountBenefits({
       <Button type="button" variant="ghost" onClick={() => setOpen(true)}>
         {label}
       </Button>
-      <Dialog
-        open={open}
-        onClose={() => setOpen(false)}
-        title="More of your night."
-        description="Save your Quick Log and night history to your account."
-      >
+      <Dialog open={open} onClose={() => setOpen(false)} title="Save your nights">
         <ul className={styles['benefits']}>
           {quickAccountBenefits.map((benefit, index) => {
             const Icon = icons[index] ?? Users;

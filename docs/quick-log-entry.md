@@ -44,7 +44,7 @@ Added:
 1. `20261014110000_quick_log_account_sessions.sql`: standalone account sessions/entries, owner RLS and restricted grants, sync/read RPCs, account erasure, and an ownership guard around the existing import transaction.
 2. `20261014120000_quick_log_multidevice_order.sql`: concurrent append ordering and indexes; owned account sessions may transfer tied source positions while guest-only imports retain their existing validation.
 
-Both migrations were verified in isolated Postgres and the existing local browser-test Supabase stack. They have not been applied to the linked hosted project. Apply them before deploying the new web/native clients. The two preceding Quick Log migrations already existed on that project and were confirmed by read-only inspection.
+Both migrations were verified in isolated Postgres and the existing local browser-test Supabase stack. They were applied to the linked hosted `drink-with-desire` project on October 14, 2026 with user approval; read-only verification confirmed the migration versions, owner RLS and restricted grants. Web/native clients were not deployed by this migration step. See [follow-up QA](quick-log-qa.md) for the subsequent fixes and checks.
 
 ## Verification and release checks
 

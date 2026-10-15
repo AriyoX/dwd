@@ -54,7 +54,7 @@ export function Action({
             opacity: busy ? 1 : disabled ? 0.5 : pressed ? 0.8 : 1,
             transform: [{ scale: pressed && !reduced ? 0.97 : 1 }],
             transitionProperty: ['transform', 'opacity'],
-            transitionDuration: reduced ? 0 : 120,
+            transitionDuration: reduced ? 0 : pressed ? 120 : 100,
             transitionTimingFunction: cubicBezier(0.23, 1, 0.32, 1),
           },
         ]}

@@ -317,15 +317,20 @@ export function compareQuickEntries(
 export function quickSyncFingerprint(session: QuickSession) {
   return JSON.stringify({
     id: session.id,
-    createdAt: session.createdAt,
-    updatedAt: session.updatedAt,
-    finishedAt: session.finishedAt,
+    createdAt: Date.parse(session.createdAt),
+    updatedAt: Date.parse(session.updatedAt),
+    finishedAt: session.finishedAt ? Date.parse(session.finishedAt) : null,
     state: session.state,
-    entries: session.entries,
+    entries: [...session.entries].sort(compareQuickEntries).map((e) => ({
+      ...e,
+      recordedAt: Date.parse(e.recordedAt),
+      updatedAt: Date.parse(e.updatedAt),
+      removedAt: e.removedAt ? Date.parse(e.removedAt) : null,
+    })),
   });
 }
 export const quickAccountBenefits = [
-  'Night history across your devices',
+  'Quick Log and Night history across your devices',
   'Photo memories from your nights',
   'Plan and manage your nights',
   'Join invitations and track with friends',
@@ -349,7 +354,7 @@ export function isQuickSessionStale(session: QuickSession | undefined, now: numb
 export function quickRelativeTime(session: QuickSession | undefined, now: number) {
   const last = session?.entries
     .filter((e) => !e.removedAt)
-    .sort((a, b) => b.sequence - a.sequence)[0];
+    .sort((a, b) => compareQuickEntries(b, a))[0];
   if (!last) return 'Tap to log your first drink.';
   const minutes = Math.max(0, Math.floor((now - Date.parse(last.recordedAt)) / 60_000));
   return minutes === 0

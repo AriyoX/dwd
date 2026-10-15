@@ -14,10 +14,10 @@ import {
   quickCorrectionKind,
   quickEntryLocked,
   quickRelativeTime,
+  compareQuickEntries,
   unresolvedQuickTransfers,
   type QuickKind,
 } from '@dwd/core';
-import type { QuickUndo } from '@dwd/contracts';
 import { useQuickLog } from '@/hooks/use-quick-log';
 import { Action, PrimaryButton } from '@/components/primary-button';
 import { Notice, Panel, Screen } from '@/components/screen';
@@ -51,16 +51,16 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
 
   const [expanded, setExpanded] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [undo, setUndo] = useState<QuickUndo | null>(state.record.undo);
+  const undo = state.record.undo;
   const [issue, setIssue] = useState<string | null>(null);
-  const [continued, setContinued] = useState(false);
+  const [continued, setContinued] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(timer);
   }, []);
   const current = store.session(selected);
-  const stale = !continued && isQuickSessionStale(current, now);
+  const stale = continued !== current?.id && isQuickSessionStale(current, now);
   const readOnly = current?.state === 'finished';
   const writable = state.hydrated && !state.blocked && !readOnly && !stale;
   const pending = unresolvedQuickTransfers(state.record).find((o) => o.sessionId === current?.id);
@@ -77,10 +77,10 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
   }
   function log(kind: QuickKind) {
     run(() => {
-      const action = store.log(kind);
+      store.log(kind);
+      setMenu(false);
       // Keep the device session selected if auth restoration completes after this tap.
       if (scope === 'guest' && !guest) router.setParams({ scope: 'guest' });
-      setUndo(action);
       setSelected(undefined);
       announce(`${quickKindLabel(kind)} logged`);
       setNow(Date.now());
@@ -90,7 +90,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
   }
   const entries = [...(current?.entries ?? [])]
     .filter((e) => !e.removedAt)
-    .sort((a, b) => b.sequence - a.sequence);
+    .sort((a, b) => compareQuickEntries(b, a));
   const canUndo =
     undo &&
     current?.state === 'active' &&
@@ -158,8 +158,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
                 store.startNew();
                 router.setParams({ sessionId: undefined });
                 setSelected(undefined);
-                setUndo(null);
-                setContinued(true);
+                setContinued(null);
                 setMenu(false);
               })
             }
@@ -211,7 +210,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
               day: 'numeric',
             })}
           </Text>
-          <PrimaryButton label="Continue this session" onPress={() => setContinued(true)} />
+          <PrimaryButton label="Continue this session" onPress={() => setContinued(current.id)} />
           <PrimaryButton
             label="Start new"
             variant="secondary"
@@ -220,8 +219,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
                 store.startNew();
                 router.setParams({ sessionId: undefined });
                 setSelected(undefined);
-                setUndo(null);
-                setContinued(true);
+                setContinued(null);
               })
             }
           />
@@ -294,7 +292,6 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
             onPress={() =>
               run(() => {
                 if (undo) store.undo(undo);
-                setUndo(null);
                 announce('Action undone');
               })
             }
@@ -326,6 +323,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
             size={22}
           />
         </Action>
+        {expanded && !entries.length ? <Text style={typography.body}>No entries yet.</Text> : null}
         {expanded
           ? entries.map((e) => (
               <View key={e.id} style={{ gap: 6, paddingVertical: 8 }}>
@@ -353,7 +351,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
                       variant="quiet"
                       onPress={() =>
                         run(() => {
-                          setUndo(store.correct(e.sessionId, e.id, quickCorrectionKind(e.kind)));
+                          store.correct(e.sessionId, e.id, quickCorrectionKind(e.kind));
                           announce('Entry corrected');
                         })
                       }
@@ -363,7 +361,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
                       variant="quiet"
                       onPress={() =>
                         run(() => {
-                          setUndo(store.correct(e.sessionId, e.id, 'remove'));
+                          store.correct(e.sessionId, e.id, 'remove');
                           announce('Entry removed');
                         })
                       }
@@ -418,7 +416,6 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
               if (current) {
                 store.finish(current.id);
                 setSelected(current.id);
-                setUndo(null);
                 announce('Session finished');
               }
             })
@@ -434,7 +431,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
                 store.startNew();
                 router.setParams({ sessionId: undefined });
                 setSelected(undefined);
-                setContinued(true);
+                setContinued(null);
               })
             }
           />

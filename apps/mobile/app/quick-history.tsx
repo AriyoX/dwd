@@ -63,9 +63,11 @@ export default function QuickHistoryScreen() {
                       s.entries.length &&
                       !(await confirmAction(
                         'Delete this session?',
-                        s.entries.some((e) => e.destination)
-                          ? 'This removes only this device’s copy. Entries already added to a night stay in that night.'
-                          : 'This removes only this local session and its entries.',
+                        scope !== 'guest'
+                          ? 'This removes this device’s copy. Your account history is kept and may restore it when syncing.'
+                          : s.entries.some((e) => e.destination)
+                            ? 'This removes only this device’s copy. Entries already added to a night stay in that night.'
+                            : 'This removes only this local session and its entries.',
                         'Delete session',
                         true,
                       ))

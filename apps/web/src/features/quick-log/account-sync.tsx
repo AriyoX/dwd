@@ -5,7 +5,7 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { synchronizeQuickLogs, type QuickLogStore } from '@dwd/contracts';
 import { quickScope, type Database } from '@dwd/core';
 import { getQuickSessions, saveQuickSession } from '@dwd/data';
-import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
+import { createBrowserSupabaseClient } from '../../lib/supabase/browser';
 import { browserLocks, browserQuickStore, quickWriterName } from './local';
 
 export function useAccountQuickSync(
@@ -143,6 +143,7 @@ export function AccountQuickSync() {
   const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null);
+  const authVersion = useRef(0);
   useEffect(() => {
     let alive = true;
     let connection: SupabaseClient<Database>;
@@ -154,13 +155,17 @@ export function AccountQuickSync() {
     queueMicrotask(() => {
       if (alive) setClient(connection);
     });
-    const { data } = connection.auth.onAuthStateChange((_, value) => {
-      if (alive) setSession(value);
+    const version = authVersion.current;
+    const { data } = connection.auth.onAuthStateChange((event, value) => {
+      if (alive && event !== 'INITIAL_SESSION') {
+        authVersion.current++;
+        setSession(value);
+      }
     });
     void connection.auth
       .getSession()
       .then(({ data }) => {
-        if (alive) setSession(data.session);
+        if (alive && authVersion.current === version) setSession(data.session);
       })
       .catch(() => undefined);
     return () => {
@@ -171,11 +176,12 @@ export function AccountQuickSync() {
   useEffect(() => {
     if (!client) return;
     let active = true;
+    const version = authVersion.current;
     // Server actions and OAuth callbacks update cookies without emitting a browser auth event.
     void client.auth
       .getSession()
       .then(({ data }) => {
-        if (active) setSession(data.session);
+        if (active && authVersion.current === version) setSession(data.session);
       })
       .catch(() => undefined);
     return () => {

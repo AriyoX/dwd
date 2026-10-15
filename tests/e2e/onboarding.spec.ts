@@ -46,7 +46,10 @@ test('real local signup, draft recovery, water-only night, support and history',
   await page.getByRole('dialog').getByRole('button', { name: 'Skip tour', exact: true }).click();
   await expect(page).toHaveURL(/\/home$/);
   await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
-  await page.getByRole('link', { name: /Plan a Night.*Make a night/ }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: /^Plan a Night/ })
+    .click();
   await page.getByLabel('Night name').fill('Chaser-only test night');
   await page.getByRole('button', { name: 'Just me', exact: true }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();

@@ -101,10 +101,7 @@ function Navigation() {
         >
           <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
           <Stack.Screen name="quick-log" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="quick-benefits"
-            options={{ ...sheet, title: 'More of your night.' }}
-          />
+          <Stack.Screen name="quick-benefits" options={{ ...sheet, title: 'Save your nights' }} />
           <Stack.Screen name="quick-history" options={{ title: 'Quick Log history' }} />
           <Stack.Screen name="quick-transfer" options={{ title: 'Add to a night' }} />
           <Stack.Screen name="join" options={{ ...sheet, title: 'Join a night' }} />
