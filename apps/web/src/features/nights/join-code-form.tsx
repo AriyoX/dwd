@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { parseInviteInput } from './invite-input';
 import { useTour } from '@/features/tour/tour-provider';
 
-export function JoinCodeForm() {
+export function JoinCodeForm({ replace = false }: { replace?: boolean }) {
   const tour = useTour();
   const [practiceValue, setPracticeValue] = useState('Practice invite');
   const router = useRouter();
@@ -27,7 +27,8 @@ export function JoinCodeForm() {
       return;
     }
     setPending(true);
-    router.push(`/join/${encodeURIComponent(token)}`);
+    if (replace) router.replace(`/join/${encodeURIComponent(token)}`);
+    else router.push(`/join/${encodeURIComponent(token)}`);
   }
 
   return (

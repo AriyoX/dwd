@@ -276,7 +276,7 @@ describe('native public Quick Log', () => {
     runtime.failWrites = false;
     await press('Retry saving');
     await press('Sign in to add logs');
-    expect(runtime.router.push).toHaveBeenCalledWith('/auth/sign-in');
+    expect(runtime.router.replace).toHaveBeenCalledWith('/auth/sign-in');
   });
   it('requires a saved handoff before creating or joining a night', async () => {
     runtime.account = { user: { id: 'bd100000-0000-4000-8000-000000000099' } };
@@ -295,7 +295,7 @@ describe('native public Quick Log', () => {
     runtime.failWrites = false;
     await press('Retry saving');
     await press('Create a night');
-    expect(runtime.router.push).toHaveBeenCalledWith('/night/new');
+    expect(runtime.router.replace).toHaveBeenCalledWith('/night/new');
   });
   it('does not load a destination saved for a different quick session', async () => {
     const accountId = 'bd100000-0000-4000-8000-000000000098';

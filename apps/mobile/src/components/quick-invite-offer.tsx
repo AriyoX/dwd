@@ -29,7 +29,7 @@ export function QuickInviteOffer({
       <Text style={typography.sectionTitle}>
         Add your {quickCountLabel(availableQuickEntries(session))} to {nightTitle}?
       </Text>
-      <Notice message="Sizes and strengths remain unknown." />
+      <Notice message="New drinks will use this night’s plan." />
       <PrimaryButton
         label="Add logs"
         onPress={() => {

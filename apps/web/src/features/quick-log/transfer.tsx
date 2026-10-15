@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   availableQuickEntries,
   quickCountLabel,
+  quickLinkedNight,
   unresolvedQuickTransfers,
   type ActiveNightSummary,
   type NightSnapshot,
@@ -47,7 +48,11 @@ function Transfer({ store }: { store: QuickLogStore }) {
   const quick = store.session(params.get('sessionId') ?? state.record.intent?.sessionId);
   const intent = state.record.intent?.sessionId === quick?.id ? state.record.intent : null;
   const pending = unresolvedQuickTransfers(state.record).find((o) => o.sessionId === quick?.id);
-  const nightId = pending?.nightId ?? params.get('nightId') ?? intent?.nightId;
+  const nightId =
+    pending?.nightId ??
+    quickLinkedNight(quick)?.nightId ??
+    params.get('nightId') ??
+    intent?.nightId;
   const entries = pending?.entries ?? availableQuickEntries(quick).slice(0, 500);
   const suffix = `scope=${store.scope === 'guest' ? 'guest' : 'account'}${quick ? `&sessionId=${quick.id}` : ''}`;
   const path = `/quick-log/add?${suffix}${nightId ? `&nightId=${nightId}` : ''}`;
@@ -151,7 +156,7 @@ function Transfer({ store }: { store: QuickLogStore }) {
         destination: kind,
       });
       if (!store.getSnapshot().saved) throw new Error('Couldn’t save on this device');
-      if (kind === 'create') router.push('/night/new');
+      if (kind === 'create') router.replace('/night/new');
       else setJoining(true);
     } catch {
       setIssue('Couldn’t save on this device. Retry saving before continuing.');
@@ -174,7 +179,11 @@ function Transfer({ store }: { store: QuickLogStore }) {
       {!quick ? (
         <p>Open a quick session to choose entries.</p>
       ) : !session ? (
-        <Link className="button button-primary" href={`/login?next=${encodeURIComponent(path)}`}>
+        <Link
+          replace
+          className="button button-primary"
+          href={`/login?next=${encodeURIComponent(path)}`}
+        >
           Sign in to add logs
         </Link>
       ) : pending && pending.accountId !== session.user.id ? (
@@ -235,7 +244,7 @@ function Transfer({ store }: { store: QuickLogStore }) {
               >
                 Join with an invite link
               </Button>
-              {joining ? <JoinCodeForm /> : null}
+              {joining ? <JoinCodeForm replace /> : null}
               <Button
                 type="button"
                 variant="secondary"
@@ -263,7 +272,7 @@ function Transfer({ store }: { store: QuickLogStore }) {
           ) : null}
         </div>
       ) : null}
-      <Link className="button button-ghost" href={`/quick-log?${suffix}`}>
+      <Link replace className="button button-ghost" href={`/quick-log?${suffix}`}>
         Not now · Back to Quick Log
       </Link>
     </div>

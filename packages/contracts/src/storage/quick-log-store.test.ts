@@ -10,6 +10,7 @@ import {
   quickScope,
   quickRelativeTime,
   quickSyncFingerprint,
+  quickLinkedNight,
   type QuickScope,
 } from '@dwd/core';
 import { QuickLogStore, quickRecordKey } from './quick-log-store';
@@ -40,6 +41,38 @@ export function quickFixture(scope: QuickScope = 'guest', values = new Map<strin
   };
 }
 describe('device-only Quick Log', () => {
+  it('links only confirmed imports and restores the link after reload and finish', () => {
+    const f = quickFixture();
+    f.eligible();
+    const { sessionId } = f.store.log('drink');
+    const owner = randomUUID(),
+      night = randomUUID(),
+      member = randomUUID();
+    const operation = f.store.prepareTransfer(sessionId, owner, night, member);
+    expect(quickLinkedNight(f.store.session())).toBeNull();
+    f.store.transferUncertain(operation.id);
+    expect(quickLinkedNight(f.store.session())).toBeNull();
+    f.store.confirmTransfer(operation.id, {
+      operationId: operation.id,
+      accountId: owner,
+      nightId: night,
+      memberId: member,
+      entries: operation.entries.map((entry) => ({
+        sourceEntryId: entry.id,
+        destinationEntryId: randomUUID(),
+        revision: entry.revision,
+      })),
+    });
+    const restored = quickFixture('guest', f.values).store;
+    expect(quickLinkedNight(restored.session())).toMatchObject({
+      nightId: night,
+      memberId: member,
+    });
+    restored.finish(sessionId);
+    expect(quickLinkedNight(restored.session(sessionId))).toMatchObject({ nightId: night });
+    restored.startNew();
+    expect(quickLinkedNight(restored.session())).toBeNull();
+  });
   it('orders concurrent positions consistently and treats equivalent timestamp formats as the same backup', () => {
     const f = quickFixture();
     f.eligible();

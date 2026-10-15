@@ -70,6 +70,8 @@ import {
 } from '@/features/bottles/bottle-shelf';
 import { useBottleInvitations } from '@/features/bottles/use-bottle-invitations';
 
+import { LinkedControls, type LinkedQuickControls } from '@/features/quick-log/linked-controls';
+
 type Segment = 'tonight' | 'group' | 'more';
 type ActivityKind = 'alcohol' | 'water';
 
@@ -98,13 +100,15 @@ export function ActiveNightClient({
   setupPlanInitially,
   fastInitially,
   initialNotificationPreferences,
+  quickSession,
 }: {
   openBottlesInitially?: boolean;
   initialSnapshot: NightSnapshot;
   openInviteInitially: boolean;
   setupPlanInitially: boolean;
   fastInitially: 'drink' | 'chaser' | null;
-  initialNotificationPreferences: NotificationPreferences;
+  initialNotificationPreferences?: NotificationPreferences;
+  quickSession?: LinkedQuickControls;
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const router = useRouter();
@@ -114,14 +118,14 @@ export function ActiveNightClient({
       const result = await getNightSnapshotAction(snapshot.night.id);
       if (!result.ok) return;
       setSnapshot(result.data);
-      if (result.data.night.status === 'ended') {
+      if (result.data.night.status === 'ended' && !quickSession) {
         router.replace(`/night/${result.data.night.id}/summary`);
       }
     } catch {
       // Keep the last snapshot through transport failures. Reconnect/focus and
       // the visible-page reconciliation timer retry without losing local work.
     }
-  }, [router, snapshot.night.id]);
+  }, [router, snapshot.night.id, quickSession]);
 
   return (
     <NightRealtimeProvider
@@ -137,7 +141,8 @@ export function ActiveNightClient({
         openInviteInitially={openInviteInitially}
         setupPlanInitially={setupPlanInitially}
         fastInitially={fastInitially}
-        initialNotificationPreferences={initialNotificationPreferences}
+        {...(initialNotificationPreferences ? { initialNotificationPreferences } : {})}
+        {...(quickSession ? { quickSession } : {})}
       />
     </NightRealtimeProvider>
   );
@@ -152,6 +157,7 @@ function ActiveNightView({
   setupPlanInitially,
   fastInitially,
   initialNotificationPreferences,
+  quickSession,
 }: {
   openBottlesInitially: boolean;
   snapshot: NightSnapshot;
@@ -160,7 +166,8 @@ function ActiveNightView({
   openInviteInitially: boolean;
   setupPlanInitially: boolean;
   fastInitially: 'drink' | 'chaser' | null;
-  initialNotificationPreferences: NotificationPreferences;
+  initialNotificationPreferences?: NotificationPreferences;
+  quickSession?: LinkedQuickControls;
 }) {
   const router = useRouter();
   const realtimeStatus = useRealtimeStatus();
@@ -182,7 +189,9 @@ function ActiveNightView({
     ? selectedMemberId
     : snapshot.currentMemberId;
   const selectedMember =
-    loggableMembers.find((member) => member.id === effectiveSelectedMemberId) ?? currentMember;
+    (quickSession
+      ? currentMember
+      : loggableMembers.find((member) => member.id === effectiveSelectedMemberId)) ?? currentMember;
   const invitations = useBottleInvitations(snapshot, selectedMember);
   const mainBottle = snapshot.sharedBottles?.find(
     (bottle) =>
@@ -408,7 +417,10 @@ function ActiveNightView({
     endOpen ||
     leaveOpen;
   const overdueOpen =
-    timeStatus === 'overdue' && overdueDismissedFor !== snapshot.night.endsAt && !anotherDialogOpen;
+    !quickSession &&
+    timeStatus === 'overdue' &&
+    overdueDismissedFor !== snapshot.night.endsAt &&
+    !anotherDialogOpen;
   const lastBottleTrackingView = useRef<string | null>(null);
   useEffect(() => {
     if (
@@ -664,7 +676,8 @@ function ActiveNightView({
   }
 
   function quickLog(member: MemberSnapshot) {
-    const quick = member.planItems.find((item) => item.isQuickLog) ?? member.planItems[0];
+    const active = member.planItems.filter((item) => !item.archivedAt);
+    const quick = active.find((item) => item.isQuickLog) ?? active[0];
     if (quick === undefined) {
       setPlanMember(member);
       setPlanDraft(draftItemsFromPlan(member.planItems));
@@ -868,7 +881,11 @@ function ActiveNightView({
       const result = await endNightAction({ nightId: snapshot.night.id });
       if (result.ok) {
         if ('clearAppBadge' in navigator) void navigator.clearAppBadge().catch(() => undefined);
-        router.replace(`/night/${snapshot.night.id}/summary`);
+        if (quickSession) {
+          quickSession.onFinish();
+          setEndOpen(false);
+          await refresh();
+        } else router.replace(`/night/${snapshot.night.id}/summary`);
       } else setMessage(result.error);
     } catch {
       setMessage('Couldn’t end the night. Check your connection and try again.');
@@ -1046,6 +1063,7 @@ function ActiveNightView({
 
   return (
     <NightFrame
+      compact={Boolean(quickSession)}
       snapshot={snapshot}
       segment={segment}
       onSegment={setSegment}
@@ -1054,8 +1072,36 @@ function ActiveNightView({
       remainingText={remainingText}
       overdue={timeStatus === 'overdue'}
     >
-      <NotificationInbox key={snapshot.currentUserId} nightId={snapshot.night.id} />
-      {segment === 'tonight' ? (
+      {quickSession ? (
+        <LinkedControls
+          controls={quickSession}
+          member={currentMember}
+          nightId={snapshot.night.id}
+          title={snapshot.night.title}
+          active={snapshot.night.status === 'active' && currentMember.leftAt === null}
+          host={isHost}
+          busy={busy}
+          online={online}
+          pending={optimisticLogs}
+          onLog={() => quickLog(currentMember)}
+          onWater={() => void logWater(currentMember)}
+          onUndo={() => void undo(currentMember)}
+          onChoose={() => editPlan(currentMember)}
+          onEnd={() => void end()}
+        />
+      ) : (
+        <NotificationInbox key={snapshot.currentUserId} nightId={snapshot.night.id} />
+      )}
+      {quickSession && optimisticLogs.length > 0 ? (
+        <PendingQueuePanel
+          records={optimisticLogs}
+          busy={busy}
+          onRetry={(record) => void retryPending(record)}
+          onReview={reviewPending}
+          onRemove={(record) => void removePending(record)}
+        />
+      ) : null}
+      {!quickSession && segment === 'tonight' ? (
         <>
           <ParticipantSwitcher
             members={loggableMembers}
@@ -1093,7 +1139,7 @@ function ActiveNightView({
         </>
       ) : null}
 
-      {segment === 'group' ? (
+      {!quickSession && segment === 'group' ? (
         <section className="stack">
           <BottleLauncher
             count={bottleCount}
@@ -1140,7 +1186,7 @@ function ActiveNightView({
         </section>
       ) : null}
 
-      {segment === 'more' ? (
+      {!quickSession && segment === 'more' ? (
         <section className="stack">
           <header>
             <h2>Night controls</h2>
@@ -1180,7 +1226,9 @@ function ActiveNightView({
               <Bell aria-hidden="true" /> Reminder settings
             </Link>
           </Card>
-          <ActiveReminderControls initial={initialNotificationPreferences} />
+          {initialNotificationPreferences ? (
+            <ActiveReminderControls initial={initialNotificationPreferences} />
+          ) : null}
           <PendingQueuePanel
             records={optimisticLogs}
             busy={busy}

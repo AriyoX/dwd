@@ -1,22 +1,28 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { TonightBanners } from '@/features/ads/tonight-banners';
 import styles from './quick-log.module.css';
 
 export function QuickLogAds() {
   const dock = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState(180);
   useEffect(() => {
     if (!dock.current) return;
+    const shell = dock.current.closest('main');
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setHeight(entry.target.getBoundingClientRect().height);
+      if (entry)
+        shell?.style.setProperty(
+          '--quick-ad-height',
+          `${entry.target.getBoundingClientRect().height}px`,
+        );
     });
     observer.observe(dock.current);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      shell?.style.removeProperty('--quick-ad-height');
+    };
   }, []);
   return (
     <>
-      <div aria-hidden="true" style={{ height: height + 24 }} />
       <div ref={dock} className={styles['adDock']}>
         <TonightBanners compact />
       </div>

@@ -10,6 +10,7 @@ import {
   availableQuickEntries,
   isQuickSessionStale,
   quickCountLabel,
+  quickLinkedNight,
   quickKindLabel,
   quickCorrectionKind,
   quickEntryLocked,
@@ -27,6 +28,7 @@ import { useTheme } from '@/providers/theme-provider';
 import { LegalLinks } from '@/components/auth-chrome';
 import { useQuickSync } from '@/providers/quick-sync-provider';
 import { TonightBanners } from '@/components/tonight-banners';
+import { LinkedQuickLog } from '@/components/linked-quick-log';
 
 export default function QuickLogScreen() {
   const params = useLocalSearchParams<{ scope?: string; sessionId?: string }>();
@@ -98,6 +100,29 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
     current.entries.some(
       (e) =>
         e.id === undo.entryId && e.revision === undo.revision && !quickEntryLocked(state.record, e),
+    );
+  if (!pending && current && quickLinkedNight(current))
+    return (
+      <LinkedQuickLog
+        key={`${scope}:${current.id}`}
+        quick={current}
+        writable={state.hydrated && !state.blocked}
+        issue={issue ?? state.issue}
+        onFinish={() =>
+          run(() => {
+            store.finish(current.id);
+            setSelected(current.id);
+          })
+        }
+        onStart={() =>
+          run(() => {
+            store.startNew();
+            router.setParams({ sessionId: undefined });
+            setSelected(undefined);
+            setContinued(null);
+          })
+        }
+      />
     );
   return (
     <Screen hidePermissionReminder contentStyle={{ gap: 16 }} footer={<TonightBanners compact />}>

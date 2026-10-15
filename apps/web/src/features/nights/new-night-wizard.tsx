@@ -289,12 +289,12 @@ export function NewNightWizard({ userId }: { userId: string }) {
       }
       setHasDraft(false);
       if (quickOffer) {
-        router.push(
+        router.replace(
           `/quick-log/add?scope=${quickOffer.scope === 'guest' ? 'guest' : 'account'}&sessionId=${quickOffer.sessionId}&nightId=${result.data.nightId}`,
         );
         return;
       }
-      router.push(`/night/${result.data.nightId}${withPeople ? '?invite=1' : ''}`);
+      router.replace(`/night/${result.data.nightId}${withPeople ? '?invite=1' : ''}`);
     } catch {
       setError('Couldn’t start the night. Check your connection and try again.');
     } finally {

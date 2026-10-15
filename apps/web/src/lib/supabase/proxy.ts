@@ -6,7 +6,6 @@ const protectedPrefixes = ['/home', '/night', '/history', '/account', '/feedback
 
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   if (
-    request.nextUrl.pathname === '/' ||
     request.nextUrl.pathname === '/manifest.webmanifest' ||
     request.nextUrl.pathname === '/demo' ||
     request.nextUrl.pathname === '/quick-log' ||
@@ -36,7 +35,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   });
 
   const { data, error } = await supabase.auth.getClaims();
-  if (error && ['refresh_token_not_found', 'refresh_token_already_used'].includes(error.code ?? '')) {
+  if (
+    error &&
+    ['refresh_token_not_found', 'refresh_token_already_used'].includes(error.code ?? '')
+  ) {
     // Remove only this project's stale auth cookies, including chunked cookies.
     // Keep unrelated preferences and all locally saved logs.
     const authKey = `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
@@ -46,6 +48,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
         response.cookies.set(name, '', { path: '/', maxAge: 0 });
       }
     }
+    const cleared = NextResponse.next({ request });
+    for (const cookie of response.cookies.getAll()) cleared.cookies.set(cookie);
+    cleared.headers.set('Cache-Control', 'private, no-store');
+    response = cleared;
   }
   const redirectWithSession = (destination: URL) => {
     const redirected = NextResponse.redirect(destination);

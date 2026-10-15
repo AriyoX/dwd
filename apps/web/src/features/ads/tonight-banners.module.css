@@ -8,6 +8,13 @@
   margin-top: 0;
   gap: 0;
 }
+.hiddenHeading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
 .compact .banner {
   flex-basis: 100%;
   min-height: 108px;

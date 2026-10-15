@@ -14,6 +14,7 @@ export function NightFrame({
   remainingText,
   overdue = false,
   sample = false,
+  compact = false,
   children,
 }: {
   snapshot: NightSnapshot;
@@ -24,8 +25,10 @@ export function NightFrame({
   remainingText: string;
   overdue?: boolean;
   sample?: boolean;
+  compact?: boolean;
   children: ReactNode;
 }) {
+  if (compact) return <div className="stack">{children}</div>;
   return (
     <main className="page-shell active-night-shell" id="main-content">
       <header className="night-header">

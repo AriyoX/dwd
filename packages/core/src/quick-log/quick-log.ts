@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { MemberSnapshot, NightSnapshot } from '../types/domain';
 
 export const QUICK_LOG_VERSION = 3;
 export const QUICK_LOG_STALE_MS = 12 * 60 * 60 * 1000;
@@ -301,6 +302,39 @@ export function quickTotalsLabel(drinks: number, chasers: number) {
 }
 export function availableQuickEntries(session?: QuickSession) {
   return (session?.entries ?? []).filter((e) => !e.removedAt && !e.destination);
+}
+
+/** A confirmed import is the durable link, including after account/device sync. */
+export function quickLinkedNight(session?: QuickSession) {
+  return (
+    [...(session?.entries ?? [])]
+      .filter((entry) => entry.destination)
+      .sort((a, b) => compareQuickEntries(b, a))[0]?.destination ?? null
+  );
+}
+
+export function quickLinkedMember(
+  snapshot: NightSnapshot,
+  link: { nightId: string; memberId: string },
+  accountId: string,
+) {
+  if (
+    snapshot.currentUserId !== accountId ||
+    snapshot.night.id !== link.nightId ||
+    snapshot.currentMemberId !== link.memberId
+  )
+    return null;
+  return (
+    snapshot.members.find(
+      (member) =>
+        member.id === link.memberId && member.userId === accountId && member.leftAt === null,
+    ) ?? null
+  );
+}
+
+export function quickMainDrink(member: MemberSnapshot) {
+  const items = member.planItems.filter((item) => !item.archivedAt);
+  return items.find((item) => item.isQuickLog) ?? items[0];
 }
 /** Concurrent devices can append at the same source position; IDs provide a stable tie-break. */
 export function compareQuickEntries(

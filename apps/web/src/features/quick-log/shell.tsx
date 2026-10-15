@@ -3,20 +3,26 @@ import { Suspense, type ReactNode } from 'react';
 import { Wordmark } from '@/components/layout/wordmark';
 import { QuickLogProvider } from './provider';
 import { GetApp } from './account-benefits';
+import { ConnectionProvider } from '@/providers/connection-provider';
 
 export function QuickLogShell({ children }: { children: ReactNode }) {
   return (
     <main
       id="main-content"
       className="page-shell quick-log-shell"
-      style={{ maxWidth: 620, paddingBottom: 'calc(32px + env(safe-area-inset-bottom))' }}
+      style={{
+        maxWidth: 620,
+        paddingBottom: 'calc(48px + env(safe-area-inset-bottom) + var(--quick-ad-height, 0px))',
+      }}
     >
       <header className="topbar">
         <Wordmark />
         <GetApp />
       </header>
       <Suspense fallback={<p role="status">Opening device logs…</p>}>
-        <QuickLogProvider>{children}</QuickLogProvider>
+        <ConnectionProvider>
+          <QuickLogProvider>{children}</QuickLogProvider>
+        </ConnectionProvider>
       </Suspense>
       <footer className="app-footer">
         <p>For adults 18+. Meet your local legal drinking age.</p>

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { quickCountLabel, quickScope } from '@dwd/core';
+import { quickCountLabel, quickScope, quickLinkedNight } from '@dwd/core';
 import { ArrowRight, Plus } from 'lucide-react';
 import { browserQuickStore } from './local';
 import styles from './quick-log.module.css';
@@ -21,7 +21,11 @@ export function QuickLogEntry({
       setEntry({
         resume: Boolean(current),
         guest: Boolean(current && current.scope === 'guest' && accountId),
-        counts: current ? quickCountLabel(current.entries) : '',
+        counts: current
+          ? quickLinkedNight(current)
+            ? 'Linked to your night'
+            : quickCountLabel(current.entries)
+          : '',
       });
     }
     queueMicrotask(update);

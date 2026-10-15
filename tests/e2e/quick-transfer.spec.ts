@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
-import type { Database, NightSnapshot } from '@dwd/core';
+import type { Database, NightSnapshot, PlanItemInput } from '@dwd/core';
 
 async function account(name: string) {
   const url = process.env['E2E_SUPABASE_URL'] ?? '';
@@ -23,13 +23,17 @@ async function signIn(page: Page, user: Awaited<ReturnType<typeof account>>) {
   await page.getByLabel('Password', { exact: true }).fill(user.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 }
-async function night(host: Awaited<ReturnType<typeof account>>, title: string) {
+async function night(
+  host: Awaited<ReturnType<typeof account>>,
+  title: string,
+  plan: PlanItemInput[] = [],
+) {
   const { data, error } = await host.client.rpc('start_night_out_recoverable', {
     p_creation_key: randomUUID(),
     p_title: title,
     p_ends_at: new Date(Date.now() + 3_600_000).toISOString(),
     p_timezone: 'UTC',
-    p_host_plan: [],
+    p_host_plan: plan,
     p_guests: [],
   });
   if (error) throw error;
@@ -57,6 +61,55 @@ async function reopen(page: Page, destination: string) {
   await next.goto(destination);
   return next;
 }
+
+test('linked Quick Log uses the night plan, queues offline, and leaves clean back history', async ({
+  page,
+  context,
+}) => {
+  test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local backend required.');
+  const user = await account('Linked logger');
+  const target = await night(user, 'Linked night', [
+    {
+      label: 'Beer',
+      category: 'beer',
+      volumeMl: 330,
+      abvPercent: 5,
+      plannedQuantity: 4,
+      isQuickLog: true,
+    },
+  ]);
+  await page.goto('/login');
+  await signIn(page, user);
+  await expect(page).toHaveURL(/\/home/);
+  await page.goto('/quick-log?scope=account');
+  await page.getByRole('button', { name: 'Log one drink', exact: true }).click();
+  await page.getByRole('button', { name: 'Add to a night', exact: true }).click();
+  await page.getByRole('button', { name: 'Linked night', exact: true }).click();
+  await page.getByRole('button', { name: 'Add my logs', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/night/${target.night.id}`));
+  await page.goBack();
+  await expect(page).toHaveURL(/\/quick-log\?/);
+  await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+  await page.getByRole('button', { name: 'Chaser', exact: true }).click();
+  await expect
+    .poll(async () => {
+      const member = (await snapshot(user, target.night.id)).members[0];
+      return [member?.quickLogs?.length, member?.drinkLogs.length, member?.waterLogs.length];
+    })
+    .toEqual([1, 1, 1]);
+  await context.setOffline(true);
+  await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+  await expect(page.getByText('3 drinks · 1 chaser', { exact: true })).toBeVisible();
+  await context.setOffline(false);
+  await expect
+    .poll(async () => (await snapshot(user, target.night.id)).members[0]?.drinkLogs.length)
+    .toBe(2);
+  await page.getByRole('button', { name: 'Finish session', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'End the night too?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Finish Quick Log only', exact: true }).click();
+  expect((await snapshot(user, target.night.id)).night.status).toBe('active');
+  await expect(page.getByRole('button', { name: 'Log Beer', exact: true })).toBeDisabled();
+});
 
 test('signed-in Quick Log stays available and saves its handoff before night setup', async ({
   page,
@@ -160,13 +213,13 @@ test('create-and-transfer survives lost responses with one night and one importe
       await route.abort('failed');
     } else await route.continue();
   });
-  await page.getByRole('button', { name: 'Confirm and add logs' }).click();
+  await page.getByRole('button', { name: 'Add my logs' }).click();
   await expect(page.getByRole('alert').filter({ hasText: /Couldn’t confirm/ })).toBeVisible();
   // Return to the logger while the import receipt is unresolved. Account refresh
   // may already know the Night destination; result recovery must remain reachable.
   await page.goto('/quick-log?scope=account');
   await page.getByRole('button', { name: 'Check adding logs to a night' }).click();
-  await page.getByRole('button', { name: 'Check result and add logs' }).click();
+  await page.getByRole('button', { name: 'Check saved logs' }).click();
   await expect(page).toHaveURL(new RegExp(`/night/${nightId}`));
   const { data, error } = await user.client.rpc('get_active_nights');
   if (error) throw error;
@@ -222,7 +275,7 @@ test('guest sign-in cancellation, invited membership, Not now and later explicit
   page = await reopen(page, '/quick-log?scope=guest');
   await page.getByRole('button', { name: 'Add to a night', exact: true }).click();
   await page.getByRole('button', { name: 'Invite Quick destination', exact: true }).click();
-  await page.getByRole('button', { name: 'Confirm and add logs' }).click();
+  await page.getByRole('button', { name: 'Add my logs' }).click();
   await expect(page).toHaveURL(new RegExp(`/night/${target.night.id}`));
   const added = (await snapshot(user, target.night.id)).members.find((m) => m.userId === user.id);
   expect(added?.quickLogs).toHaveLength(5);
@@ -244,7 +297,7 @@ test('guest sign-in cancellation, invited membership, Not now and later explicit
     }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Add logs', exact: true }).click();
-  await page.getByRole('button', { name: 'Confirm and add logs' }).click();
+  await page.getByRole('button', { name: 'Add my logs' }).click();
   await expect(page).toHaveURL(new RegExp(`/night/${target.night.id}`));
   expect(
     (await snapshot(user, target.night.id)).members.filter((m) => m.userId === user.id),

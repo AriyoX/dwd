@@ -29,8 +29,9 @@ export function QuickInviteOffer({
       <h2>
         Add your {quickCountLabel(availableQuickEntries(quick))} to {nightTitle}?
       </h2>
-      <p className="muted small">Sizes and strengths remain unknown.</p>
+      <p className="muted small">New drinks will use this night’s plan.</p>
       <Link
+        replace
         className="button button-primary"
         href={`/quick-log/add?scope=${offer.scope === 'guest' ? 'guest' : 'account'}&sessionId=${offer.sessionId}&nightId=${nightId}`}
       >

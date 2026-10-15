@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   availableQuickEntries,
   quickCountLabel,
+  quickLinkedNight,
   unresolvedQuickTransfers,
   type ActiveNightSummary,
   type NightSnapshot,
@@ -59,7 +60,8 @@ function Transfer({
       mounted.current = false;
     };
   }, []);
-  const nightId = pending?.nightId ?? params.nightId ?? intent?.nightId;
+  const nightId =
+    pending?.nightId ?? quickLinkedNight(quick)?.nightId ?? params.nightId ?? intent?.nightId;
   const back = () =>
     router.replace({
       pathname: '/quick-log',
@@ -168,7 +170,7 @@ function Transfer({
         destination: destinationKind,
       });
       if (!store.getSnapshot().saved) throw new Error('Couldn’t save on this device');
-      router.push(destinationKind === 'invite' ? '/join' : '/night/new');
+      router.replace(destinationKind === 'invite' ? '/join' : '/night/new');
     } catch {
       setIssue('Couldn’t save on this device. Retry saving before continuing.');
     }
@@ -200,7 +202,7 @@ function Transfer({
                 });
                 if (!store.getSnapshot().saved) throw new Error('Couldn’t save on this device');
                 authHandoff().remember(path);
-                router.push('/auth/sign-in');
+                router.replace('/auth/sign-in');
               } catch {
                 setIssue('Couldn’t save on this device. Retry saving before continuing.');
               }

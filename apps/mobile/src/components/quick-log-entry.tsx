@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { quickCountLabel } from '@dwd/core';
+import { quickCountLabel, quickLinkedNight } from '@dwd/core';
 import { useQuickLog } from '@/hooks/use-quick-log';
 import { useTheme } from '@/providers/theme-provider';
 import { Action } from './primary-button';
@@ -42,7 +42,11 @@ export function QuickLogEntry() {
       </View>
       <View style={{ flex: 1, gap: 4 }}>
         <Text style={typography.sectionTitle}>{label}</Text>
-        {current ? <Text style={typography.body}>{quickCountLabel(current.entries)}</Text> : null}
+        {current ? (
+          <Text style={typography.body}>
+            {quickLinkedNight(current) ? 'Linked to your night' : quickCountLabel(current.entries)}
+          </Text>
+        ) : null}
       </View>
       <Ionicons name="arrow-forward" size={22} color={colors.primary} />
     </Action>

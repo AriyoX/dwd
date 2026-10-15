@@ -16,6 +16,7 @@ import {
   availableQuickEntries,
   isQuickSessionStale,
   quickCountLabel,
+  quickLinkedNight,
   quickKindLabel,
   quickCorrectionKind,
   quickEntryLocked,
@@ -31,6 +32,7 @@ import { useBrowserQuickLog, useQuickStoreState } from './provider';
 import styles from './quick-log.module.css';
 import { AccountBenefits } from './account-benefits';
 import { QuickLogAds } from './floating-ads';
+import { LinkedQuickLogger } from './linked-logger';
 
 export function QuickLogger({
   history = false,
@@ -173,6 +175,26 @@ function Logger({
       );
     });
   }
+  if (!history && !pending && current && quickLinkedNight(current))
+    return (
+      <>
+        {issue || state.issue ? <p role="alert">{issue ?? state.issue}</p> : null}
+        <LinkedQuickLogger
+          key={`${store.scope}:${current.id}`}
+          quick={current}
+          controls={{
+            finished: readOnly,
+            writable: writable && !state.blocked,
+            onFinish: () =>
+              run(() => {
+                store.finish(current.id);
+                setSelected(current.id);
+              }),
+            onStart: startNew,
+          }}
+        />
+      </>
+    );
   return (
     <div className={styles['logger']}>
       <header className={styles['header']}>

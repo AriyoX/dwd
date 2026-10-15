@@ -87,7 +87,7 @@ test('Home resumes a guest session after sign-in and a chaser-only import stays 
   await expect(page).toHaveURL(/\/quick-log/);
   await page.getByRole('button', { name: 'Add to a night', exact: true }).click();
   await page.getByRole('button', { name: 'Chaser destination', exact: true }).click();
-  await page.getByRole('button', { name: 'Confirm and add logs', exact: true }).click();
+  await page.getByRole('button', { name: 'Add my logs', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/night/${destination.snapshot.night.id}`));
   await expect(page.getByText('Quick Log · 0 drinks · 1 chaser', { exact: true })).toBeVisible();
   await expect(page.getByText(/Measured alcohol subtotal is incomplete/)).not.toBeVisible();
@@ -98,7 +98,7 @@ test('Home resumes a guest session after sign-in and a chaser-only import stays 
   const member = (snapshot.data as unknown as NightSnapshot).members[0];
   expect(member?.drinkLogs).toHaveLength(0);
   expect(member?.quickLogs?.map((e) => e.kind)).toEqual(['chaser']);
-  await page.getByText('Quick Log entries', { exact: true }).click();
+  await page.getByText('Earlier entries', { exact: true }).click();
   await page.getByRole('button', { name: 'Change to Drink', exact: true }).click();
   await expect(page.getByText('Quick Log · 1 drink · 0 chasers', { exact: true })).toBeVisible();
   await expect(page.getByText(/Measured alcohol subtotal is incomplete/)).toBeVisible();

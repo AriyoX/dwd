@@ -12,7 +12,7 @@ import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { useAccountQuery } from '@/hooks/use-account-query';
 import { useQuickLog } from '@/hooks/use-quick-log';
-import { quickCountLabel } from '@dwd/core';
+import { quickCountLabel, quickLinkedNight } from '@dwd/core';
 
 export default function TonightScreen() {
   const router = useRouter();
@@ -69,10 +69,11 @@ export default function TonightScreen() {
             alignItems: 'center',
             gap: 14,
             padding: 18,
-            borderRadius: 22,
+            borderRadius: 30,
             borderWidth: 1,
-            borderColor: colors.outline,
-            backgroundColor: colors.surface,
+            borderColor: colors.primary,
+            backgroundColor: colors.primarySoft,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
           }}
         >
           <View
@@ -91,7 +92,9 @@ export default function TonightScreen() {
             <Text style={typography.sectionTitle}>Resume Quick Log</Text>
             {
               <Text style={{ ...typography.body, color: colors.muted, fontSize: 13 }}>
-                {quickCountLabel(currentQuick.entries)}
+                {quickLinkedNight(currentQuick)
+                  ? 'Linked to your night'
+                  : quickCountLabel(currentQuick.entries)}
                 {currentQuick.scope === 'guest' && status === 'signed-in' ? ' · Guest session' : ''}
               </Text>
             }

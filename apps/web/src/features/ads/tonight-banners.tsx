@@ -145,7 +145,7 @@ export function TonightBanners({ compact = false }: { compact?: boolean }) {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
       }}
     >
-      <div className={compact ? 'sr-only' : styles['heading']}>
+      <div className={compact ? styles['hiddenHeading'] : styles['heading']}>
         <h2 id={headingId}>Featured</h2>
         {!compact && ads.length > 1 ? (
           <div className={styles['arrows']}>
