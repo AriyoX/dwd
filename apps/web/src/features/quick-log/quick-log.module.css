@@ -10,36 +10,62 @@
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
-  width: min(calc(100% - 32px), 36rem);
-  padding: 8px 8px 0;
-  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-  border-radius: 28px;
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  /* Keep the banner's previous content width after removing its 8px frame and border. */
+  width: min(calc(100% - 50px), calc(36rem - 18px));
+  border-radius: 20px;
   box-shadow: 0 8px 32px #160b1230;
 }
 .adClose {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 6px;
+  right: 6px;
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--border);
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  color: var(--text);
+  background: transparent;
+  color: #f8f4ef;
   cursor: pointer;
   touch-action: manipulation;
+}
+.adClose::before {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgb(248 244 239 / 14%);
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--shadow) 40%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  content: '';
+  pointer-events: none;
+}
+.adClose svg {
+  position: relative;
+  pointer-events: none;
 }
 .adClose:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
-.adClose:active {
-  background: var(--primary-soft);
+@media (hover: hover) and (pointer: fine) {
+  .adClose:hover::before {
+    background: color-mix(in srgb, var(--shadow) 55%, transparent);
+  }
+}
+.adClose:active::before {
+  background: color-mix(in srgb, var(--shadow) 65%, transparent);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .adClose::before,
+  .adClose:hover::before,
+  .adClose:active::before {
+    background: var(--shadow);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 .entryCard {
   position: relative;

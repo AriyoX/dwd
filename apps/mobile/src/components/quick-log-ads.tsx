@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createAdDismissal } from '@dwd/contracts';
 import { useTheme } from '@/providers/theme-provider';
+import { darkColors } from '@/theme/tokens';
 import { TonightBanners } from './tonight-banners';
 
 const dismissal = createAdDismissal();
@@ -13,16 +14,13 @@ export function useQuickLogAds() {
 }
 
 function QuickLogAds() {
-  const { colors } = useTheme();
+  const { colors, reduceTransparency } = useTheme();
   return (
     <View
       style={{
-        padding: 8,
-        paddingBottom: 0,
-        borderRadius: 28,
-        borderWidth: 1,
-        borderColor: `${colors.border}A6`,
-        backgroundColor: `${colors.surface}B3`,
+        // Keep the previous banner width after removing the 8px frame and border.
+        marginHorizontal: 9,
+        borderRadius: 20,
         boxShadow: '0 8px 32px #160b1230',
       }}
     >
@@ -31,21 +29,34 @@ function QuickLogAds() {
         accessibilityRole="button"
         accessibilityLabel="Hide ads for 7 minutes"
         onPress={dismissal.dismiss}
-        style={({ pressed }) => ({
+        style={{
           position: 'absolute',
-          top: 10,
-          right: 10,
+          top: 6,
+          right: 6,
           width: 44,
           height: 44,
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: 22,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: pressed ? colors.primarySoft : `${colors.surface}E6`,
-        })}
+        }}
       >
-        <Ionicons name="close" size={18} color={colors.text} accessible={false} />
+        {({ pressed }) => (
+          <View
+            pointerEvents="none"
+            style={{
+              width: 32,
+              height: 32,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: `${darkColors.text}24`,
+              backgroundColor: `${colors.shadow}${reduceTransparency ? 'FF' : pressed ? 'A6' : '66'}`,
+            }}
+          >
+            <Ionicons name="close" size={16} color={darkColors.text} accessible={false} />
+          </View>
+        )}
       </Pressable>
     </View>
   );

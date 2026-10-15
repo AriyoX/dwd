@@ -226,7 +226,7 @@ export function TonightBanners({ compact = false }: { compact?: boolean }) {
           />
         ))}
       </div>
-      {ads.length > 1 ? (
+      {!compact && ads.length > 1 ? (
         <div className={styles['pagination']} role="group" aria-label="Choose a banner">
           {ads.map((ad, index) => (
             <button

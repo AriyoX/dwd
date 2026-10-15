@@ -37,7 +37,7 @@ export function QuickLogAds() {
         title="Hide ads for 7 minutes"
         onClick={dismissal.dismiss}
       >
-        <X size={18} aria-hidden="true" />
+        <X size={16} aria-hidden="true" />
       </button>
     </div>
   );

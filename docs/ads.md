@@ -2,6 +2,10 @@
 
 The mobile home tab and web home page have a horizontal banner carousel below the main actions and above the safety footer. Cards snap when swiped, show part of the next banner, and have tappable page dots. The web carousel also has previous/next controls for mouse and keyboard users. Banners scroll with the page.
 
+Compact Quick Log banners omit the bottom pagination row and padded outer frame. Their banner dimensions, labels, dismissal, swipe navigation and automatic rotation are retained. Full-size carousels keep their existing controls and pagination.
+
+The Quick Log close button uses a translucent 32px circle inside a 44px tap target, with a solid fallback when reduced transparency is enabled. Closing hides ads immediately for seven minutes. Navigation keeps that pause; a full page reload or app restart resets it because dismissal is held in memory.
+
 Mobile cards share a fixed height, with headlines limited to three lines and images cropped to fill the card. Larger accessibility text increases every card's height together, so the carousel stays consistent across campaigns.
 
 Multiple banners advance every five seconds and repeat from the first banner after the last. Rotation pauses during touch interaction, when the mobile screen loses focus or the app is backgrounded, and on web hover, keyboard focus, hidden tabs, or when the carousel is offscreen. Reduced-motion settings disable automatic rotation; manual navigation still works.

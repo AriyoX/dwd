@@ -195,7 +195,7 @@ export function TonightBanners({ compact = false }: { compact?: boolean }) {
           ))}
         </ScrollView>
       ) : null}
-      {ads.length > 1 ? (
+      {!compact && ads.length > 1 ? (
         <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
           {ads.map((ad, index) => (
             <Pressable

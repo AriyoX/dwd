@@ -32,10 +32,6 @@
   font-size: 1rem;
   white-space: normal;
 }
-.compact .pagination button {
-  min-height: 44px;
-}
-
 .heading {
   display: flex;
   align-items: center;
