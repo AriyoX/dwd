@@ -4,6 +4,8 @@ The Link Up uses ordinary DWD sign-in. Open https://dwdug.vercel.app/events/the-
 
 Initial grants are for `shebatindy@gmail.com` and `ahumuzaariyo@gmail.com`, with equivalent permissions on `/events/the-link-up/admin`. Both accounts already existed with verified emails when checked. Migration `20261015200233_page_scoped_admin_access.sql` seeds those existing verified accounts once. It never recreates a removed grant on sign-in.
 
+Applied and deployed on 15 October 2026. Both approved identities passed the production dashboard/API check. Normal password sign-in, denial of another account, exact-page isolation and live revocation were also verified using a disposable account, which was removed afterward. Each organizer should still confirm their own password or Google sign-in on their device before the event.
+
 ## Change or remove access in Supabase
 
 1. Open the [DWD Supabase Table Editor](https://supabase.com/dashboard/project/kdplbebaotvgcvjggacz/editor).
