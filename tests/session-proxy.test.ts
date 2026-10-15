@@ -36,6 +36,21 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('session redirects', () => {
+  it('does not refresh auth for the public logger or app manifest', async () => {
+    await updateSession(new NextRequest('https://dwd.example/'));
+    await updateSession(new NextRequest('https://dwd.example/manifest.webmanifest'));
+    expect(mocks.getClaims).not.toHaveBeenCalled();
+  });
+
+  it('expires only this project’s rejected refresh-token cookies', async () => {
+    mocks.getClaims.mockResolvedValue({ data: null, error: { code: 'refresh_token_not_found' } });
+    const response = await updateSession(new NextRequest('https://dwd.example/home', {
+      headers: { cookie: 'sb-localhost-auth-token.0=expired; theme=dark' },
+    }));
+    expect(response.cookies.get('sb-localhost-auth-token.0')?.maxAge).toBe(0);
+    expect(response.cookies.get('theme')).toBeUndefined();
+    expect(response.status).toBe(307);
+  });
   it('clears expired cookies on the login redirect and preserves the destination', async () => {
     mocks.getClaims.mockImplementation(() => {
       mocks.cookies?.setAll(

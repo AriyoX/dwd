@@ -134,7 +134,9 @@ export function QuickLogProvider({ children }: { children: ReactNode }) {
             store,
             writable: false,
             issue:
-              'This browser can’t safely save Quick Log in multiple tabs. Open it in a current browser.',
+              window.isSecureContext
+                ? 'This browser can’t save Quick Log safely. Try an updated browser.'
+                : 'Open DWD with HTTPS to use Quick Log on this phone. Your saved logs are still here.',
           });
       });
       return close;
