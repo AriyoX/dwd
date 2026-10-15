@@ -408,7 +408,8 @@
 html {
   background: var(--bg);
   min-width: 320px;
-  scroll-behavior: smooth;
+  /* Keep focus-driven scrolling immediate so rapid logging targets stay put. */
+  scroll-behavior: auto;
 }
 body {
   min-height: 100dvh;

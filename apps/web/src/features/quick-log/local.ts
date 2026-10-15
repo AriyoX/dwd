@@ -24,6 +24,24 @@ export function browserQuickOffer(
   destination?: 'create' | 'invite',
   nightId?: string,
 ): { scope: QuickScope; sessionId: string } | null {
+  function offerFrom(store: QuickLogStore, sessionId: string | null) {
+    let session = store.session(sessionId);
+    if (session?.claimedBy && session.claimedBy !== accountId) return null;
+    if (store.scope === 'guest' && session?.claimedBy === accountId) {
+      // Adoption preserves the guest source for recovery. Its intent and entries
+      // can be stale after an import; the account copy owns subsequent changes.
+      const account = browserQuickStore(quickScope(accountId));
+      account.reload();
+      const adopted = account.session(session.id);
+      if (adopted) {
+        store = account;
+        session = adopted;
+      }
+    }
+    return !store.getSnapshot().blocked && session && availableQuickEntries(session).length
+      ? { scope: store.scope, sessionId: session.id }
+      : null;
+  }
   if (destination) {
     for (const scope of [quickScope(accountId), 'guest' as const]) {
       const store = browserQuickStore(scope);
@@ -33,9 +51,8 @@ export function browserQuickOffer(
         intent?.accountId === accountId &&
         (intent.destination === destination || (nightId && intent.nightId === nightId))
       ) {
-        const session = store.session(intent.sessionId);
-        if (session && availableQuickEntries(session).length)
-          return { scope, sessionId: session.id };
+        const offer = offerFrom(store, intent.sessionId);
+        if (offer) return offer;
       }
     }
     return null;
@@ -45,15 +62,13 @@ export function browserQuickOffer(
   for (const scope of [quickScope(accountId), 'guest' as const]) {
     const store = browserQuickStore(scope);
     store.reload();
-    const { record, blocked } = store.getSnapshot();
-    const session = store.session(record.intent?.sessionId ?? record.activeSessionId);
-    if (
-      !blocked &&
-      session &&
-      availableQuickEntries(session).length &&
-      (!record.intent?.accountId || record.intent.accountId === accountId)
-    )
-      return { scope, sessionId: session.id };
+    const { record } = store.getSnapshot();
+    if (!record.intent?.accountId || record.intent.accountId === accountId) {
+      const offer =
+        (record.intent ? offerFrom(store, record.intent.sessionId) : null) ??
+        offerFrom(store, record.activeSessionId);
+      if (offer) return offer;
+    }
   }
   return null;
 }

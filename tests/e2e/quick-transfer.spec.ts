@@ -81,6 +81,8 @@ test('linked Quick Log uses the night plan, queues offline, and leaves clean bac
   await page.goto('/login');
   await signIn(page, user);
   await expect(page).toHaveURL(/\/home/);
+  // The URL can change before the sign-in redirect finishes rendering Home.
+  await expect(page.getByRole('button', { name: 'Start Tonight', exact: true })).toBeVisible();
   await page.goto('/quick-log?scope=account');
   await page.getByRole('button', { name: 'Log one drink', exact: true }).click();
   await page.getByRole('button', { name: 'Add to a night', exact: true }).click();
@@ -97,6 +99,9 @@ test('linked Quick Log uses the night plan, queues offline, and leaves clean bac
       return [member?.quickLogs?.length, member?.drinkLogs.length, member?.waterLogs.length];
     })
     .toEqual([1, 1, 1]);
+  // A committed database write can precede the UI's final snapshot refresh.
+  await expect(page.getByText('2 drinks · 1 chaser', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Log Beer', exact: true })).toBeEnabled();
   await context.setOffline(true);
   await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
   await expect(page.getByText('3 drinks · 1 chaser', { exact: true })).toBeVisible();
@@ -286,8 +291,18 @@ test('guest sign-in cancellation, invited membership, Not now and later explicit
         Object.is(e.volumeMl, null) && Object.is(e.abvPercent, null) && e.actorUserId === user.id,
     ),
   ).toBe(true);
-  await expect(page.getByText(/Drink amounts not recorded/).first()).toBeVisible();
+  await expect(
+    page.getByText('Earlier drinks have no size saved, so the alcohol total is partial.', {
+      exact: true,
+    }),
+  ).toBeVisible();
   await page.goto('/quick-log?scope=guest');
+  // Imported sessions resume with the linked night controls. Start a separate
+  // session before exercising another explicit import into the same membership.
+  await expect(page.getByRole('link', { name: 'Invite Quick destination Linked' })).toBeVisible();
+  await page.getByRole('button', { name: 'Finish session', exact: true }).click();
+  await page.getByRole('button', { name: 'Finish Quick Log only', exact: true }).click();
+  await page.getByRole('button', { name: 'Start another session', exact: true }).click();
   await page.getByRole('button', { name: 'Log one non-alcoholic chaser' }).click();
   await page.goto(`/join/${token}`);
   await page.getByRole('button', { name: 'Join this night' }).click();

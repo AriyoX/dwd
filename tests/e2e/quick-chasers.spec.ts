@@ -90,7 +90,11 @@ test('Home resumes a guest session after sign-in and a chaser-only import stays 
   await page.getByRole('button', { name: 'Add my logs', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/night/${destination.snapshot.night.id}`));
   await expect(page.getByText('Quick Log · 0 drinks · 1 chaser', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Measured alcohol subtotal is incomplete/)).not.toBeVisible();
+  const partialTotal = page.getByText(
+    'Earlier drinks have no size saved, so the alcohol total is partial.',
+    { exact: true },
+  );
+  await expect(partialTotal).not.toBeVisible();
   const snapshot = await client.rpc('get_night_snapshot', {
     p_night_id: destination.snapshot.night.id,
   });
@@ -101,8 +105,8 @@ test('Home resumes a guest session after sign-in and a chaser-only import stays 
   await page.getByText('Earlier entries', { exact: true }).click();
   await page.getByRole('button', { name: 'Change to Drink', exact: true }).click();
   await expect(page.getByText('Quick Log · 1 drink · 0 chasers', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Measured alcohol subtotal is incomplete/)).toBeVisible();
+  await expect(partialTotal).toBeVisible();
   await page.getByRole('button', { name: 'Change to Chaser', exact: true }).click();
   await expect(page.getByText('Quick Log · 0 drinks · 1 chaser', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Measured alcohol subtotal is incomplete/)).not.toBeVisible();
+  await expect(partialTotal).not.toBeVisible();
 });
