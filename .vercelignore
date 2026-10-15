@@ -8,6 +8,16 @@ node_modules
 **/node_modules/**
 **/.next
 **/.next/**
+**/.next-e2e
+**/.next-e2e/**
+**/.tmp
+**/.tmp/**
+**/*.apk
+**/*.aab
+**/*.ipa
+playwright-report
+test-results
+apps/web/cors-policy.txt
 **/.expo
 **/.expo/**
 **/dist

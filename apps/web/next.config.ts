@@ -32,6 +32,25 @@ const contentSecurityPolicy = [
   "object-src 'none'",
 ].join('; ');
 
+// Only event pages need R2, Turnstile and the on-demand HEIC decoder.
+const photoStorageOrigin = httpsOrigin(
+  process.env['R2_ENDPOINT'] ||
+    (process.env['R2_ACCOUNT_ID']
+      ? `https://${process.env['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com`
+      : ''),
+);
+const eventContentSecurityPolicy = contentSecurityPolicy
+  .replace(
+    "script-src 'self'",
+    "script-src 'self' https://challenges.cloudflare.com 'wasm-unsafe-eval'",
+  )
+  .replace("img-src 'self'", `img-src 'self' ${photoStorageOrigin}`)
+  .replace(
+    "connect-src 'self'",
+    `connect-src 'self' ${photoStorageOrigin} https://challenges.cloudflare.com`,
+  )
+  .concat("; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:");
+
 const nextConfig: NextConfig = {
   // Allow this computer's LAN addresses for phone testing without opening all origins.
   allowedDevOrigins: isDevelopment
@@ -56,6 +75,13 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(self), payment=()',
           },
+        ],
+      },
+      {
+        source: '/events/the-link-up/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: eventContentSecurityPolicy },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
         ],
       },
     ]);

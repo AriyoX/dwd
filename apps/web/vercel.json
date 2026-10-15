@@ -4,5 +4,6 @@
   "installCommand": "npm ci --prefix ../..",
   "buildCommand": "node ../../scripts/check-deployment.mjs && npm run build --prefix ../..",
   "outputDirectory": ".next",
-  "git": { "deploymentEnabled": true }
+  "git": { "deploymentEnabled": true },
+  "crons": [{ "path": "/api/events/the-link-up/cleanup", "schedule": "0 3 * * *" }]
 }

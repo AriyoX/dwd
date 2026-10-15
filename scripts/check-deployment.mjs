@@ -54,11 +54,34 @@ if (site) {
   errors.push('Set NEXT_PUBLIC_SITE_URL, or run inside Vercel with its deployment URL available.');
 }
 
+for (const name of [
+  'R2_ACCOUNT_ID',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_ENDPOINT',
+  'SUPABASE_SECRET_KEY',
+  'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  'TURNSTILE_SECRET_KEY',
+]) {
+  if (!process.env[name]?.trim()) errors.push(`Set ${name} for The Link Up photo sharing.`);
+}
+if (process.env.R2_BUCKET_NAME !== 'the-link-up-memories')
+  errors.push('Set R2_BUCKET_NAME=the-link-up-memories.');
+for (const name of ['LINK_UP_SESSION_SECRET', 'CRON_SECRET']) {
+  if ((process.env[name]?.length ?? 0) < 32)
+    errors.push(`Set ${name} to an independent random secret of at least 32 characters.`);
+}
+if (
+  process.env.LINK_UP_SESSION_SECRET &&
+  process.env.LINK_UP_SESSION_SECRET === process.env.CRON_SECRET
+)
+  errors.push('Use different session and cleanup secrets.');
+
 if (errors.length > 0) {
   console.error(
     `Deployment configuration needs attention:\n${errors.map((error) => `- ${error}`).join('\n')}`,
   );
   process.exitCode = 1;
 } else {
-  console.log('Deployment configuration passed. No secret key is required by the app.');
+  console.log('Deployment configuration passed, including The Link Up photo sharing.');
 }

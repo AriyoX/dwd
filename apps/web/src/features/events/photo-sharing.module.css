@@ -1,0 +1,402 @@
+.gallery,
+.admin,
+.dialog {
+  --album-bg: #081607;
+  --album-surface: #142217;
+  --album-ivory: #f5efd7;
+  --album-gold: #bdaa68;
+  --album-muted: #c6c1b5;
+  color: var(--album-ivory);
+  color-scheme: dark;
+}
+.gallery {
+  margin-block: 36px;
+  scroll-margin-top: 20px;
+}
+.sectionHeader,
+.dialogHeader,
+.viewerControls,
+.settings {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sectionHeader {
+  margin-bottom: 20px;
+}
+.sectionHeader h2,
+.dialogHeader h2 {
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.iconButton,
+.textButton,
+.photoTile {
+  min-height: 44px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.primaryButton {
+  color: var(--album-bg);
+  background: var(--album-ivory);
+  border: 1px solid var(--album-ivory);
+}
+.secondaryButton {
+  color: var(--album-ivory);
+  background: transparent;
+  border: 1px solid #545335;
+}
+.dangerButton {
+  color: #ffcdc5;
+  border: 1px solid #b66b61;
+  background: #41231f;
+}
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  padding: 8px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid #545335;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.textButton {
+  color: var(--album-gold);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  background: transparent;
+  padding: 8px 0;
+  border: 0;
+}
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled,
+.iconButton:disabled,
+.textButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.primaryButton:active:not(:disabled),
+.secondaryButton:active:not(:disabled),
+.iconButton:active:not(:disabled) {
+  opacity: 0.75;
+}
+.gallery button:focus-visible,
+.dialog button:focus-visible,
+.admin button:focus-visible,
+.dialog select:focus-visible,
+.admin input:focus-visible {
+  outline: 2px solid var(--album-gold);
+  outline-offset: 4px;
+}
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.photoTile {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  aspect-ratio: 1;
+  border: 1px solid rgb(189 170 104 / 22%);
+  border-radius: 5px;
+  background: var(--album-surface);
+}
+.photoTile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photoStatus {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: #081607e8;
+  color: var(--album-ivory);
+  font-size: 12px;
+}
+.dialog {
+  width: min(620px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  background: var(--album-surface);
+  border: 1px solid rgb(189 170 104 / 45%);
+  border-radius: 10px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.dialog::backdrop {
+  background: rgb(3 16 7 / 90%);
+}
+.dialogHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-wrap: nowrap;
+  background: var(--album-surface);
+  border-bottom: 1px solid rgb(189 170 104 / 22%);
+  padding: 16px 20px;
+}
+.panelBody {
+  display: grid;
+  gap: 16px;
+  padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  font-size: 14px;
+  line-height: 1.6;
+}
+.notice {
+  color: var(--album-ivory);
+  border-left: 2px solid var(--album-gold);
+  padding-left: 12px;
+}
+.muted {
+  color: var(--album-muted);
+  font-size: 13px;
+}
+.error {
+  color: #ffb9ad;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.empty {
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px dashed #545335;
+  border-radius: 5px;
+  color: var(--album-muted);
+}
+.uploadList {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.uploadList li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid #545335;
+  padding-top: 12px;
+  min-width: 0;
+}
+.uploadList img,
+.previewPlaceholder {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.previewPlaceholder {
+  display: grid;
+  place-items: center;
+  border: 1px solid #545335;
+}
+.uploadInfo {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--album-muted);
+}
+.fileName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--album-ivory);
+}
+.uploadInfo progress {
+  width: 100%;
+  height: 5px;
+  accent-color: var(--album-gold);
+}
+.verification {
+  display: grid;
+  gap: 8px;
+  max-width: 100%;
+  overflow: hidden;
+}
+.viewerDialog {
+  width: min(1100px, calc(100% - 16px));
+  background: var(--album-bg);
+}
+.viewerImage {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  height: min(68dvh, 760px);
+  padding: 8px;
+}
+.viewerImage img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+.viewerControls {
+  padding: 12px 20px;
+  justify-content: center;
+}
+.viewerNotice {
+  text-align: center;
+  padding: 8px 20px 16px;
+  color: var(--album-muted);
+  font-size: 13px;
+}
+.reportForm {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px;
+  max-width: 480px;
+  margin: auto;
+}
+.reportForm select,
+.signInForm input {
+  width: 100%;
+  min-width: 0;
+  font-size: 16px;
+  padding: 12px;
+  color: var(--album-ivory);
+  border: 1px solid #545335;
+  border-radius: 4px;
+  background: var(--album-bg);
+}
+.admin {
+  min-height: 100svh;
+  background: var(--album-bg);
+  padding: calc(24px + env(safe-area-inset-top, 0px)) max(16px, calc((100% - 1100px) / 2))
+    calc(40px + env(safe-area-inset-bottom, 0px));
+}
+.admin > h1 {
+  margin: 24px 0;
+  font-size: clamp(28px, 5vw, 42px);
+  letter-spacing: -0.04em;
+}
+.admin a {
+  color: var(--album-gold);
+  text-underline-offset: 4px;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-block: 24px;
+}
+.stat {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid #545335;
+  border-radius: 6px;
+  background: var(--album-surface);
+}
+.stat strong {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.stat span {
+  font-size: 12px;
+  color: var(--album-muted);
+}
+.settings {
+  justify-content: flex-start;
+  margin-block: 20px;
+}
+.storage {
+  margin-block: 20px;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+.storage progress {
+  width: 100%;
+  accent-color: var(--album-gold);
+}
+.reportList {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+  margin-top: 16px;
+}
+.reportList li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #545335;
+  border-radius: 4px;
+}
+.signInForm {
+  display: grid;
+  gap: 16px;
+  max-width: 440px;
+  margin-top: 24px;
+}
+.errorList {
+  margin: 16px 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--album-muted);
+}
+@media (max-width: 640px) {
+  .photoGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stat {
+    padding: 16px;
+  }
+  .dialogHeader {
+    padding: 12px 16px;
+  }
+  .panelBody {
+    padding-inline: 16px;
+  }
+  .viewerControls {
+    padding: 10px;
+    gap: 8px;
+  }
+  .viewerImage {
+    height: 56dvh;
+  }
+}
+@media (max-width: 360px) {
+  .photoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
