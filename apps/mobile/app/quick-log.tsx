@@ -27,7 +27,7 @@ import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { LegalLinks } from '@/components/auth-chrome';
 import { useQuickSync } from '@/providers/quick-sync-provider';
-import { TonightBanners } from '@/components/tonight-banners';
+import { useQuickLogAds } from '@/components/quick-log-ads';
 import { LinkedQuickLog } from '@/components/linked-quick-log';
 
 export default function QuickLogScreen() {
@@ -42,6 +42,7 @@ export default function QuickLogScreen() {
   );
 }
 function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | undefined }) {
+  const ads = useQuickLogAds();
   const { store, state, scope } = useQuickLog(guest, selectedId);
   const { session: account } = useSupabase();
   const { issue: syncIssue, retrySync } = useQuickSync();
@@ -125,7 +126,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
       />
     );
   return (
-    <Screen hidePermissionReminder contentStyle={{ gap: 16 }} footer={<TonightBanners compact />}>
+    <Screen hidePermissionReminder contentStyle={{ gap: 16 }} footer={ads} floatingFooter>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Action
           label="Back"

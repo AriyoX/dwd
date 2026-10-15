@@ -23,7 +23,7 @@ import { actorClient } from '@/lib/actor-client';
 import { pendingForSnapshot } from '@/lib/offline-logging';
 import { Screen, Panel, Notice } from './screen';
 import { Action, PrimaryButton } from './primary-button';
-import { TonightBanners } from './tonight-banners';
+import { useQuickLogAds } from './quick-log-ads';
 import { NightActivity } from './night-activity';
 import { QuickNightActivity } from './quick-night-activity';
 
@@ -40,6 +40,7 @@ export function LinkedQuickLog({
   onStart: () => void;
   issue: string | null;
 }) {
+  const ads = useQuickLogAds();
   const destination = quickLinkedNight(quick);
   if (!destination) throw new Error('This session has no linked night.');
   const link = destination;
@@ -122,7 +123,7 @@ export function LinkedQuickLog({
       );
   }
   return (
-    <Screen hidePermissionReminder contentStyle={{ gap: 16 }} footer={<TonightBanners compact />}>
+    <Screen hidePermissionReminder contentStyle={{ gap: 16 }} footer={ads} floatingFooter>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text style={typography.sectionTitle}>Quick Log</Text>
         <PrimaryButton label="Home" variant="quiet" onPress={() => router.dismissTo('/')} />

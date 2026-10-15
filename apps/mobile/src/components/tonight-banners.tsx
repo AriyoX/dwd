@@ -237,8 +237,9 @@ function BannerCard({
       style={{
         height,
         padding: compact ? 12 : 18,
+        paddingRight: compact ? 52 : 18,
         borderRadius: 20,
-        backgroundColor: tone.background,
+        backgroundColor: compact ? `${tone.background}C7` : tone.background,
         overflow: 'hidden',
         gap: compact ? 4 : 12,
       }}
@@ -251,7 +252,14 @@ function BannerCard({
             resizeMode="cover"
             accessible={false}
             onError={() => setImageFailed(true)}
-            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              opacity: compact ? 0.75 : 1,
+            }}
           />
           <View
             pointerEvents="none"

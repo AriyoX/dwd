@@ -23,6 +23,7 @@ const runtime = vi.hoisted(() => ({
 vi.mock('react-native', () => ({
   Text: 'Text',
   View: 'View',
+  Pressable: 'Pressable',
   Alert: { alert: runtime.alert },
   useWindowDimensions: () => ({ width: 390, fontScale: 1 }),
 }));

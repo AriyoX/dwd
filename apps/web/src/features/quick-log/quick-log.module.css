@@ -7,14 +7,39 @@
 .adDock {
   position: fixed;
   z-index: 25;
-  bottom: 0;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
-  width: min(100%, 36rem);
-  padding: 8px 16px env(safe-area-inset-bottom, 0px);
-  border-radius: 24px 24px 0 0;
-  background: var(--surface);
-  box-shadow: 0 -8px 32px #160b1220;
+  width: min(calc(100% - 32px), 36rem);
+  padding: 8px 8px 0;
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px #160b1230;
+}
+.adClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.adClose:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.adClose:active {
+  background: var(--primary-soft);
 }
 .entryCard {
   position: relative;

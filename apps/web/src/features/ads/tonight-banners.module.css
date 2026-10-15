@@ -18,8 +18,12 @@
 .compact .banner {
   flex-basis: 100%;
   min-height: 108px;
-  padding: 14px 18px;
+  padding: 14px 56px 14px 18px;
   gap: 5px;
+  background: color-mix(in srgb, var(--banner-background) 78%, transparent);
+}
+.compact .artwork {
+  opacity: 0.75;
 }
 .compact .banner:last-child:not(:only-child) {
   margin-right: 0;
