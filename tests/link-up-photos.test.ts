@@ -7,11 +7,15 @@ vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: () => Promise.resolve({ auth: { getUser: authMocks.getUser } }),
 }));
 vi.mock('@/lib/link-up/database', () => ({ photoDatabase: () => ({ rpc: authMocks.rpc }) }));
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceSupabaseClient: () => ({ rpc: authMocks.rpc }),
+}));
 
 import { readPhotoSession, signPhotoSession } from '@/lib/link-up/session';
 import { normalizePhoto } from '@/lib/link-up/images';
 import { verifyTurnstile, protectionStatus } from '@/lib/link-up/turnstile';
-import { requireOrganizer, verifiedOrganizer } from '@/lib/link-up/organizer';
+import { requireOrganizer, LINK_UP_ADMIN_PATH } from '@/lib/link-up/organizer';
+import { requirePageAdmin } from '@/lib/auth/page-access';
 import { signedUpload, signedView } from '@/lib/link-up/r2';
 import { batchSchema, decodeCursor } from '@/lib/link-up/service';
 import type { ReservationRow } from '@/features/events/photo-contracts';
@@ -206,20 +210,20 @@ describe('organizer authorization', () => {
       authMocks.getUser.mockResolvedValue({ data: { user }, error: null });
       authMocks.rpc.mockResolvedValue({ data: true, error: null });
       expect(await requireOrganizer()).toEqual(user);
-      expect(authMocks.rpc).toHaveBeenCalledWith('link_up_provision_organizer', {
+      expect(authMocks.rpc).toHaveBeenCalledWith('has_page_admin_access', {
         p_user: user.id,
+        p_page_path: LINK_UP_ADMIN_PATH,
       });
     },
   );
   it.each([
-    { email: 'other@example.com', email_confirmed_at: '2026-10-15T00:00:00Z' },
     { email: 'shebatindy@gmail.com', email_confirmed_at: undefined },
     {
       email: 'ahumuzaariyo@gmail.com',
       email_confirmed_at: '2026-10-15T00:00:00Z',
       is_anonymous: true,
     },
-  ])('rejects unauthorized, unverified and anonymous users', async (user) => {
+  ])('rejects unverified and anonymous users before looking up access', async (user) => {
     authMocks.getUser.mockResolvedValue({ data: { user }, error: null });
     await expect(requireOrganizer()).rejects.toMatchObject({ status: 403 });
     expect(authMocks.rpc).not.toHaveBeenCalled();
@@ -227,12 +231,57 @@ describe('organizer authorization', () => {
   it('requires an authenticated session and rejects revoked database access', async () => {
     authMocks.getUser.mockResolvedValue({ data: { user: null }, error: new Error('expired') });
     await expect(requireOrganizer()).rejects.toMatchObject({ status: 401 });
-    expect(verifiedOrganizer(null)).toBe(false);
     authMocks.getUser.mockResolvedValue({
       data: { user: { id: 'id', email: 'shebatindy@gmail.com', email_confirmed_at: 'yes' } },
       error: null,
     });
     authMocks.rpc.mockResolvedValue({ data: false, error: null });
     await expect(requireOrganizer()).rejects.toMatchObject({ status: 403 });
+  });
+  it('rejects a verified account without a page grant, ignoring editable metadata', async () => {
+    authMocks.getUser.mockResolvedValue({
+      data: {
+        user: {
+          id: 'other',
+          email: 'other@example.com',
+          email_confirmed_at: 'yes',
+          user_metadata: { admin: true },
+        },
+      },
+      error: null,
+    });
+    authMocks.rpc.mockResolvedValue({ data: false, error: null });
+    await expect(requireOrganizer()).rejects.toMatchObject({ status: 403 });
+    expect(authMocks.rpc).toHaveBeenCalledWith('has_page_admin_access', {
+      p_user: 'other',
+      p_page_path: LINK_UP_ADMIN_PATH,
+    });
+  });
+  it('checks each request and keeps permissions scoped to the exact page', async () => {
+    authMocks.getUser.mockResolvedValue({
+      data: { user: { id: 'id', email: 'shebatindy@gmail.com', email_confirmed_at: 'yes' } },
+      error: null,
+    });
+    authMocks.rpc.mockImplementation((_name, args) =>
+      Promise.resolve({ data: args.p_page_path === LINK_UP_ADMIN_PATH, error: null }),
+    );
+    await expect(requireOrganizer()).resolves.toMatchObject({ id: 'id' });
+    await expect(requirePageAdmin('/events/another-event/admin')).rejects.toMatchObject({
+      status: 403,
+    });
+    authMocks.rpc.mockResolvedValue({ data: false, error: null });
+    await expect(requireOrganizer()).rejects.toMatchObject({ status: 403 });
+    expect(authMocks.rpc).toHaveBeenCalledTimes(3);
+  });
+  it('fails closed when the access database is unavailable', async () => {
+    authMocks.getUser.mockResolvedValue({
+      data: { user: { id: 'id', email: 'shebatindy@gmail.com', email_confirmed_at: 'yes' } },
+      error: null,
+    });
+    authMocks.rpc.mockResolvedValue({ data: null, error: new Error('database offline') });
+    await expect(requireOrganizer()).rejects.toMatchObject({
+      code: 'authorization_unavailable',
+      status: 503,
+    });
   });
 });

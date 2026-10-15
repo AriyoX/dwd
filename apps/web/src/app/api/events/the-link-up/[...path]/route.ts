@@ -4,12 +4,8 @@ import { z } from 'zod';
 import { guestSession } from '@/lib/link-up/session';
 import { PhotoError, databaseError } from '@/lib/link-up/errors';
 import { eventConfig, photoDatabase, rateLimit } from '@/lib/link-up/database';
-import {
-  requireOrganizer,
-  approvedOrganizerEmail,
-  verifiedOrganizer,
-} from '@/lib/link-up/organizer';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { requireOrganizer } from '@/lib/link-up/organizer';
+import { PageAccessError } from '@/lib/auth/page-access';
 import { signedView } from '@/lib/link-up/r2';
 import {
   adminSummary,
@@ -154,68 +150,6 @@ async function handle(request: NextRequest, context: Context) {
     return reportPhoto(session, id(path[1]), input.reason);
   }
 
-  if (method === 'POST' && route === 'organizer-sign-in') {
-    const session = await guestSession(true);
-    await rateLimit(session, 'sign-in', 3);
-    const input = await body(request, z.object({ email: z.email().max(254) }).strict());
-    if (!approvedOrganizerEmail(input.email))
-      throw new PhotoError('forbidden', 'Use an approved organizer email.', 403);
-    const client = await createServerSupabaseClient();
-    const { error } = await client.auth.signInWithOtp({
-      email: input.email.trim().toLowerCase(),
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${request.nextUrl.origin}/events/the-link-up/admin/confirm?source=link-up`,
-      },
-    });
-    if (error)
-      throw new PhotoError(
-        'sign_in_failed',
-        'Could not send the sign-in email. If you are new to DWD, create and verify your account first. Otherwise wait a minute and retry.',
-        503,
-      );
-    return { sent: true };
-  }
-  if (method === 'POST' && route === 'organizer-confirm') {
-    const session = await guestSession(true);
-    await rateLimit(session, 'confirm', 10);
-    const input = await body(
-      request,
-      z.union([
-        z
-          .object({
-            code: z.string().min(1).max(2048),
-            flowId: z.string().min(1).max(128).optional(),
-          })
-          .strict(),
-        z.object({ token_hash: z.string().min(1).max(2048) }).strict(),
-        z
-          .object({
-            access_token: z.string().min(1).max(8192),
-            refresh_token: z.string().min(1).max(2048),
-          })
-          .strict(),
-      ]),
-    );
-    const client = await createServerSupabaseClient();
-    const result =
-      'code' in input
-        ? await client.auth.exchangeCodeForSession(
-            input.code,
-            input.flowId ? { flowId: input.flowId } : undefined,
-          )
-        : 'token_hash' in input
-          ? await client.auth.verifyOtp({ token_hash: input.token_hash, type: 'email' })
-          : await client.auth.setSession(input);
-    if (result.error || !verifiedOrganizer(result.data.user))
-      throw new PhotoError(
-        'sign_in_failed',
-        'This sign-in link expired or is not an organizer link. Request a new one.',
-        403,
-      );
-    await requireOrganizer();
-    return { verified: true };
-  }
   if (path[0] === 'admin') {
     await requireOrganizer(); // Every admin route, including reads, passes this check.
     if (method === 'GET' && route === 'admin/summary') return adminSummary();
@@ -286,7 +220,7 @@ async function respond(request: NextRequest, context: Context) {
       headers: { 'Cache-Control': 'private, no-store', Vary: 'Cookie' },
     });
   } catch (error) {
-    const known = error instanceof PhotoError;
+    const known = error instanceof PhotoError || error instanceof PageAccessError;
     if (!known) console.error('[link-up] request failed');
     return NextResponse.json(
       {

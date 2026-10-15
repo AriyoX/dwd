@@ -280,8 +280,7 @@
   max-width: 480px;
   margin: auto;
 }
-.reportForm select,
-.signInForm input {
+.reportForm select {
   width: 100%;
   min-width: 0;
   font-size: 16px;
@@ -357,12 +356,6 @@
   padding: 14px;
   border: 1px solid #545335;
   border-radius: 4px;
-}
-.signInForm {
-  display: grid;
-  gap: 16px;
-  max-width: 440px;
-  margin-top: 24px;
 }
 .errorList {
   margin: 16px 0;

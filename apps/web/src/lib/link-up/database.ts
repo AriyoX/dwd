@@ -1,5 +1,5 @@
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceSupabaseClient } from '@/lib/supabase/service';
 import type {
   EventRow,
   PhotoRow,
@@ -64,7 +64,6 @@ interface PhotoDatabase {
         { p_id: string; p_lease: string; p_code: string; p_permanent: boolean },
         undefined
       >;
-      link_up_provision_organizer: Rpc<{ p_user: string }, boolean>;
       link_up_moderate: Rpc<{ p_id: string; p_action: string }, undefined>;
       link_up_finalize_deletions: Rpc<Record<string, never>, number>;
     };
@@ -73,21 +72,11 @@ interface PhotoDatabase {
   };
 }
 export function photoDatabase() {
-  const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
-  const secret = process.env['SUPABASE_SECRET_KEY'] ?? process.env['SUPABASE_SERVICE_ROLE_KEY'];
-  if (!url || !secret)
+  try {
+    return createServiceSupabaseClient<PhotoDatabase>();
+  } catch {
     throw new PhotoError('configuration', 'Photo sharing is not configured yet.', 503);
-  return createClient<PhotoDatabase>(url, secret, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    global: {
-      fetch: (input, init) =>
-        fetch(input, {
-          ...init,
-          cache: 'no-store',
-          signal: init?.signal ?? AbortSignal.timeout(15_000),
-        }),
-    },
-  });
+  }
 }
 export async function eventConfig() {
   const { data, error } = await photoDatabase()

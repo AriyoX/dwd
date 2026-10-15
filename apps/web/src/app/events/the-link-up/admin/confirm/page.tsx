@@ -1,10 +1,5 @@
-import { OrganizerConfirmation } from '@/features/events/organizer-confirm';
-import styles from '@/features/events/photo-sharing.module.css';
+import { redirect } from 'next/navigation';
+import { LINK_UP_ADMIN_PATH } from '@/lib/link-up/organizer';
 export default function ConfirmOrganizerPage() {
-  return (
-    <main id="main-content" className={styles['admin']}>
-      <h1>The Link Up</h1>
-      <OrganizerConfirmation />
-    </main>
-  );
+  redirect(`/login?next=${encodeURIComponent(LINK_UP_ADMIN_PATH)}`);
 }

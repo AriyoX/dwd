@@ -36,15 +36,16 @@ Hiding or closing the gallery stops new public responses/viewing URLs immediatel
 
 - `apps/web/src/lib/link-up/`: server-only sessions, configuration, typed Supabase access, rate limiting, Turnstile, R2 signing/streaming, Sharp normalization, organizer authorization and lifecycle services.
 - `apps/web/src/app/api/events/the-link-up/[...path]/route.ts`: public photo/session/report routes, protected organizer routes and authenticated cleanup.
-- `apps/web/src/features/events/photo-*`, `prepare-event-photo.ts`, `organizer-confirm.tsx`: upload, recovery, gallery, viewer and organizer UI; `photo-sharing.module.css` contains matching styles.
+- `apps/web/src/features/events/photo-*`, `prepare-event-photo.ts`: upload, recovery, gallery, viewer and organizer UI; `photo-sharing.module.css` contains matching styles.
+- `apps/web/src/lib/auth/page-access.ts`, `lib/supabase/service.ts`: reusable server-side page authorization and privileged client. See `docs/page-admin-access.md` for permission management.
 - Existing event page/memories/CSS: activate the two existing actions and set safe-area viewport behavior.
-- `apps/web/src/app/events/the-link-up/admin/`: protected dashboard and email callback.
+- `apps/web/src/app/events/the-link-up/admin/`: protected dashboard and a legacy callback redirect to ordinary DWD login.
 - `apps/web/next.config.ts`: event-only R2/Turnstile/HEIC CSP. Other application pages retain their existing policy.
 - `apps/web/package.json`, `package-lock.json`: pinned S3 SDK, presigner, Sharp and on-demand HEIC decoder.
 - `apps/web/vercel.json`: daily cleanup at 03:00 UTC; `.vercelignore`: excludes local caches, environment files, native build artifacts and the user-created temporary CORS file.
 - `.env.example`, `scripts/check-deployment.mjs`: required configuration and deployment validation.
 - `scripts/setup-link-up-local.mjs`, `scripts/configure-link-up-r2.mjs`, `docs/link-up-r2-cors.json`: local secret generation and bucket setup helpers.
-- `tests/link-up-photos.test.ts`, `supabase/tests/event_photos.sql`, `supabase/tests/event_photo_concurrency.sql`: focused verification.
+- `tests/link-up-photos.test.ts`, `supabase/tests/event_photos.sql`, `supabase/tests/event_photo_concurrency.sql`, `supabase/tests/page_admin_access.sql`: focused verification.
 
 The user-created `apps/web/cors-policy.txt` was read and left unchanged. It is excluded from deployment.
 
@@ -54,6 +55,7 @@ These migrations were applied to the linked DWD project `kdplbebaotvgcvjggacz` o
 
 1. `supabase/migrations/20261015185306_link_up_photo_sharing.sql`
 2. `supabase/migrations/20261015192125_link_up_cancel_uploads.sql`
+3. `supabase/migrations/20261015200233_page_scoped_admin_access.sql`
 
 They add the event, guest sessions, photos, reservations, reports, organizers, rate-limit counters, deletion outbox and atomic RPCs. RLS is enabled on all new tables. Browser roles have no table or privileged RPC grants. Public wrappers use SECURITY INVOKER; one private, narrowly restricted helper reads current `auth.users` eligibility without granting service_role broad access to that table.
 
@@ -67,7 +69,7 @@ supabase db push
 
 Initial limits: 25 lifetime publications per browser session; ten per batch; 2 MiB per final image; 128 KiB per thumbnail; 5 GiB logical event capacity (5,368,709,120 bytes). Each pending photo reserves 2,228,224 bytes. Limits reside on `public.photo_events`; changes must respect existing usage and constraints. Deleted photos do not restore a session's lifetime publication quota.
 
-Authorization is limited to twelve requests per ten minutes per session; renewals to 120, completions to 180, reports to five, and organizer-link requests to three. These counters are persistent and atomic. No strict IP quota is used. Clearing cookies creates a new browser identity, so these limits are abuse controls rather than proof of unique attendees.
+Upload authorization is limited to twelve requests per ten minutes per session; renewals to 120, completions to 180, and reports to five. These counters are persistent and atomic. No strict IP quota is used. Clearing cookies creates a new browser identity, so these limits are abuse controls rather than proof of unique attendees.
 
 ## Environment and R2 configuration
 
@@ -104,24 +106,20 @@ Expired reservations are released before new reservation checks and during clean
 
 For a new local environment, `node scripts/setup-link-up-local.mjs` generates independent session/cron secrets without printing them. `LINK_UP_ALLOW_LOCAL_TURNSTILE_BYPASS=true` is an explicit development-only test aid restricted to localhost/loopback; production ignores it. A temporary local bypass was used for the full infrastructure test and removed afterward. It is not configured in Vercel.
 
-## Organizer sign-in and provisioning
+## Organizer sign-in and permissions
 
-Approved identities are `shebatindy@gmail.com` and `ahumuzaariyo@gmail.com`, matched case-insensitively. They have identical event-organizer permissions. Both already existed with verified emails when checked, and both were provisioned and passed real hosted Auth/server authorization tests.
+Open `/events/the-link-up/admin` and use ordinary DWD password or Google sign-in. Already signed-in users go directly to the access check. The login's `next` destination returns to the dashboard. The separate event email-link flow was removed after an end-user reported its hosted callback returning to the home page.
 
-1. Open `/events/the-link-up/admin`.
-2. If already signed into the approved DWD account, the dashboard opens.
-3. Otherwise use **Sign in with an existing DWD account**, or enter the approved address and choose **Email a sign-in link**. Open that email in the same browser; the callback supports PKCE (including concurrent-flow IDs), token hashes and the existing implicit session format.
-4. If an approved account does not exist, choose **Create and verify a DWD account**. Complete the existing DWD signup and email verification, then return to the dashboard. This preserves DWD's existing display-name and adult-confirmation requirements; the app does not invent consent or alter signup triggers.
-5. The first protected request revalidates `Auth.getUser()`, the current verified email and database eligibility, then creates the event-organizer record. A stored organizer record does not retain access after a disallowed email change. Neither identity receives global DWD or Supabase administrator privileges.
+`shebatindy@gmail.com` and `ahumuzaariyo@gmail.com` receive equivalent, page-specific grants in `public.page_admin_access`. Both accounts already existed with verified emails. The follow-up migration seeds them once for `/events/the-link-up/admin`. Every protected page/API request verifies the authenticated user, current verified email and enabled exact-page grant. Changing the email, disabling the row or deleting the row revokes access. Sign-in never recreates a revoked grant. Neither account receives global administrative privileges.
 
-Verify Supabase Auth URL configuration allows `https://dwdug.vercel.app/events/the-link-up/admin/confirm**` (or an existing appropriate production wildcard) and `http://localhost:3000/events/the-link-up/admin/confirm**` for development. The sign-in redirect contains `?source=link-up` and may add `sb_flow_id`. Keep the Magic Link email template's `{{ .ConfirmationURL }}` link, or ensure a custom template sends the token hash to that supplied redirect. An OTP-only template without a link needs updating. Do not change the existing signup/recovery templates unnecessarily.
+See [page-specific admin access](page-admin-access.md) for exact Supabase Table Editor instructions, explicit provisioning SQL, revocation, and adding different administrators to future pages. The old `photo_event_organizers` table is historical metadata and no longer controls permissions. The old callback page redirects to ordinary login; old event sign-in APIs have been removed. Existing DWD signup, Google callbacks, password recovery and email verification remain unchanged.
 
-Real email delivery and the hosted redirect/template settings still need an end-user check. Infrastructure tests used single-use Auth test links held in memory, sent no emails and left existing organizer sign-ins intact. Production checks explicitly confirmed revocation of their temporary test sessions. Verify both organizers can open a freshly emailed link before the event.
+Production authorization tests use temporary sessions held in memory and revoke only those test sessions. They send no emails and do not change either organizer's password. Each organizer should verify their own password/Google sign-in on their device before the event.
 
 ## Verification results
 
-- Focused Vitest run: 59 assertions passed across photo security/images/signing, existing authentication callbacks/actions, guest Quick Log access, CSP and banner ads.
-- Supabase/Postgres: 35 assertions passed, including two truly concurrent connections racing for the final storage reservation, quotas, lease exclusion, idempotent publication, hide/delete accounting, cancellation, expiry, rate limits and both organizer identities/current-email revocation.
+- Focused Vitest run: 61 tests passed across photo security/images/signing, page-specific authorization, existing authentication callbacks/actions, guest Quick Log access, CSP and banner ads.
+- Supabase/Postgres: 68 assertions passed, including two truly concurrent connections racing for the final storage reservation, quotas, lease exclusion, idempotent publication, hide/delete accounting, cancellation, expiry, rate limits, both organizer identities, exact-page permissions, disabled/deleted grants and current-email revocation.
 - Changed TypeScript/TSX/scripts: typecheck and focused ESLint passed. Full production build passed.
 - Hosted Supabase security advisor: no warnings on the new photo objects. Existing application warnings were left outside this change; the existing SECURITY DEFINER API guidance is at https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable.
 - Real R2 + hosted Supabase through the local web app: mobile-sized Chromium guest selected an actual raster image, prepared it, PUT directly to R2, passed server validation, published automatically and safely repeated completion. A separate browser viewed/downloaded the optimized JPEG and filed a report. Downloaded pixels decoded and had no EXIF.
@@ -129,8 +127,9 @@ Real email delivery and the hosted redirect/template settings still need an end-
 - A disposable, authenticated unauthorized DWD account received 403 for organizer reads and mutations; an unsigned guest received 401. Browser Data API access to private photo metadata was denied. Disposable account and published test photos were cleaned up.
 - A real libheif HEIC fixture converted to a prepared JPEG in Chromium under the actual CSP. It was not uploaded. This confirms the fallback decoder, not all iPhone camera variants.
 - Browser runtime errors in the successful full flow: none. Screenshots and downloaded test JPEG are under ignored `.tmp/link-up-verification/`.
+- Page-access follow-up: the hosted migration was applied and both approved rows returned `authorized = true`. The revised production build was tested locally against hosted Supabase. Both real verified identities loaded its dashboard/API. A disposable account signed in through the real DWD password form and returned to the dashboard with access denied. Explicitly granting the page enabled access; disabling/deleting the grant immediately denied reads and mutations in the same signed-in browser. A grant for a different page conferred no Link Up access. The disposable account and grants were removed; original organizer rows and guest photos were left untouched.
 
-The automated full infrastructure test used an explicit localhost development Turnstile bypass; production fail-closed behavior, token expiry, hostname/action checks and Siteverify requests are covered by automated tests. The subsequent real production challenge/upload and independent download are verified below. Emailed organizer sign-in still needs an end-user check. No physical iPhone or Android hardware was available to the automated checks. Live 1,000-photo load/soak testing and prolonged venue-network interruption tests were not performed.
+The automated full infrastructure test used an explicit localhost development Turnstile bypass; production fail-closed behavior, token expiry, hostname/action checks and Siteverify requests are covered by automated tests. The subsequent real production challenge/upload and independent download are verified below. No physical iPhone or Android hardware was available to the automated checks. Live 1,000-photo load/soak testing and prolonged venue-network interruption tests were not performed.
 
 ## Deployment
 
@@ -140,7 +139,7 @@ The stable production event page and empty public gallery returned HTTP 200. Bot
 
 The real production Turnstile widget loaded and displayed **Verify you are human**. The user completed the challenge and confirmed the upload was published and visible. A separate, unauthenticated production browser then opened the gallery and successfully downloaded that photo. The downloaded JPEG decoded at 543 × 727 pixels and contained no EXIF metadata. The user's uploaded photo was left in the gallery. This verifies the production guest upload → validation/publication → independent gallery/download flow without a protection bypass.
 
-The Vercel project API also confirmed the active daily `/api/events/the-link-up/cleanup` cron at `0 3 * * *`, attached to this deployment. Email delivery and physical-device checks remain as listed above.
+The Vercel project API also confirmed the active daily `/api/events/the-link-up/cleanup` cron at `0 3 * * *`, attached to this deployment. Physical-device checks remain as listed above.
 
 For a subsequent release from the repository root:
 
@@ -149,7 +148,7 @@ npm ci
 supabase db push --dry-run
 supabase db push
 npx vitest run tests/link-up-photos.test.ts tests/quick-log-access.test.ts tests/auth-callback.test.ts tests/auth-actions.test.ts tests/content-security-policy.test.ts tests/banner-ads.test.ts
-node scripts/test-database.mjs event_photos.sql event_photo_concurrency.sql
+node scripts/test-database.mjs event_photos.sql event_photo_concurrency.sql page_admin_access.sql
 npm run build
 npx vercel deploy --prod --yes --archive=tgz
 ```
@@ -164,7 +163,7 @@ After deployment, check the event page, public gallery API, guest Quick Log, bot
 - Upload JPEG and HEIC photos over venue Wi-Fi; check orientation, visible progress and metadata-free gallery output.
 - Interrupt one upload, refresh, retry it, and confirm successful photos remain published once.
 - Open an independent guest browser; refresh the gallery, open the viewer and download a photo.
-- Have each organizer sign in through their own verified email. Hide a test photo, verify public rejection, then permanently delete it and confirm storage decreases.
+- Have each organizer sign in with their own DWD password or Google account. Hide a test photo, verify public rejection, then permanently delete it and confirm storage decreases. Check a separate unauthorized account is denied.
 - Confirm uploads/gallery are enabled, storage has headroom, reporting reaches the dashboard, production Turnstile succeeds and the cleanup cron is configured.
 
 Primary references: [R2 presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/), [R2 CORS](https://developers.cloudflare.com/r2/buckets/cors/), [Turnstile server validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/), [Supabase passwordless email](https://supabase.com/docs/guides/auth/auth-email-passwordless), [Sharp input validation](https://sharp.pixelplumbing.com/api-constructor/). HEIC decoder source/license: [heic-to](https://github.com/hoppergee/heic-to), LGPL-3.0, version pinned in the lockfile.
