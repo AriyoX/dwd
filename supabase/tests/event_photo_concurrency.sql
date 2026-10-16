@@ -10,7 +10,7 @@ begin
   return 'reserved';
 exception when others then return sqlerrm;
 end $$;
-update public.photo_events set storage_budget_bytes=2228224 where slug='the-link-up';
+update public.photo_events set storage_budget_bytes=4325376 where slug='the-link-up';
 begin;
 select extensions.plan(3);
 select extensions.dblink_connect('photo_a','dbname=postgres user=supabase_admin');

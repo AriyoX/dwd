@@ -11,9 +11,10 @@ test, not a production load test of Vercel, R2, Turnstile or venue Wi-Fi.
 - Raised the event budget to **9 GB in dashboard units**: 9 GiB, or
   9,663,676,416 bytes. Applied and verified migration
   `20261016065405_link_up_event_capacity.sql` on the linked DWD project.
-- Limits remain 25 lifetime photos per browser, ten per batch, three concurrent
-  uploads per browser, 2 MiB per photo and 128 KiB per thumbnail. At those maximum
-  sizes, 100 browsers × 25 photos consume about 5.19 GiB of published storage.
+- Limits are 25 lifetime photos per browser, ten per batch, three concurrent
+  uploads per browser, 4 MiB per photo and 128 KiB per thumbnail. At those maximum
+  sizes, 100 browsers × 25 photos would need about 10.07 GiB of published storage,
+  so the 9 GiB event budget can be reached before every browser uses its allowance.
   Temporary uploads also consume physical R2 space until cleanup.
 - Live gallery, JPEG thumbnails and full-size viewing URLs returned HTTP 200.
   Direct anonymous access to the private photo table was denied.
@@ -62,7 +63,7 @@ canvas. See [the iPhone upload review](iphone-photo-uploads.md).
   Nine focused checks were rerun after the timeout compatibility fix, including
   browsing with `AbortSignal.timeout` removed. All passed; the recovery cases
   required restarting the local Docker backend after it had stopped.
-- `scripts/test-link-up-load.mjs` exercised 100 concurrent local guests reserving
+- At the original 2 MiB limit, `scripts/test-link-up-load.mjs` exercised 100 concurrent local guests reserving
   2,500 photos and recovering 300 identical batches. No double accounting;
   the 26th photo was rejected. The reservation/recovery portion took 3.67 seconds,
   with 1.05-second p95 RPC latency. Test reservations were removed and storage
@@ -87,13 +88,13 @@ The initial readiness changes were committed as `ef62e4e` before this follow-up.
   page. Reconnecting also refreshes the current page automatically.
 - Preserve expiring-link renewal, bound automatic retries for an expired URL,
   and discard renewal responses from an older image or unmounted viewer.
-- Prepare new JPEGs at quality 94 first and use the full 2 MiB allowance before
+- Prepare new JPEGs at quality 94 first and use the full upload allowance before
   reducing quality or dimensions. Server normalization also starts at quality 94.
   The 2048-pixel edge limit, metadata removal and storage reservations stay in place.
 - Generate previews up to 640 pixels at quality 84, reducing quality and then
   dimensions when needed to remain within 128 KiB. Existing photos are unchanged.
-- Use one flat green (`#081607`) across the event background and public photo
-  panels, removing the foliage and grain overlays.
+- The temporary flat-green background was reverted at the user's request:
+  the foliage, grain overlay and original green panel shades are restored.
 
 The existing public thumbnail loaded successfully from localhost with an HTTP
 200 and successful browser decoding. No persistent localhost/Cloudflare failure
@@ -107,3 +108,33 @@ The production build (including TypeScript), targeted ESLint and formatting
 checks passed. A local production preview loaded the existing public album on
 desktop and phone layouts with no runtime errors or horizontal overflow.
 Application changes are committed locally; no deployment was made.
+
+## Follow-up: 4 MB limit and original background
+
+- Raised the per-photo ceiling to 4 MiB (4,194,304 bytes) in preparation,
+  API validation, R2 verification and database constraints. The 2048-pixel edge
+  and 128 KiB thumbnail limits remain in effect.
+- Applied migration `20261016104105_link_up_four_mb_photos.sql` to the linked
+  DWD database. Each new reservation holds 4,325,376 bytes. The migration also
+  upgrades pending/verifying holds atomically and preserves completed records.
+  Live constraints, reservation defaults and service-only RPC access were verified.
+- Kept the event budget at 9 GiB. The database prevents overspending even if
+  guests still have room in their individual 25-photo allowances.
+- Restored the original foliage, texture and green panel shades while keeping
+  the connection notices, retry handling and higher-quality image encoding.
+
+Validation: 61 focused unit checks and 79 database assertions passed, including
+the 4 MiB boundary, duplicate completion and concurrent quota enforcement. A
+separate migration test verified pending, verifying and completed legacy records,
+then completed/cancelled upgraded uploads without incorrect counters. The local
+100-guest load test reserved 2,200 photos with 300 duplicate batch recoveries;
+all generated test data was removed and counters restored. At the larger limit,
+2,500 simultaneous maximum-size reservations exceed the 9 GiB event budget.
+
+The production build, TypeScript, lint and formatting passed. The local production
+preview loaded real public photos at desktop and phone sizes without runtime
+errors or horizontal overflow. All 36 browser scenarios passed across desktop
+Chromium, mobile Chromium and mobile WebKit. A test response-listener race was
+fixed, and WebKit finished on the production preview after the local development
+server stalled. Web changes still need deployment; only the database migration
+is live.

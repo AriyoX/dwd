@@ -9,7 +9,7 @@ import { PhotoError } from './errors';
 
 export async function normalizePhoto(bytes: Buffer, expectedType: string) {
   if (!bytes.length || bytes.length > MAX_PHOTO_BYTES)
-    throw new PhotoError('invalid_image', 'Photos must be 2 MB or smaller after preparation.');
+    throw new PhotoError('invalid_image', 'Photos must be 4 MB or smaller after preparation.');
   try {
     const image = sharp(bytes, {
       failOn: 'warning',

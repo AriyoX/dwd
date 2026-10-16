@@ -109,7 +109,7 @@ export async function readStaged(r: ReservationRow) {
       if (done) break;
       size += value.length;
       if (size > MAX_PHOTO_BYTES)
-        throw new PhotoError('invalid_image', 'The uploaded photo is larger than 2 MB.');
+        throw new PhotoError('invalid_image', 'The uploaded photo is larger than 4 MB.');
       chunks.push(value);
     }
   } finally {

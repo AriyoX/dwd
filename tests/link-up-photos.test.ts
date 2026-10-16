@@ -100,7 +100,7 @@ describe('upload authorization protection', () => {
       status: 503,
     });
   });
-  it('bounds the authorization payload to ten processed images and 2 MB each', () => {
+  it('bounds the authorization payload to ten processed images and 4 MB each', () => {
     const file = {
       clientId: crypto.randomUUID(),
       fingerprint: 'a'.repeat(64),
@@ -112,12 +112,34 @@ describe('upload authorization protection', () => {
     expect(
       batchSchema.safeParse({ ...batch, files: Array.from({ length: 11 }, () => file) }).success,
     ).toBe(false);
-    expect(batchSchema.safeParse({ ...batch, files: [{ ...file, size: 2097153 }] }).success).toBe(
+    expect(batchSchema.safeParse({ ...batch, files: [{ ...file, size: 4194304 }] }).success).toBe(
+      true,
+    );
+    expect(batchSchema.safeParse({ ...batch, files: [{ ...file, size: 4194305 }] }).success).toBe(
       false,
     );
   });
 });
 describe('server image validation and sanitation', () => {
+  it('accepts a real JPEG above 2 MiB and preserves its dimensions within 4 MiB', async () => {
+    const width = 2048;
+    const height = 1536;
+    const pixels = Buffer.alloc(width * height * 3);
+    let seed = 123456;
+    for (let offset = 0; offset < pixels.length; offset += 3) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = seed >>> 24;
+    }
+    const input = await sharp(pixels, { raw: { width, height, channels: 3 } })
+      .jpeg({ quality: 94 })
+      .toBuffer();
+    expect(input.length).toBeGreaterThan(2 * 1024 * 1024);
+    expect(input.length).toBeLessThanOrEqual(4 * 1024 * 1024);
+    const normalized = await normalizePhoto(input, 'image/jpeg');
+    expect([normalized.width, normalized.height]).toEqual([width, height]);
+    expect(normalized.image.length).toBeGreaterThan(2 * 1024 * 1024);
+    expect(normalized.image.length).toBeLessThanOrEqual(4 * 1024 * 1024);
+  });
   it('decodes and re-encodes oriented images, discarding EXIF and location metadata', async () => {
     const image = await sharp({
       create: { width: 80, height: 40, channels: 3, background: '#7f9970' },
@@ -138,7 +160,7 @@ describe('server image validation and sanitation', () => {
     expect(normalized.thumbnail.length).toBeLessThan(131072);
   });
   it('rejects oversized, corrupt, disguised and excessive-dimension images', async () => {
-    await expect(normalizePhoto(Buffer.alloc(2097153), 'image/jpeg')).rejects.toMatchObject({
+    await expect(normalizePhoto(Buffer.alloc(4194305), 'image/jpeg')).rejects.toMatchObject({
       code: 'invalid_image',
     });
     await expect(normalizePhoto(Buffer.from('not an image'), 'image/jpeg')).rejects.toMatchObject({
@@ -177,7 +199,7 @@ describe('server image validation and sanitation', () => {
     const preview = await sharp(normalized.thumbnail).metadata();
     expect([normalized.width, normalized.height]).toEqual([width, height]);
     expect([preview.width, preview.height]).toEqual([640, 480]);
-    expect(normalized.image.length).toBeLessThanOrEqual(2 * 1024 * 1024);
+    expect(normalized.image.length).toBeLessThanOrEqual(4 * 1024 * 1024);
     expect(normalized.thumbnail.length).toBeLessThanOrEqual(128 * 1024);
     expect(preview.exif).toBeUndefined();
   });

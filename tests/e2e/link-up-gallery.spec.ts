@@ -192,10 +192,12 @@ test('closing the viewer while the next page loads does not reopen it', async ({
   await page.getByRole('button', { name: 'Open photo 24', exact: true }).click();
   const viewer = page.getByRole('dialog');
   state.delayNext = true;
+  // Subscribe before the action: WebKit may finish the response while closing.
+  const nextPage = page.waitForResponse((response) => response.url().includes('cursor=24'));
   await viewer.getByRole('button', { name: 'Next photo' }).click();
   await expect(viewer).toContainText('Loading…');
   await viewer.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.waitForResponse((response) => response.url().includes('cursor=24'));
+  await nextPage;
   await expect(viewer).not.toBeVisible();
 });
 

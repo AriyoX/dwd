@@ -41,8 +41,9 @@ assert.ok(
 );
 const started = performance.now();
 try {
-  // 100 guests submit 10 + 10 + 5 photos, with each wave starting concurrently.
-  for (const count of [10, 10, 5]) {
+  // 2,200 maximum-size holds fit the 9 GiB event budget at the 4 MiB limit.
+  // Additional photos fit as publication releases unused reservation capacity.
+  for (const count of [10, 10, 2]) {
     const results = await Promise.allSettled(
       sessions.map(async (session) => {
         const batch = {
@@ -64,8 +65,18 @@ try {
     for (const result of results) if (result.status === 'rejected') throw result.reason;
   }
   const held = await event();
-  assert.equal(held.reserved_bytes - before.reserved_bytes, 2500 * 2228224);
+  assert.equal(held.reserved_bytes - before.reserved_bytes, 2200 * 4325376);
   assert.ok(held.used_bytes + held.reserved_bytes <= held.storage_budget_bytes);
+  await rpc('link_up_reserve', {
+    p_session: sessions[0].id,
+    p_batch: randomUUID(),
+    p_files: Array.from({ length: 3 }, () => ({
+      clientId: randomUUID(),
+      fingerprint: 'c'.repeat(64),
+      type: 'image/jpeg',
+      size: 4194304,
+    })),
+  });
   const extra = await db.rpc('link_up_reserve', {
     p_session: sessions[0].id,
     p_batch: randomUUID(),
@@ -78,7 +89,7 @@ try {
   console.log(
     JSON.stringify({
       guests: 100,
-      reservedPhotos: 2500,
+      reservedPhotos: 2200,
       duplicateBatchRecoveries: 300,
       elapsedMs: Math.round(performance.now() - started),
       rpcP95Ms: Math.round(timings[Math.floor(timings.length * 0.95)]),

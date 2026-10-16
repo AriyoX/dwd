@@ -14,7 +14,7 @@ select extensions.ok(not has_function_privilege('anon','public.link_up_reserve(u
 select extensions.ok(not has_function_privilege('authenticated','public.link_up_provision_organizer(uuid)','EXECUTE'),'DWD accounts cannot provision organizer roles directly');
 set local role service_role;
 select extensions.is((select count(*) from public.link_up_reserve('ea100000-0000-4000-8000-000000000001','ea200000-0000-4000-8000-000000000001',pg_temp.files(10))),10::bigint,'reserve ten photos');
-select extensions.is((select reserved_bytes from public.photo_events),22282240::bigint,'reserves full photo and thumbnail budget');
+select extensions.is((select reserved_bytes from public.photo_events),43253760::bigint,'reserves full photo and thumbnail budget');
 select extensions.throws_ok($$select * from public.link_up_reserve('ea100000-0000-4000-8000-000000000001',gen_random_uuid(),pg_temp.files(11))$$,'P0001','invalid_batch','reject more than ten in one batch');
 select count(*) from public.link_up_reserve('ea100000-0000-4000-8000-000000000001',gen_random_uuid(),pg_temp.files(10));
 select extensions.throws_ok($$select * from public.link_up_reserve('ea100000-0000-4000-8000-000000000001',gen_random_uuid(),pg_temp.files(6))$$,'P0001','session_quota','pending reservations consume the browser quota');

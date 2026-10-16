@@ -78,7 +78,7 @@ async function album(page: Page) {
       for (const file of batch.files) {
         expect(file.type).toBe('image/jpeg');
         expect(file.size).toBeGreaterThan(0);
-        expect(file.size).toBeLessThanOrEqual(2 * 1024 * 1024);
+        expect(file.size).toBeLessThanOrEqual(4 * 1024 * 1024);
         expect(file.fingerprint).toMatch(/^[0-9a-f]{64}$/);
       }
       session.recentUploads = batch.files.map((file) => ({
@@ -170,10 +170,12 @@ test('multiple real HEIC files with missing or incorrect picker types still prep
   await expect(page.getByText(/could not be opened|could not be converted/)).toHaveCount(0);
 });
 
-test('detailed photos retain detail within the full 2 MB allowance', async ({ page }) => {
+test('detailed photos retain more than 2 MB of detail within the 4 MB allowance', async ({
+  page,
+}) => {
   const received = await album(page);
-  const width = 1600;
-  const height = 1200;
+  const width = 2048;
+  const height = 1536;
   const pixels = Buffer.alloc(width * height * 3);
   let seed = 123456;
   for (let offset = 0; offset < pixels.length; offset += 3) {
@@ -194,8 +196,8 @@ test('detailed photos retain detail within the full 2 MB allowance', async ({ pa
   const upload = received[0];
   if (!upload) throw new Error('Missing prepared photo');
   const bytes = upload.bytes;
-  expect(bytes.length).toBeGreaterThan(1024 * 1024);
-  expect(bytes.length).toBeLessThanOrEqual(2 * 1024 * 1024);
+  expect(bytes.length).toBeGreaterThan(2 * 1024 * 1024);
+  expect(bytes.length).toBeLessThanOrEqual(4 * 1024 * 1024);
   const { data, info } = await sharp(bytes).raw().toBuffer({ resolveWithObject: true });
   expect([info.width, info.height]).toEqual([width, height]);
   let squaredError = 0;

@@ -37,7 +37,7 @@ export async function prepareEventPhoto(file: File) {
       edge = Math.max(640, Math.round(edge * 0.75));
     }
     if (!output || output.type !== 'image/jpeg' || output.size > MAX_PHOTO_BYTES)
-      throw new Error('This photo could not be compressed to 2 MB. Choose a smaller photo.');
+      throw new Error('This photo could not be compressed to 4 MB. Choose a smaller photo.');
     // Canvas encoding discards camera metadata; the server independently normalizes it.
     const hash = await crypto.subtle.digest('SHA-256', await output.arrayBuffer());
     return {

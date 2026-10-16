@@ -10,7 +10,7 @@ The landing page keeps its wordmark, tropical artwork, forest green/ivory/gold s
 
 The local dashboard and wording follow-up is documented in [the dashboard guide](link-up-dashboard.md). Deployment and production verification below refer to the earlier deployed release.
 
-Guests select up to ten JPEG, PNG, WebP or HEIC/HEIF files. Preparation runs sequentially to limit phone memory use, preserves orientation, draws to a canvas, strips metadata and produces JPEGs with a 2048px maximum edge. Compression targets approximately 1 MiB and enforces a 2 MiB ceiling. HEIC uses the browser decoder first, then loads `heic-to/csp` only if necessary. An unsupported/corrupt image receives an explanation. Raw inputs above 50 MiB or 60 megapixels are rejected to protect phone memory.
+Guests select up to ten JPEG, PNG, WebP or HEIC/HEIF files. Preparation runs sequentially to limit phone memory use, preserves orientation, draws to a canvas, strips metadata and produces JPEGs with a 2048px maximum edge. JPEG encoding starts at quality 94 and uses the full 4 MiB ceiling before reducing quality or dimensions. HEIC uses the browser decoder first, then loads `heic-to/csp` only if necessary. An unsupported/corrupt image receives an explanation. Raw inputs above 50 MiB or 60 megapixels are rejected to protect phone memory.
 
 The panel previews prepared photos and shows preparation, percentage upload progress, verification, publication and individual errors. Three workers perform uploads; Web Locks coordinate these slots across tabs where supported. Prepared blobs and reservation identifiers are saved in a separate IndexedDB database. Refreshing the browser restores retryable drafts. Successful files are removed from local blob storage, remain published if another file fails, and are reconciled from the server after a lost completion response. Clearing a batch cancels its pending reservations. If browser storage is unavailable, the panel explicitly asks the guest to keep it open.
 
@@ -71,7 +71,7 @@ supabase db push --dry-run
 supabase db push
 ```
 
-Initial limits: 25 lifetime publications per browser session; ten per batch; 2 MiB per final image; 128 KiB per thumbnail; 5 GiB logical event capacity (5,368,709,120 bytes). Each pending photo reserves 2,228,224 bytes. Limits reside on `public.photo_events`; changes must respect existing usage and constraints. Deleted photos do not restore a session's lifetime publication quota.
+Current limits: 25 lifetime publications per browser session; ten per batch; 4 MiB per final image; 128 KiB per thumbnail; 9 GiB logical event capacity (9,663,676,416 bytes). Each pending photo reserves 4,325,376 bytes. The event-wide cap is enforced even when every browser has photos left in its allowance; 100 browsers publishing all 25 photos at their maximum sizes would need about 10.07 GiB. Event settings, shared application limits and database constraints must stay in sync. Deleted photos do not restore a session's lifetime publication quota.
 
 Upload authorization is limited to twelve requests per ten minutes per session; renewals to 120, completions to 180, and reports to five. These counters are persistent and atomic. No strict IP quota is used. Clearing cookies creates a new browser identity, so these limits are abuse controls rather than proof of unique attendees.
 

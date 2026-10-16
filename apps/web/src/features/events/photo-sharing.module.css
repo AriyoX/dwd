@@ -2,7 +2,7 @@
 .admin,
 .dialog {
   --album-bg: #081607;
-  --album-surface: var(--album-bg);
+  --album-surface: #142217;
   --album-ivory: #f5efd7;
   --album-gold: #bdaa68;
   --album-muted: #c6c1b5;

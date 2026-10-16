@@ -19,7 +19,7 @@ The HEIC fallback previously created a full-resolution canvas and an intermediat
 JPEG before decoding again. This can exceed phone canvas limits with large
 camera photos. It now returns a bitmap that is drawn directly onto the small
 output canvas. Both event and night photos support 48 MP sources within a 60 MP /
-50 MB input bound. Output limits remain 2 MB for event photos and 5 MB for night
+50 MB input bound. Output limits are 4 MB for event photos and 5 MB for night
 photos.
 
 The event picker is retained until preparation finishes. Each file is read once
