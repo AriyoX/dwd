@@ -10,9 +10,14 @@ export function TheLinkUp() {
       <div className={styles['foliage']} aria-hidden="true" />
       <header className={styles['header']}>
         <span className={styles['miniWordmark']}>THE LINK UP</span>
-        <a href="#memories" className={styles['headerLink']}>
-          Photos <ArrowDown size={13} aria-hidden="true" />
-        </a>
+        <nav className={styles['headerActions']} aria-label="Event links">
+          <Link href="/quick-log?scope=guest" className={styles['headerLink']}>
+            Count shots <ArrowUpRight size={13} aria-hidden="true" />
+          </Link>
+          <a href="#shared-gallery" className={styles['headerLink']}>
+            Photos <ArrowDown size={13} aria-hidden="true" />
+          </a>
+        </nav>
       </header>
 
       <main id="main-content" className={styles['main']}>
@@ -27,12 +32,7 @@ export function TheLinkUp() {
               preload
             />
           </h1>
-          <p className={styles['tagline']}>
-            The night. The people. <em>The memories.</em>
-          </p>
-          <a href="#memories" className={styles['heroLink']} aria-label="Explore our shared album">
-            <ArrowDown size={18} aria-hidden="true" />
-          </a>
+          <p className={styles['tagline']}>17 October 2026</p>
         </section>
 
         <LinkUpMemories />
@@ -51,11 +51,11 @@ export function TheLinkUp() {
               <GlassWater size={14} aria-hidden="true" /> DWD Quick Log
             </span>
             <h2 id="quick-log-heading">
-              Keep <em>count.</em>
+              Count your <em>shots.</em>
             </h2>
-            <p className={styles['description']}>Track your drinks. No sign-in needed.</p>
+            <p className={styles['description']}>Your count for the night. No sign-in needed.</p>
             <Link href="/quick-log?scope=guest" className={styles['quickLogButton']}>
-              Track drinks <ArrowUpRight size={19} aria-hidden="true" />
+              Count my shots <ArrowUpRight size={19} aria-hidden="true" />
             </Link>
           </div>
           <span className={styles['quickLogMark']} aria-hidden="true">

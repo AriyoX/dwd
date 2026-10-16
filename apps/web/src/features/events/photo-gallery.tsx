@@ -2,7 +2,17 @@
 /* eslint-disable react-hooks/set-state-in-effect -- Effects synchronize remote gallery pages and renewed image URLs. */
 /* eslint-disable @next/next/no-img-element -- R2 images already have bounded derivatives and expiring URLs. */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Flag, Images, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Flag,
+  GalleryHorizontal,
+  Grid2X2,
+  Images,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react';
 import type { GalleryPage, GalleryPhoto } from './photo-contracts';
 import { downloadPhoto, photoErrorMessage, photoRequest, PhotoApiError } from './photo-client';
 import { PhotoDialog } from './photo-dialog';
@@ -48,15 +58,29 @@ function GalleryImage({
   }, [photo.id, full, admin, onUnavailable]);
   useEffect(() => {
     if (!full) return;
-    const timer = window.setInterval(() => void renew(), 90_000);
+    const resume = () => {
+      if (document.visibilityState === 'visible') void renew();
+    };
+    const timer = window.setInterval(resume, 90_000);
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
     void renew();
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
+    };
   }, [full, renew]);
   if (failed)
     return (
       <span className={styles['imageUnavailable']}>
         <Images size={24} aria-hidden="true" />
         <span>Photo couldn’t load</span>
+        {full && (
+          <button type="button" className={styles['secondaryButton']} onClick={() => void renew()}>
+            Try again
+          </button>
+        )}
       </span>
     );
   return (
@@ -94,6 +118,9 @@ export function PhotoGallery({
 }) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
+  const [layout, setLayout] = useState<'grid' | 'strip'>('grid');
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,6 +131,13 @@ export function PhotoGallery({
   const [filter, setFilter] = useState<Filter>('all');
   const requestVersion = useRef(0);
   const acting = useRef(false);
+  const galleryRef = useRef<HTMLElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  const lastRequest = useRef<{ position: string | null; page: number; select?: 'first' | 'last' }>({
+    position: null,
+    page: 0,
+  });
   const busy = actionBusy || disabled;
   const prefix = admin ? 'admin/' : '';
   const unavailable = useCallback((id: string) => {
@@ -111,7 +145,8 @@ export function PhotoGallery({
     setSelected((value) => (value?.id === id ? null : value));
   }, []);
   const load = useCallback(
-    async (position: string | null = null) => {
+    async (position: string | null = null, pageNumber = 0, select?: 'first' | 'last') => {
+      lastRequest.current = { position, page: pageNumber, ...(select ? { select } : {}) };
       const version = ++requestVersion.current;
       setLoading(true);
       setError('');
@@ -122,15 +157,13 @@ export function PhotoGallery({
         const page = await photoRequest<GalleryPage>(prefix + 'gallery?' + params.toString());
         if (version !== requestVersion.current) return;
         setEnabled(page.galleryEnabled);
-        setPhotos((items) =>
-          position
-            ? [
-                ...items,
-                ...page.photos.filter((photo) => !items.some((item) => item.id === photo.id)),
-              ]
-            : page.photos,
-        );
+        // Keep only one page mounted: older albums must not accumulate hundreds of images.
+        setPhotos(page.photos);
+        setPageIndex(pageNumber);
+        setPageCursors((values) => [...values.slice(0, pageNumber), position]);
         setCursor(page.nextCursor);
+        if (select) setSelected((select === 'first' ? page.photos[0] : page.photos.at(-1)) ?? null);
+        stripRef.current?.scrollTo({ left: 0, behavior: 'instant' });
         if (!admin && !page.galleryEnabled) setSelected(null);
       } catch (cause) {
         if (version !== requestVersion.current) return;
@@ -149,6 +182,8 @@ export function PhotoGallery({
   useEffect(() => {
     setPhotos([]);
     setCursor(null);
+    setPageIndex(0);
+    setPageCursors([null]);
     void load();
     return () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps -- Invalidate requests; this counter is not a DOM ref.
@@ -164,24 +199,34 @@ export function PhotoGallery({
   }, [focusPhoto, admin]);
   useEffect(() => {
     const resume = () => {
-      if (document.visibilityState === 'visible' && !acting.current) void load();
+      // Preserve the current page and viewer when returning from Camera or a download.
+      if (document.visibilityState === 'visible' && !acting.current && !selected && !loading)
+        void load(pageCursors[pageIndex] ?? null, pageIndex);
     };
     document.addEventListener('visibilitychange', resume);
     return () => document.removeEventListener('visibilitychange', resume);
-  }, [load]);
+  }, [load, selected, loading, pageCursors, pageIndex]);
   const index = photos.findIndex((photo) => photo.id === selected?.id);
   const active = photos[index] ?? selected;
   const navigate = useCallback(
     (offset: number) => {
-      if (busy || index < 0) return;
+      if (busy || loading || index < 0) return;
       const next = photos[index + offset];
       if (next) {
         setSelected(next);
         setReporting(false);
         setNotice('');
+      } else if (offset > 0 && cursor) {
+        setReporting(false);
+        setNotice('');
+        void load(cursor, pageIndex + 1, 'first');
+      } else if (offset < 0 && pageIndex > 0) {
+        setReporting(false);
+        setNotice('');
+        void load(pageCursors[pageIndex - 1] ?? null, pageIndex - 1, 'last');
       }
     },
-    [photos, index, busy],
+    [photos, index, busy, loading, cursor, pageIndex, pageCursors, load],
   );
   useEffect(() => {
     if (!active) return;
@@ -239,6 +284,7 @@ export function PhotoGallery({
   }
   return (
     <section
+      ref={galleryRef}
       id={admin ? 'photos' : 'shared-gallery'}
       className={styles['gallery']}
       aria-labelledby={admin ? 'admin-gallery-title' : 'gallery-title'}
@@ -256,14 +302,41 @@ export function PhotoGallery({
           )}
           <button
             type="button"
-            className={styles['secondaryButton']}
+            className={styles['iconButton']}
+            aria-label="Refresh"
+            title="Refresh photos"
             disabled={loading || busy}
-            onClick={() => void load()}
+            onClick={() => void load(pageCursors[pageIndex] ?? null, pageIndex)}
           >
-            <RefreshCw size={16} aria-hidden="true" /> Refresh
+            <RefreshCw size={18} aria-hidden="true" />
           </button>
         </div>
       </div>
+      {!admin && (
+        <div className={styles['galleryToolbar']}>
+          <span className={styles['muted']}>
+            {photos.length
+              ? `Page ${pageIndex + 1} · ${photos.length} photos`
+              : 'Newest photos first'}
+          </span>
+          <div className={styles['filters']} role="group" aria-label="Album view">
+            <button
+              type="button"
+              aria-pressed={layout === 'grid'}
+              onClick={() => setLayout('grid')}
+            >
+              <Grid2X2 size={16} aria-hidden="true" /> Grid
+            </button>
+            <button
+              type="button"
+              aria-pressed={layout === 'strip'}
+              onClick={() => setLayout('strip')}
+            >
+              <GalleryHorizontal size={16} aria-hidden="true" /> Swipe
+            </button>
+          </div>
+        </div>
+      )}
       {admin && (
         <div className={styles['galleryToolbar']}>
           <div className={styles['filters']} role="group" aria-label="Filter photos">
@@ -294,7 +367,13 @@ export function PhotoGallery({
             type="button"
             className={styles['textButton']}
             disabled={loading}
-            onClick={() => void load()}
+            onClick={() =>
+              void load(
+                lastRequest.current.position,
+                lastRequest.current.page,
+                lastRequest.current.select,
+              )
+            }
           >
             Try again
           </button>
@@ -329,7 +408,10 @@ export function PhotoGallery({
           Loading photos…
         </p>
       )}
-      <div className={styles['photoGrid']}>
+      <div
+        ref={stripRef}
+        className={styles[!admin && layout === 'strip' ? 'photoStrip' : 'photoGrid']}
+      >
         {photos.map((photo, photoIndex) => (
           <article key={photo.id} className={admin ? styles['photoCard'] : undefined}>
             <button
@@ -337,7 +419,7 @@ export function PhotoGallery({
               className={styles['photoTile']}
               aria-label={
                 'Open photo ' +
-                String(photoIndex + 1) +
+                String(pageIndex * 24 + photoIndex + 1) +
                 (admin ? ', ' + (photo.status === 'hidden' ? 'hidden' : 'visible') : '')
               }
               disabled={busy}
@@ -371,7 +453,7 @@ export function PhotoGallery({
                     disabled={busy}
                     aria-label={
                       (photo.status === 'hidden' ? 'Show photo ' : 'Hide photo ') +
-                      String(photoIndex + 1)
+                      String(pageIndex * 24 + photoIndex + 1)
                     }
                     onClick={() => moderate(photo, photo.status === 'hidden' ? 'show' : 'hide')}
                   >
@@ -381,7 +463,7 @@ export function PhotoGallery({
                     type="button"
                     className={styles['deleteButton']}
                     disabled={busy}
-                    aria-label={'Delete photo ' + String(photoIndex + 1)}
+                    aria-label={'Delete photo ' + String(pageIndex * 24 + photoIndex + 1)}
                     onClick={() => moderate(photo, 'delete')}
                   >
                     <Trash2 size={15} aria-hidden="true" /> Delete
@@ -392,26 +474,84 @@ export function PhotoGallery({
           </article>
         ))}
       </div>
-      {cursor && (
-        <button
-          type="button"
-          className={styles['secondaryButton']}
-          disabled={loading || busy}
-          onClick={() => void load(cursor)}
-        >
-          {loading ? 'Loading…' : 'More photos'}
-        </button>
+      {(cursor || pageIndex > 0) && (
+        <nav className={styles['pagination']} aria-label="Photo pages">
+          <button
+            type="button"
+            className={styles['secondaryButton']}
+            disabled={pageIndex === 0 || loading || busy}
+            onClick={() => {
+              void load(pageCursors[pageIndex - 1] ?? null, pageIndex - 1);
+              galleryRef.current?.scrollIntoView({ block: 'start' });
+            }}
+          >
+            <ChevronLeft size={17} aria-hidden="true" /> Previous
+          </button>
+          <span role="status">{loading ? 'Loading…' : `Page ${pageIndex + 1}`}</span>
+          <button
+            type="button"
+            className={styles['secondaryButton']}
+            disabled={!cursor || loading || busy}
+            onClick={() => {
+              void load(cursor, pageIndex + 1);
+              galleryRef.current?.scrollIntoView({ block: 'start' });
+            }}
+          >
+            Next <ChevronRight size={17} aria-hidden="true" />
+          </button>
+          {pageIndex > 0 && (
+            <button
+              type="button"
+              className={styles['textButton']}
+              disabled={loading || busy}
+              onClick={() => {
+                void load();
+                galleryRef.current?.scrollIntoView({ block: 'start' });
+              }}
+            >
+              Back to latest
+            </button>
+          )}
+        </nav>
       )}
       <PhotoDialog
         open={!!active}
         title="The Link Up"
         viewer
         busy={busy}
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          if (loading) {
+            requestVersion.current++;
+            setLoading(false);
+          }
+          setSelected(null);
+        }}
       >
         {active && (
           <>
-            <div className={styles['viewerImage']}>
+            <div
+              className={styles['viewerImage']}
+              onTouchStart={(event) => {
+                const point = event.touches[0];
+                touch.current =
+                  event.touches.length === 1 && point
+                    ? { x: point.clientX, y: point.clientY }
+                    : null;
+              }}
+              onTouchCancel={() => {
+                touch.current = null;
+              }}
+              onTouchEnd={(event) => {
+                const start = touch.current;
+                touch.current = null;
+                const end = event.changedTouches[0];
+                if (!start || !end || event.touches.length) return;
+                const dx = end.clientX - start.x;
+                const dy = end.clientY - start.y;
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5)
+                  navigate(dx < 0 ? 1 : -1);
+              }}
+            >
               <GalleryImage
                 key={active.id}
                 photo={active}
@@ -425,19 +565,23 @@ export function PhotoGallery({
                 type="button"
                 className={styles['iconButton']}
                 aria-label="Previous photo"
-                disabled={index <= 0 || busy}
+                disabled={index < 0 || (index === 0 && pageIndex === 0) || busy || loading}
                 onClick={() => navigate(-1)}
               >
                 <ChevronLeft />
               </button>
-              <span>
-                {index >= 0 ? String(index + 1) + ' / ' + String(photos.length) : 'Reported photo'}
+              <span aria-live="polite">
+                {loading
+                  ? 'Loading…'
+                  : index >= 0
+                    ? `Photo ${pageIndex * 24 + index + 1}`
+                    : 'Reported photo'}
               </span>
               <button
                 type="button"
                 className={styles['iconButton']}
                 aria-label="Next photo"
-                disabled={index < 0 || index >= photos.length - 1 || busy}
+                disabled={index < 0 || (index >= photos.length - 1 && !cursor) || busy || loading}
                 onClick={() => navigate(1)}
               >
                 <ChevronRight />
@@ -461,6 +605,25 @@ export function PhotoGallery({
                 </button>
               )}
             </div>
+            {error && (
+              <p role="alert" className={styles['viewerNotice']}>
+                {error}{' '}
+                <button
+                  type="button"
+                  className={styles['textButton']}
+                  disabled={loading}
+                  onClick={() =>
+                    void load(
+                      lastRequest.current.position,
+                      lastRequest.current.page,
+                      lastRequest.current.select,
+                    )
+                  }
+                >
+                  Try again
+                </button>
+              </p>
+            )}
             {reporting && (
               <form
                 className={styles['reportForm']}

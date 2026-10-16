@@ -6,6 +6,19 @@ afterEach(() => {
 });
 
 describe('configured backend content security policy', () => {
+  it('allows the CSP-safe HEIC worker on both photo upload routes', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { default: config } = await import('../apps/web/next.config');
+    const rules = await config.headers?.();
+    for (const path of ['/night/:nightId/summary', '/events/the-link-up/:path*']) {
+      const policy = rules
+        ?.find((rule) => rule.source === path)
+        ?.headers.find((header) => header.key === 'Content-Security-Policy')?.value;
+      expect(policy).toContain("worker-src 'self' blob:");
+      expect(policy).not.toContain("'unsafe-eval'");
+    }
+  });
+
   it.each(['https://dwd-test.supabase.co', 'http://127.0.0.1:55321'])(
     'allows photos, API calls and realtime only on the configured backend: %s',
     async (origin) => {

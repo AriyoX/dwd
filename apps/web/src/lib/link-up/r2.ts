@@ -34,9 +34,14 @@ export function r2Config() {
   }
   return { endpoint: url.origin, accessKeyId, secretAccessKey, bucket };
 }
+let cachedStorage: { config: string; bucket: string; client: S3Client } | undefined;
 function storage() {
   const { endpoint, accessKeyId, secretAccessKey, bucket } = r2Config();
-  return {
+  const config = JSON.stringify([endpoint, accessKeyId, secretAccessKey, bucket]);
+  if (cachedStorage?.config === config) return cachedStorage;
+  cachedStorage?.client.destroy();
+  cachedStorage = {
+    config,
     bucket,
     client: new S3Client({
       region: 'auto',
@@ -47,6 +52,7 @@ function storage() {
       responseChecksumValidation: 'WHEN_REQUIRED',
     }),
   };
+  return cachedStorage;
 }
 export async function signedUpload(r: ReservationRow) {
   const { client, bucket } = storage();

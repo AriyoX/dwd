@@ -1,7 +1,7 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
-import { Camera, Images, Scan, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Images, Upload } from 'lucide-react';
 import styles from './the-link-up.module.css';
 
 const PhotoUploader = dynamic(
@@ -16,16 +16,12 @@ const PhotoGallery = dynamic(
 export function LinkUpMemories() {
   const [uploadState, setUploadState] = useState<'unopened' | 'open' | 'closed'>('unopened');
   const uploadOpen = uploadState === 'open';
-  const [galleryOpen, setGalleryOpen] = useState(false);
   const [revision, setRevision] = useState(0);
   const galleryRef = useRef<HTMLDivElement>(null);
-  const scrollToGallery = useRef(false);
-  useEffect(() => {
-    if (!galleryOpen || !scrollToGallery.current || uploadOpen) return;
+  function viewGallery() {
     galleryRef.current?.scrollIntoView({ block: 'start' });
     galleryRef.current?.focus({ preventScroll: true });
-    scrollToGallery.current = false;
-  }, [galleryOpen, uploadOpen]);
+  }
   return (
     <>
       <section className={styles['memories']} id="memories" aria-labelledby="memories-heading">
@@ -38,18 +34,7 @@ export function LinkUpMemories() {
               <Upload size={18} aria-hidden="true" />
               <span>Add photos</span>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                scrollToGallery.current = true;
-                setGalleryOpen(true);
-                if (galleryRef.current) {
-                  galleryRef.current.scrollIntoView({ block: 'start' });
-                  galleryRef.current.focus({ preventScroll: true });
-                  scrollToGallery.current = false;
-                }
-              }}
-            >
+            <button type="button" onClick={viewGallery}>
               <Images size={18} aria-hidden="true" />
               <span>View photos</span>
             </button>
@@ -58,36 +43,21 @@ export function LinkUpMemories() {
             No sign-in needed. Photos are public.
           </p>
         </div>
-        <div className={styles['albumPreview']}>
-          <div className={styles['albumFrames']} aria-hidden="true">
-            <div className={styles['backFrame']} />
-            <div className={styles['middleFrame']} />
-            <div className={styles['frontFrame']}>
-              <Scan className={styles['viewfinder']} strokeWidth={0.7} />
-              <Camera size={34} strokeWidth={1.1} />
-              <span>The Link Up</span>
-            </div>
-          </div>
-        </div>
       </section>
       {uploadState !== 'unopened' && (
         <PhotoUploader
           open={uploadOpen}
           onClose={() => {
             setUploadState('closed');
-            if (galleryOpen) scrollToGallery.current = true;
           }}
           onPublished={() => {
-            setGalleryOpen(true);
             setRevision((value) => value + 1);
           }}
         />
       )}
-      {galleryOpen && (
-        <div ref={galleryRef} tabIndex={-1} className={styles['galleryAnchor']}>
-          <PhotoGallery revision={revision} onAddPhotos={() => setUploadState('open')} />
-        </div>
-      )}
+      <div ref={galleryRef} tabIndex={-1} className={styles['galleryAnchor']}>
+        <PhotoGallery revision={revision} onAddPhotos={() => setUploadState('open')} />
+      </div>
     </>
   );
 }

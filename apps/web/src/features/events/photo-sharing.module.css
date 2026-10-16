@@ -31,7 +31,7 @@
 .sectionHeader {
   margin-bottom: 20px;
 }
-.sectionHeader h2,
+.gallery .sectionHeader h2,
 .dialogHeader h2 {
   font-size: clamp(22px, 4vw, 30px);
   font-weight: 600;
@@ -135,15 +135,53 @@
   gap: 10px;
   margin-bottom: 20px;
 }
+.photoStrip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(240px, 72vw, 360px);
+  gap: 14px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: var(--album-gold) transparent;
+  padding: 4px 4px 18px;
+  margin-bottom: 16px;
+}
+.photoStrip article {
+  scroll-snap-align: start;
+  min-width: 0;
+}
+.photoStrip .photoTile img {
+  object-fit: contain;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-block: 16px;
+  border-top: 1px solid var(--album-border);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pagination > .textButton {
+  flex-basis: 100%;
+}
+.galleryToolbar .filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
 .photoTile {
   display: block;
   width: 100%;
   position: relative;
   overflow: hidden;
   padding: 0;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 5;
   border: 1px solid rgb(189 170 104 / 22%);
-  border-radius: 5px;
+  border-radius: 10px;
   background: var(--album-surface);
 }
 .photoTile img {
@@ -273,6 +311,7 @@
   background: var(--album-bg);
 }
 .viewerImage {
+  touch-action: pan-y pinch-zoom;
   display: grid;
   place-items: center;
   min-height: 180px;
@@ -372,7 +411,7 @@
   color: var(--album-gold);
   text-underline-offset: 4px;
 }
-.adminHeader > a {
+.adminHeader a {
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -899,7 +938,7 @@
 }
 @media (max-width: 640px) {
   .photoGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
   .stats {

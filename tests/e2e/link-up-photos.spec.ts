@@ -368,7 +368,7 @@ test('a failed upload can be replaced when its reservation uses the remaining al
   state.session.remaining = 1;
   state.completeFails = true;
   await page.goto('/events/the-link-up');
-  await page.getByRole('button', { name: 'Add photos', exact: true }).click();
+  await page.getByRole('button', { name: 'Add photos', exact: true }).first().click();
   await page
     .getByRole('button', { name: 'Choose photos', exact: true })
     .waitFor({ state: 'visible' });
@@ -402,7 +402,7 @@ test('a lost completion response recovers publication without sharing the photo 
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/events/the-link-up');
-  await page.getByRole('button', { name: 'Add photos', exact: true }).click();
+  await page.getByRole('button', { name: 'Add photos', exact: true }).first().click();
   await expect(page.getByRole('button', { name: 'Choose photos', exact: true })).toBeEnabled();
   await page
     .locator('input[type=file]')
@@ -419,7 +419,7 @@ test('photos already sent can finish checking after new uploads are paused', asy
   const state = await mockAlbum(page);
   state.completeFails = true;
   await page.goto('/events/the-link-up');
-  await page.getByRole('button', { name: 'Add photos', exact: true }).click();
+  await page.getByRole('button', { name: 'Add photos', exact: true }).first().click();
   await expect(page.getByRole('button', { name: 'Choose photos', exact: true })).toBeEnabled();
   await page
     .locator('input[type=file]')
@@ -431,12 +431,12 @@ test('photos already sent can finish checking after new uploads are paused', asy
   state.session.uploadsEnabled = false;
   state.completeFails = false;
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: 'Add photos', exact: true }).click();
+  await page.getByRole('button', { name: 'Add photos', exact: true }).first().click();
   await expect(
     page.getByRole('button', { name: 'Choose different photos', exact: true }),
   ).toBeDisabled();
   await page.reload();
-  await page.getByRole('button', { name: 'Add photos', exact: true }).click();
+  await page.getByRole('button', { name: 'Add photos', exact: true }).first().click();
   await page.getByRole('button', { name: 'Finish 1 photo', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('1 photo shared.');
 });
@@ -456,7 +456,7 @@ test('closing the upload panel keeps the selection when device storage is blocke
   });
   await mockAlbum(page);
   await page.goto('/events/the-link-up');
-  await page.getByRole('button', { name: 'Add photos', exact: true }).click();
+  await page.getByRole('button', { name: 'Add photos', exact: true }).first().click();
   await expect(page.getByRole('button', { name: 'Choose photos', exact: true })).toBeEnabled();
   await page
     .locator('input[type=file]')
@@ -464,7 +464,7 @@ test('closing the upload panel keeps the selection when device storage is blocke
   await expect(page.getByRole('button', { name: 'Share 1 photo', exact: true })).toBeEnabled();
   await expect(page.getByRole('dialog')).toContainText('can’t be saved on this device');
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: 'Add photos', exact: true }).click();
+  await page.getByRole('button', { name: 'Add photos', exact: true }).first().click();
   await expect(page.getByText('keep-this-memory.webp', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Share 1 photo', exact: true })).toBeEnabled();
 });

@@ -13,6 +13,7 @@ import {
   withPhotoUploadSlot,
 } from './photo-client';
 import { prepareEventPhoto } from './prepare-event-photo';
+import { PHOTO_INPUT_ACCEPT } from '../photos/decode-photo';
 import { readPhotoDrafts, savePhotoDrafts, type PhotoDraft } from './photo-drafts';
 import { PhotoDialog } from './photo-dialog';
 import { PhotoTurnstile } from './photo-turnstile';
@@ -157,10 +158,10 @@ export function PhotoUploader({
     if (!files?.length || running.current) return;
     setError('');
     const selected = Array.from(files);
-    if (input.current) input.current.value = '';
     const batchLimit = Math.min(MAX_BATCH, status?.batchLimit ?? MAX_BATCH);
     if (selected.length > batchLimit) {
       setError('Choose up to ' + String(batchLimit) + ' photos at a time.');
+      if (input.current) input.current.value = '';
       return;
     }
     if (selected.length > availableToChoose) {
@@ -171,13 +172,16 @@ export function PhotoUploader({
           (availableToChoose === 1 ? '' : 's') +
           ' for this event.',
       );
+      if (input.current) input.current.value = '';
       return;
     }
     if (
       current.current.some((item) => item.state !== 'complete') &&
       !window.confirm('Replace your unshared photos? Photos already shared will stay in the album.')
-    )
+    ) {
+      if (input.current) input.current.value = '';
       return;
+    }
     running.current = true;
     setBusy(true);
     try {
@@ -190,6 +194,7 @@ export function PhotoUploader({
       }
     } catch (cause) {
       setError(photoErrorMessage(cause));
+      if (input.current) input.current.value = '';
       running.current = false;
       setBusy(false);
       return;
@@ -440,7 +445,7 @@ export function PhotoUploader({
         <input
           ref={input}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+          accept={PHOTO_INPUT_ACCEPT}
           multiple
           hidden
           onChange={(event) => {

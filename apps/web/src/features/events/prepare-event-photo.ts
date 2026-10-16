@@ -1,4 +1,5 @@
 import { MAX_PHOTO_BYTES, MAX_PHOTO_EDGE } from './photo-contracts';
+import { decodePhoto } from '../photos/decode-photo';
 
 function encode(canvas: HTMLCanvasElement, quality: number) {
   return new Promise<Blob>((resolve, reject) =>
@@ -10,70 +11,10 @@ function encode(canvas: HTMLCanvasElement, quality: number) {
     ),
   );
 }
-async function decode(blob: Blob) {
-  if (typeof createImageBitmap === 'function') {
-    try {
-      const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
-      return {
-        source: bitmap as CanvasImageSource,
-        width: bitmap.width,
-        height: bitmap.height,
-        close: () => bitmap.close(),
-      };
-    } catch {
-      /* Try the browser's image decoder, including native HEIC on Safari. */
-    }
-  }
-  const url = URL.createObjectURL(blob);
-  const image = new Image();
-  image.src = url;
-  try {
-    await image.decode();
-    return {
-      source: image as CanvasImageSource,
-      width: image.naturalWidth,
-      height: image.naturalHeight,
-      close: () => URL.revokeObjectURL(url),
-    };
-  } catch (error) {
-    URL.revokeObjectURL(url);
-    throw error;
-  }
-}
 export async function prepareEventPhoto(file: File) {
-  const heic = /\.(heic|heif)$/i.test(file.name) || /image\/hei[cf]/i.test(file.type);
-  if (
-    !heic &&
-    !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) &&
-    !(file.type === '' && /\.(jpe?g|png|webp)$/i.test(file.name))
-  ) {
-    throw new Error(
-      'Choose a JPEG, PNG, WebP or HEIC photo. Videos, GIFs and other formats are not supported.',
-    );
-  }
-  if (file.size > 50 * 1024 * 1024)
-    throw new Error('Choose a photo smaller than 50 MB before preparation.');
-  let decoded: Awaited<ReturnType<typeof decode>>;
-  try {
-    decoded = await decode(file);
-  } catch {
-    if (!heic)
-      throw new Error(
-        'This photo could not be opened. Choose a different JPEG, PNG or WebP photo.',
-      );
-    try {
-      const { heicTo } = await import('heic-to/csp');
-      decoded = await decode(await heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 }));
-    } catch {
-      throw new Error(
-        'This HEIC photo could not be converted here. Export it as JPEG in Photos and try again.',
-      );
-    }
-  }
+  const decoded = await decodePhoto(file);
   const canvas = document.createElement('canvas');
   try {
-    if (!decoded.width || !decoded.height || decoded.width * decoded.height > 60_000_000)
-      throw new Error('Choose a photo with fewer than 60 megapixels.');
     let edge = Math.min(MAX_PHOTO_EDGE, Math.max(decoded.width, decoded.height));
     let output: Blob | undefined;
     for (let attempt = 0; attempt < 4; attempt++) {

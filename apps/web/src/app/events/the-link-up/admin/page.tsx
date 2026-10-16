@@ -30,9 +30,14 @@ export default async function OrganizerPage() {
           <p>The Link Up</p>
           <h1>Photo dashboard</h1>
         </div>
-        <Link href="/events/the-link-up">
-          View event <ArrowUpRight size={17} aria-hidden="true" />
-        </Link>
+        <nav aria-label="Dashboard links" className={styles['buttonGroup']}>
+          <Link href="/events/the-link-up">
+            View event <ArrowUpRight size={17} aria-hidden="true" />
+          </Link>
+          <Link href="/">
+            Go to DWD <ArrowUpRight size={17} aria-hidden="true" />
+          </Link>
+        </nav>
       </header>
       {access === 'allowed' && <PhotoAdmin />}
       {access === 'denied' && (

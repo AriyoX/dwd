@@ -160,7 +160,7 @@ export async function cleanupObjects(limit = 30) {
   if (expired.error) databaseError(expired.error);
   const due = await db
     .from('photo_object_cleanup')
-    .select('object_key')
+    .select('object_key,not_before')
     .lte('not_before', new Date().toISOString())
     .order('not_before')
     .limit(limit);
@@ -177,8 +177,12 @@ export async function cleanupObjects(limit = 30) {
           const ack = await db
             .from('photo_object_cleanup')
             .delete()
-            .eq('object_key', item.object_key);
-          if (!ack.error) removed++;
+            .eq('object_key', item.object_key)
+            // A concurrent retry may have extended the replay-protection window.
+            // Acknowledge only the version of the work that we actually processed.
+            .eq('not_before', item.not_before)
+            .select('object_key');
+          if (!ack.error && ack.data.length) removed++;
         } catch {
           console.error('[link-up] object cleanup will retry');
         }

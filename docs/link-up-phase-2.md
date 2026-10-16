@@ -1,5 +1,7 @@
 # The Link Up — Phase 2 handover
 
+Latest: [16 October readiness review and 9 GB capacity update](link-up-readiness.md).
+
 Event: Saturday, 17 October 2026. Public entry point: https://dwdug.vercel.app/events/the-link-up. Organizer entry point: https://dwdug.vercel.app/events/the-link-up/admin.
 
 ## Implementation

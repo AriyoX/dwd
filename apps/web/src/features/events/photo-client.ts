@@ -13,30 +13,38 @@ export async function photoRequest<T>(
   path: string,
   options: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const response = await fetch(`${PHOTO_API}/${path}`, {
-    method: options.method ?? 'GET',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    ...(options.body === undefined
-      ? {}
-      : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options.body) }),
-    signal: AbortSignal.timeout(
-      path.endsWith('/complete') || path === 'admin/cleanup' ? 65_000 : 30_000,
-    ),
-  });
-  // Proxies and interrupted deployments can return HTML or an empty response.
-  const data: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const error = data as { error?: string; code?: string } | null;
-    throw new PhotoApiError(
-      error?.error ?? 'The album could not connect. Please try again.',
-      error?.code ?? 'unavailable',
-      response.status,
-    );
+  // AbortSignal.timeout is newer than our supported Safari baseline.
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(new DOMException('Photo request timed out.', 'TimeoutError')),
+    path.endsWith('/complete') || path === 'admin/cleanup' ? 65_000 : 30_000,
+  );
+  try {
+    const response = await fetch(`${PHOTO_API}/${path}`, {
+      method: options.method ?? 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      ...(options.body === undefined
+        ? {}
+        : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options.body) }),
+      signal: controller.signal,
+    });
+    // Proxies and interrupted deployments can return HTML or an empty response.
+    const data: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = data as { error?: string; code?: string } | null;
+      throw new PhotoApiError(
+        error?.error ?? 'The album could not connect. Please try again.',
+        error?.code ?? 'unavailable',
+        response.status,
+      );
+    }
+    if (data === null)
+      throw new PhotoApiError('The album could not connect. Please try again.', 'unavailable', 503);
+    return data as T;
+  } finally {
+    clearTimeout(timeout);
   }
-  if (data === null)
-    throw new PhotoApiError('The album could not connect. Please try again.', 'unavailable', 503);
-  return data as T;
 }
 export function photoErrorMessage(error: unknown) {
   if (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name))

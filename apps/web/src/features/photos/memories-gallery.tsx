@@ -7,6 +7,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { deleteNightPhotoAction, getNightPhotosAction, registerNightPhotoAction } from './actions';
 import { prepareImage, type PreparedImage } from './image-upload';
+import { PHOTO_INPUT_ACCEPT } from './decode-photo';
 import { PhotoCollection, type VisiblePhoto } from './photo-collection';
 import { MAX_PHOTOS_PER_PERSON_PER_NIGHT } from '@dwd/core';
 
@@ -283,7 +284,7 @@ export function MemoriesGallery({
           className="visually-hidden"
           type="file"
           aria-label="Add photos from your night"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          accept={PHOTO_INPUT_ACCEPT}
           multiple
           onChange={(event) => void choose(event.target.files)}
         />

@@ -32,7 +32,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
 ].join('; ');
 
-// Only event pages need R2, Turnstile and the on-demand HEIC decoder.
+// Only event pages need R2 and Turnstile. Photo upload pages allow the HEIC worker.
 const photoStorageOrigin = httpsOrigin(
   process.env['R2_ENDPOINT'] ||
     (process.env['R2_ACCOUNT_ID']
@@ -76,6 +76,15 @@ const nextConfig: NextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(self), payment=()',
+          },
+        ],
+      },
+      {
+        source: '/night/:nightId/summary',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: contentSecurityPolicy.concat("; worker-src 'self' blob:"),
           },
         ],
       },

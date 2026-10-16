@@ -74,7 +74,10 @@ describe('album dashboard queries', () => {
     let now = 0;
     const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
     const outbox = query(
-      Array.from({ length: 150 }, (_, index) => ({ object_key: String(index) })),
+      Array.from({ length: 150 }, (_, index) => ({
+        object_key: String(index),
+        not_before: '2026-10-16T00:00:00Z',
+      })),
     );
     mocks.from.mockReturnValue(outbox);
     mocks.removeObject.mockImplementation(() => {
@@ -89,5 +92,14 @@ describe('album dashboard queries', () => {
     } finally {
       clock.mockRestore();
     }
+  });
+  it('does not discard or count cleanup work rescheduled while storage deletion was running', async () => {
+    const pending = query([{ object_key: 'temporary/photo', not_before: '2026-10-16T00:00:00Z' }]);
+    const acknowledgement = query([]);
+    mocks.from.mockReturnValueOnce(pending).mockReturnValueOnce(acknowledgement);
+    mocks.removeObject.mockResolvedValue(undefined);
+    const result = await cleanupObjects();
+    expect(acknowledgement.eq).toHaveBeenCalledWith('not_before', '2026-10-16T00:00:00Z');
+    expect(result.removed).toBe(0);
   });
 });

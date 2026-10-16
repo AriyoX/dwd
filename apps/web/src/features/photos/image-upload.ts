@@ -1,4 +1,5 @@
 import { MAX_MEMORY_PHOTO_BYTES } from '@dwd/core';
+import { decodePhoto } from './decode-photo';
 
 export interface PreparedImage {
   blob: Blob;
@@ -11,18 +12,12 @@ export interface PreparedImage {
 const MAX_EDGE = 1920;
 
 export async function prepareImage(file: File): Promise<PreparedImage> {
-  if (!file.type.startsWith('image/') && !/\.(?:heic|heif|jpe?g|png|webp)$/i.test(file.name)) {
-    throw new Error('Choose an image file.');
-  }
-  const decoded = await decodeImage(file);
+  const decoded = await decodePhoto(file);
+  const canvas = document.createElement('canvas');
   try {
-    if (decoded.width * decoded.height > 40_000_000) {
-      throw new Error('Choose a photo with fewer than 40 megapixels.');
-    }
     const scale = Math.min(1, MAX_EDGE / Math.max(decoded.width, decoded.height));
     let width = Math.max(1, Math.round(decoded.width * scale));
     let height = Math.max(1, Math.round(decoded.height * scale));
-    const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext('2d');
@@ -78,43 +73,8 @@ export async function prepareImage(file: File): Promise<PreparedImage> {
     };
   } finally {
     decoded.close();
-  }
-}
-
-async function decodeImage(file: File): Promise<{
-  source: CanvasImageSource;
-  width: number;
-  height: number;
-  close: () => void;
-}> {
-  if (typeof createImageBitmap === 'function') {
-    try {
-      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-      return {
-        source: bitmap,
-        width: bitmap.width,
-        height: bitmap.height,
-        close: () => bitmap.close(),
-      };
-    } catch {
-      // Safari can decode some camera formats through an image element even
-      // when createImageBitmap rejects them.
-    }
-  }
-  const url = URL.createObjectURL(file);
-  const image = new Image();
-  image.src = url;
-  try {
-    await image.decode();
-    return {
-      source: image,
-      width: image.naturalWidth,
-      height: image.naturalHeight,
-      close: () => URL.revokeObjectURL(url),
-    };
-  } catch (cause) {
-    URL.revokeObjectURL(url);
-    throw cause;
+    canvas.width = 0;
+    canvas.height = 0;
   }
 }
 
