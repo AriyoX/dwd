@@ -1,5 +1,8 @@
 import { PHOTO_API } from './photo-contracts';
 
+const CONNECTION_MESSAGE =
+  'Could not connect. Check your connection, then refresh the page or try again.';
+
 export class PhotoApiError extends Error {
   constructor(
     message: string,
@@ -34,13 +37,12 @@ export async function photoRequest<T>(
     if (!response.ok) {
       const error = data as { error?: string; code?: string } | null;
       throw new PhotoApiError(
-        error?.error ?? 'The album could not connect. Please try again.',
+        error?.error ?? CONNECTION_MESSAGE,
         error?.code ?? 'unavailable',
         response.status,
       );
     }
-    if (data === null)
-      throw new PhotoApiError('The album could not connect. Please try again.', 'unavailable', 503);
+    if (data === null) throw new PhotoApiError(CONNECTION_MESSAGE, 'unavailable', 503);
     return data as T;
   } finally {
     clearTimeout(timeout);
@@ -48,9 +50,11 @@ export async function photoRequest<T>(
 }
 export function photoErrorMessage(error: unknown) {
   if (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name))
-    return 'This is taking too long. Check your connection and try again.';
-  if (error instanceof TypeError) return 'Could not connect. Check your connection and try again.';
-  return error instanceof Error ? error.message : 'Could not connect. Please retry.';
+    return 'This is taking too long. Check your connection, then refresh the page or try again.';
+  if (error instanceof TypeError) return CONNECTION_MESSAGE;
+  if (error instanceof PhotoApiError && error.status >= 500 && !error.message.includes('refresh'))
+    return `${error.message} Check your connection and refresh the page if this continues.`;
+  return error instanceof Error ? error.message : CONNECTION_MESSAGE;
 }
 export async function downloadPhoto(id: string, admin = false) {
   const result = await photoRequest<{ url: string }>(
@@ -79,15 +83,23 @@ export function directPhotoUpload(url: string, blob: Blob, onProgress: (percent:
         ? resolve()
         : reject(
             new PhotoApiError(
-              'Upload interrupted. Tap Retry to get a fresh upload link.',
+              'Upload interrupted. Tap Retry. If it keeps failing, check your connection and refresh the page.',
               'put_failed',
               xhr.status,
             ),
           );
     xhr.onerror = () =>
-      reject(new Error('Upload could not connect. Check your connection and tap Retry.'));
+      reject(
+        new Error(
+          'Upload could not connect. Check your connection and tap Retry, or refresh the page.',
+        ),
+      );
     xhr.ontimeout = () =>
-      reject(new Error('Upload took too long. Tap Retry when your connection improves.'));
+      reject(
+        new Error(
+          'Upload took too long. Check your connection, then tap Retry or refresh the page.',
+        ),
+      );
     xhr.send(blob);
   });
 }

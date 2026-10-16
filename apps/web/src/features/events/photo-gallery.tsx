@@ -16,6 +16,7 @@ import {
 import type { GalleryPage, GalleryPhoto } from './photo-contracts';
 import { downloadPhoto, photoErrorMessage, photoRequest, PhotoApiError } from './photo-client';
 import { PhotoDialog } from './photo-dialog';
+import { PhotoConnectionNotice } from './photo-connection-notice';
 import styles from './photo-sharing.module.css';
 
 function GalleryImage({
@@ -23,37 +24,86 @@ function GalleryImage({
   full = false,
   admin,
   onUnavailable,
+  onFailure,
 }: {
   photo: GalleryPhoto;
   full?: boolean;
   admin: boolean;
   onUnavailable: (id: string) => void;
+  onFailure?: (id: string, failed: boolean) => void;
 }) {
   const [source, setSource] = useState({
     url: full ? photo.imageUrl : photo.thumbnailUrl,
     expiresAt: photo.expiresAt,
+    attempt: 0,
   });
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const generation = useRef(0);
   const renewing = useRef(false);
+  const autoRenewed = useRef('');
   useEffect(() => {
-    setSource({ url: full ? photo.imageUrl : photo.thumbnailUrl, expiresAt: photo.expiresAt });
+    setSource({
+      url: full ? photo.imageUrl : photo.thumbnailUrl,
+      expiresAt: photo.expiresAt,
+      attempt: 0,
+    });
     setFailed(false);
+    setLoaded(false);
+    autoRenewed.current = '';
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- Invalidate async requests; this counter is not a DOM ref.
+      generation.current++;
+      renewing.current = false;
+    };
   }, [photo, full]);
+  useEffect(() => {
+    if (full || !onFailure) return;
+    onFailure(photo.id, failed);
+    return () => onFailure(photo.id, false);
+  }, [photo.id, failed, full, onFailure]);
+  useEffect(() => {
+    const image = imageRef.current;
+    if (!image || failed || loaded || (image.complete && image.naturalWidth > 0)) return;
+    let timer: number | undefined;
+    const start = () => {
+      timer ??= window.setTimeout(() => setFailed(true), 25_000);
+    };
+    // Lazy thumbnails only get a deadline once they enter the viewport.
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) start();
+    });
+    if (full) start();
+    else observer.observe(image);
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [failed, loaded, full, source]);
   const renew = useCallback(async () => {
     if (renewing.current) return;
     renewing.current = true;
+    const version = generation.current;
     try {
       const next = await photoRequest<GalleryPhoto>(
         (admin ? 'admin/' : '') + 'photos/' + photo.id + '/view',
       );
-      setSource({ url: full ? next.imageUrl : next.thumbnailUrl, expiresAt: next.expiresAt });
+      if (version !== generation.current) return;
+      setSource((previous) => ({
+        url: full ? next.imageUrl : next.thumbnailUrl,
+        expiresAt: next.expiresAt,
+        attempt: previous.attempt + 1,
+      }));
+      setLoaded(false);
       setFailed(false);
     } catch (cause) {
+      if (version !== generation.current) return;
       if (cause instanceof PhotoApiError && [401, 403, 404].includes(cause.status))
         onUnavailable(photo.id);
       else setFailed(true);
     } finally {
-      renewing.current = false;
+      if (version === generation.current) renewing.current = false;
     }
   }, [photo.id, full, admin, onUnavailable]);
   useEffect(() => {
@@ -77,23 +127,35 @@ function GalleryImage({
         <Images size={24} aria-hidden="true" />
         <span>Photo couldn’t load</span>
         {full && (
-          <button type="button" className={styles['secondaryButton']} onClick={() => void renew()}>
-            Try again
-          </button>
+          <>
+            <span>Check your connection, then try again or refresh the page.</span>
+            <button
+              type="button"
+              className={styles['secondaryButton']}
+              onClick={() => void renew()}
+            >
+              Try again
+            </button>
+          </>
         )}
       </span>
     );
   return (
     <img
+      key={`${source.url}:${source.attempt}`}
+      ref={imageRef}
       src={source.url}
       alt={full ? 'A shared memory from The Link Up' : ''}
       loading={full ? 'eager' : 'lazy'}
       decoding="async"
       width={photo.width}
       height={photo.height}
+      onLoad={() => setLoaded(true)}
       onError={() => {
-        if (source.expiresAt <= Date.now() + 10_000) void renew();
-        else setFailed(true);
+        if (source.expiresAt <= Date.now() + 10_000 && autoRenewed.current !== source.url) {
+          autoRenewed.current = source.url;
+          void renew();
+        } else setFailed(true);
       }}
     />
   );
@@ -125,6 +187,7 @@ export function PhotoGallery({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [failedPhotos, setFailedPhotos] = useState<Set<string>>(() => new Set());
   const [selected, setSelected] = useState<GalleryPhoto | null>(null);
   const [reporting, setReporting] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -140,6 +203,15 @@ export function PhotoGallery({
   });
   const busy = actionBusy || disabled;
   const prefix = admin ? 'admin/' : '';
+  const imageFailure = useCallback((id: string, failed: boolean) => {
+    setFailedPhotos((current) => {
+      if (current.has(id) === failed) return current;
+      const next = new Set(current);
+      if (failed) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
   const unavailable = useCallback((id: string) => {
     setPhotos((items) => items.filter((item) => item.id !== id));
     setSelected((value) => (value?.id === id ? null : value));
@@ -204,7 +276,11 @@ export function PhotoGallery({
         void load(pageCursors[pageIndex] ?? null, pageIndex);
     };
     document.addEventListener('visibilitychange', resume);
-    return () => document.removeEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
+    return () => {
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
+    };
   }, [load, selected, loading, pageCursors, pageIndex]);
   const index = photos.findIndex((photo) => photo.id === selected?.id);
   const active = photos[index] ?? selected;
@@ -312,6 +388,20 @@ export function PhotoGallery({
           </button>
         </div>
       </div>
+      <PhotoConnectionNotice />
+      {failedPhotos.size > 0 && !error && (
+        <p role="status" className={styles['connectionNotice']}>
+          Some photos couldn’t load. Check your connection, then refresh the photos.{' '}
+          <button
+            type="button"
+            className={styles['textButton']}
+            disabled={loading || busy}
+            onClick={() => void load(pageCursors[pageIndex] ?? null, pageIndex)}
+          >
+            Refresh photos
+          </button>
+        </p>
+      )}
       {!admin && (
         <div className={styles['galleryToolbar']}>
           <span className={styles['muted']}>
@@ -429,7 +519,12 @@ export function PhotoGallery({
                 setNotice('');
               }}
             >
-              <GalleryImage photo={photo} admin={admin} onUnavailable={unavailable} />
+              <GalleryImage
+                photo={photo}
+                admin={admin}
+                onUnavailable={unavailable}
+                onFailure={imageFailure}
+              />
             </button>
             {admin && onModerate && (
               <div className={styles['photoCardBody']}>
@@ -529,6 +624,7 @@ export function PhotoGallery({
       >
         {active && (
           <>
+            <PhotoConnectionNotice />
             <div
               className={styles['viewerImage']}
               onTouchStart={(event) => {

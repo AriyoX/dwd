@@ -25,10 +25,13 @@ export async function prepareEventPhoto(file: File) {
       if (!context) throw new Error('This browser cannot prepare photos.');
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, canvas.width, canvas.height);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
       context.drawImage(decoded.source, 0, 0, canvas.width, canvas.height);
-      for (const quality of [0.88, 0.8, 0.7, 0.6]) {
+      // Keep the most detail that fits the actual upload allowance.
+      for (const quality of [0.94, 0.9, 0.86, 0.8]) {
         output = await encode(canvas, quality);
-        if (output.size <= 1024 * 1024) break;
+        if (output.size <= MAX_PHOTO_BYTES) break;
       }
       if (output && output.size <= MAX_PHOTO_BYTES) break;
       edge = Math.max(640, Math.round(edge * 0.75));

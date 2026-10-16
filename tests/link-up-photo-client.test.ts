@@ -72,5 +72,13 @@ describe('album connection recovery', () => {
   it('gives connection and timeout errors a recovery instruction', () => {
     expect(photoErrorMessage(new DOMException('timed out', 'TimeoutError'))).toContain('try again');
     expect(photoErrorMessage(new TypeError('Failed to fetch'))).toContain('Check your connection');
+    expect(photoErrorMessage(new TypeError('Failed to fetch'))).toContain('refresh the page');
+    expect(photoErrorMessage(new DOMException('timed out', 'TimeoutError'))).toContain('refresh');
+    expect(
+      photoErrorMessage(new PhotoApiError('Service unavailable.', 'unavailable', 503)),
+    ).toContain('refresh');
+    expect(photoErrorMessage(new PhotoApiError('Photo limit reached.', 'quota', 409))).toBe(
+      'Photo limit reached.',
+    );
   });
 });

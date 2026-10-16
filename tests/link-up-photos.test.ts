@@ -161,6 +161,42 @@ describe('server image validation and sanitation', () => {
       code: 'invalid_image',
     });
   });
+  it('keeps larger previews sharp while respecting the thumbnail storage reservation', async () => {
+    const width = 1200;
+    const height = 900;
+    const pixels = Buffer.alloc(width * height * 3);
+    let seed = 42;
+    for (let offset = 0; offset < pixels.length; offset++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      pixels[offset] = seed >>> 24;
+    }
+    const original = await sharp(pixels, { raw: { width, height, channels: 3 } })
+      .jpeg({ quality: 94 })
+      .toBuffer();
+    const normalized = await normalizePhoto(original, 'image/jpeg');
+    const preview = await sharp(normalized.thumbnail).metadata();
+    expect([normalized.width, normalized.height]).toEqual([width, height]);
+    expect([preview.width, preview.height]).toEqual([640, 480]);
+    expect(normalized.image.length).toBeLessThanOrEqual(2 * 1024 * 1024);
+    expect(normalized.thumbnail.length).toBeLessThanOrEqual(128 * 1024);
+    expect(preview.exif).toBeUndefined();
+  });
+  it('falls back to a smaller preview for noisy images instead of rejecting the photo', async () => {
+    const pixels = Buffer.alloc(640 * 640 * 3);
+    let seed = 42;
+    for (let offset = 0; offset < pixels.length; offset++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      pixels[offset] = seed >>> 24;
+    }
+    const original = await sharp(pixels, { raw: { width: 640, height: 640, channels: 3 } })
+      .jpeg({ quality: 94 })
+      .toBuffer();
+    const normalized = await normalizePhoto(original, 'image/jpeg');
+    const preview = await sharp(normalized.thumbnail).metadata();
+    expect([normalized.width, normalized.height]).toEqual([640, 640]);
+    expect([preview.width, preview.height]).toEqual([480, 480]);
+    expect(normalized.thumbnail.length).toBeLessThanOrEqual(128 * 1024);
+  });
 });
 describe('private R2 URLs', () => {
   beforeEach(() => {

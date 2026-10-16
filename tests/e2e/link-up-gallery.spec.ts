@@ -5,7 +5,10 @@ import type { GalleryPhoto } from '../../apps/web/src/features/events/photo-cont
 
 test.use({ serviceWorkers: 'block' });
 
-async function album(page: Page) {
+async function album(
+  page: Page,
+  options: { brokenImages?: boolean; expiredImage?: boolean; stalledImage?: boolean } = {},
+) {
   const photos: GalleryPhoto[] = Array.from({ length: 50 }, (_, i) => ({
     id: randomUUID(),
     width: 480,
@@ -16,17 +19,31 @@ async function album(page: Page) {
     thumbnailUrl: `/__gallery/${i}.webp`,
     imageUrl: `/__gallery/${i}.webp`,
   }));
-  const state = { failNext: false, delayNext: false, closed: false, requests: [] as number[] };
+  if (options.expiredImage && photos[0]) photos[0].expiresAt = Date.now() - 1000;
+  const state = {
+    failNext: false,
+    delayNext: false,
+    closed: false,
+    brokenImages: !!options.brokenImages,
+    views: 0,
+    requests: [] as number[],
+  };
   const images = [
     readFileSync('apps/web/public/events/the-link-up/cocktail.webp'),
     readFileSync('apps/web/public/events/the-link-up/foliage.webp'),
   ];
-  await page.route('**/__gallery/**', (route) =>
-    route.fulfill({
+  await page.route('**/__gallery/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (state.brokenImages) return route.abort('failed');
+    if (options.expiredImage && path === '/__gallery/0.webp') return route.fulfill({ status: 403 });
+    if (options.stalledImage && path === '/__gallery/0.webp') {
+      await new Promise((resolve) => setTimeout(resolve, 30_000));
+    }
+    return route.fulfill({
       contentType: 'image/webp',
       body: images[Number(new URL(route.request().url()).pathname.match(/\d+/)?.[0] ?? 0) % 2],
-    }),
-  );
+    });
+  });
   await page.route('**/api/events/the-link-up/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/gallery')) {
@@ -49,8 +66,18 @@ async function album(page: Page) {
       });
     }
     if (url.pathname.endsWith('/view')) {
+      state.views++;
       const photo = photos.find((p) => url.pathname.includes(p.id));
-      return route.fulfill({ json: photo });
+      return route.fulfill({
+        json:
+          options.expiredImage && photo?.id === photos[0]?.id
+            ? {
+                ...photo,
+                thumbnailUrl: '/__gallery/renewed-0.webp',
+                expiresAt: Date.now() + 120_000,
+              }
+            : photo,
+      });
     }
     throw new Error('Unexpected gallery request: ' + url.pathname);
   });
@@ -91,6 +118,55 @@ test('album is visible on arrival, paginated, and keeps the page after returning
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+});
+
+test('failed thumbnails explain recovery and refresh restores the images', async ({ page }) => {
+  const state = await album(page, { brokenImages: true });
+  const notice = page.getByRole('status').filter({ hasText: 'Some photos couldn’t load' });
+  await expect(notice).toContainText('Check your connection');
+  state.brokenImages = false;
+  await notice.getByRole('button', { name: 'Refresh photos' }).click();
+  const image = page.getByRole('button', { name: 'Open photo 1', exact: true }).locator('img');
+  await expect
+    .poll(() => image.evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth > 0))
+    .toBe(true);
+  await expect(notice).toHaveCount(0);
+});
+
+test('offline guidance appears in the album and open viewer, and clears on reconnect', async ({
+  page,
+  context,
+}) => {
+  const state = await album(page);
+  await page.getByRole('button', { name: 'Open photo 1', exact: true }).click();
+  await context.setOffline(true);
+  await expect(page.getByRole('dialog').getByRole('status')).toContainText('You’re offline');
+  await expect(page.getByRole('dialog').getByRole('status')).toContainText('refresh the page');
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.locator('#shared-gallery').getByText(/You’re offline/)).toBeVisible();
+  const requests = state.requests.length;
+  await context.setOffline(false);
+  await expect(page.getByText(/You’re offline/)).toHaveCount(0);
+  await expect.poll(() => state.requests.length).toBeGreaterThan(requests);
+});
+
+test('an expired thumbnail gets a fresh signed link and loads automatically', async ({ page }) => {
+  const state = await album(page, { expiredImage: true });
+  const image = page.getByRole('button', { name: 'Open photo 1', exact: true }).locator('img');
+  await expect(image).toHaveAttribute('src', '/__gallery/renewed-0.webp');
+  await expect
+    .poll(() => image.evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth > 0))
+    .toBe(true);
+  expect(state.views).toBe(1);
+});
+
+test('a stalled visible thumbnail stops waiting and explains how to refresh', async ({ page }) => {
+  await album(page, { stalledImage: true });
+  await expect(page.getByRole('button', { name: 'Open photo 1', exact: true })).toContainText(
+    'Photo couldn’t load',
+    { timeout: 35_000 },
+  );
+  await expect(page.getByRole('button', { name: 'Refresh photos' })).toBeVisible();
 });
 
 test('viewer crosses page boundaries and retries the failed page without losing its place', async ({

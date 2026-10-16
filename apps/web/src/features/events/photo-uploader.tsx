@@ -16,6 +16,7 @@ import { prepareEventPhoto } from './prepare-event-photo';
 import { PHOTO_INPUT_ACCEPT } from '../photos/decode-photo';
 import { readPhotoDrafts, savePhotoDrafts, type PhotoDraft } from './photo-drafts';
 import { PhotoDialog } from './photo-dialog';
+import { PhotoConnectionNotice } from './photo-connection-notice';
 import { PhotoTurnstile } from './photo-turnstile';
 import styles from './photo-sharing.module.css';
 
@@ -396,6 +397,7 @@ export function PhotoUploader({
   return (
     <PhotoDialog open={open} onClose={onClose} title="Add photos" busy={busy}>
       <div className={styles['panelBody']}>
+        <PhotoConnectionNotice />
         <p className={styles['notice']}>Photos are public. Anyone can view and download them.</p>
         <p className={styles['muted']}>
           Choose up to {Math.min(MAX_BATCH, status?.batchLimit ?? MAX_BATCH)} photos at a time.

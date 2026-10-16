@@ -45,19 +45,29 @@ export async function normalizePhoto(bytes: Buffer, expectedType: string) {
       .toColourspace('srgb');
     let output = await normalized
       .clone()
-      .jpeg({ quality: 88, mozjpeg: true })
+      .jpeg({ quality: 94, mozjpeg: true })
       .toBuffer({ resolveWithObject: true });
-    for (const quality of [80, 70, 60]) {
+    for (const quality of [90, 86, 80, 70, 60]) {
       if (output.data.length <= MAX_PHOTO_BYTES) break;
       output = await normalized
         .clone()
         .jpeg({ quality, mozjpeg: true })
         .toBuffer({ resolveWithObject: true });
     }
-    const thumbnail = await sharp(output.data)
-      .resize({ width: 480, height: 480, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 72, mozjpeg: true })
-      .toBuffer();
+    let thumbnail = Buffer.alloc(0);
+    for (const edge of [640, 480]) {
+      const preview = sharp(output.data).resize({
+        width: edge,
+        height: edge,
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+      for (const quality of [84, 78, 72, 64]) {
+        thumbnail = await preview.clone().jpeg({ quality, mozjpeg: true }).toBuffer();
+        if (thumbnail.length <= MAX_THUMBNAIL_BYTES) break;
+      }
+      if (thumbnail.length <= MAX_THUMBNAIL_BYTES) break;
+    }
     if (output.data.length > MAX_PHOTO_BYTES || thumbnail.length > MAX_THUMBNAIL_BYTES)
       throw new Error('size');
     return { image: output.data, thumbnail, width: output.info.width, height: output.info.height };

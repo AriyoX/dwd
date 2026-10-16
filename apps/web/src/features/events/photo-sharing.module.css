@@ -2,7 +2,7 @@
 .admin,
 .dialog {
   --album-bg: #081607;
-  --album-surface: #142217;
+  --album-surface: var(--album-bg);
   --album-ivory: #f5efd7;
   --album-gold: #bdaa68;
   --album-muted: #c6c1b5;
@@ -17,6 +17,18 @@
 .gallery {
   margin-block: 36px;
   scroll-margin-top: 20px;
+}
+.connectionNotice {
+  margin-block: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--album-border);
+  border-radius: 6px;
+  color: var(--album-ivory);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.viewerDialog > .connectionNotice {
+  margin-inline: 20px;
 }
 .sectionHeader,
 .dialogHeader,

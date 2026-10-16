@@ -170,6 +170,40 @@ test('multiple real HEIC files with missing or incorrect picker types still prep
   await expect(page.getByText(/could not be opened|could not be converted/)).toHaveCount(0);
 });
 
+test('detailed photos retain detail within the full 2 MB allowance', async ({ page }) => {
+  const received = await album(page);
+  const width = 1600;
+  const height = 1200;
+  const pixels = Buffer.alloc(width * height * 3);
+  let seed = 123456;
+  for (let offset = 0; offset < pixels.length; offset += 3) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const value = seed >>> 24;
+    pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = value;
+  }
+  const original = await sharp(pixels, { raw: { width, height, channels: 3 } })
+    .png()
+    .toBuffer();
+  await page
+    .locator('input[type=file]')
+    .setInputFiles({ name: 'detailed.png', mimeType: 'image/png', buffer: original });
+  await expect(page.getByText('Ready', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Share 1 photo', exact: true }).click();
+  await expect(page.getByText('1 photo shared.', { exact: true })).toBeVisible();
+  expect(received).toHaveLength(1);
+  const upload = received[0];
+  if (!upload) throw new Error('Missing prepared photo');
+  const bytes = upload.bytes;
+  expect(bytes.length).toBeGreaterThan(1024 * 1024);
+  expect(bytes.length).toBeLessThanOrEqual(2 * 1024 * 1024);
+  const { data, info } = await sharp(bytes).raw().toBuffer({ resolveWithObject: true });
+  expect([info.width, info.height]).toEqual([width, height]);
+  let squaredError = 0;
+  for (let offset = 0; offset < pixels.length; offset++)
+    squaredError += (pixels.readUInt8(offset) - data.readUInt8(offset)) ** 2;
+  expect(squaredError / pixels.length).toBeLessThan(30);
+});
+
 test('a bad HEIC and a bad JPEG leave the valid photos shareable', async ({ page }) => {
   const uploads = await album(page);
   await page.locator('input[type=file]').setInputFiles([

@@ -71,7 +71,39 @@ canvas. See [the iPhone upload review](iphone-photo-uploads.md).
   production preview using the existing public album had no browser runtime
   errors or horizontal overflow at desktop and phone sizes.
 
-The storage change is live. Application changes remain local and uncommitted;
-this review did not deploy the web application. Apple's physical Photos picker,
+The storage change is live. This review did not deploy the web application.
+Apple's physical Photos picker,
 phone memory pressure and venue connectivity still need a real-device upload
 check after deployment; WebKit automation cannot validate those conditions.
+
+## Follow-up: connection recovery and image quality
+
+The initial readiness changes were committed as `ef62e4e` before this follow-up.
+
+- Show an offline notice in the album, uploader and viewer. Connection errors
+  and timeouts advise checking the connection and refreshing the page.
+- Stop waiting for a visible image after 25 seconds and show recovery guidance.
+  Failed thumbnails offer a refresh action that preserves the current album
+  page. Reconnecting also refreshes the current page automatically.
+- Preserve expiring-link renewal, bound automatic retries for an expired URL,
+  and discard renewal responses from an older image or unmounted viewer.
+- Prepare new JPEGs at quality 94 first and use the full 2 MiB allowance before
+  reducing quality or dimensions. Server normalization also starts at quality 94.
+  The 2048-pixel edge limit, metadata removal and storage reservations stay in place.
+- Generate previews up to 640 pixels at quality 84, reducing quality and then
+  dimensions when needed to remain within 128 KiB. Existing photos are unchanged.
+- Use one flat green (`#081607`) across the event background and public photo
+  panels, removing the foliage and grain overlays.
+
+The existing public thumbnail loaded successfully from localhost with an HTTP
+200 and successful browser decoding. No persistent localhost/Cloudflare failure
+was reproduced; intermittent failures now have explicit recovery UI.
+
+Verification: 60 focused unit checks and 36 browser checks passed across desktop
+Chromium, mobile Chromium and mobile WebKit. Browser checks cover offline and
+reconnect notices, failed and stalled images, expired URLs, pagination, HEIC,
+restored drafts and an actual detailed-image upload with pixel-error measurement.
+The production build (including TypeScript), targeted ESLint and formatting
+checks passed. A local production preview loaded the existing public album on
+desktop and phone layouts with no runtime errors or horizontal overflow.
+Application changes are committed locally; no deployment was made.

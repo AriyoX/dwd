@@ -1,7 +1,7 @@
 .page {
   --linkup-background: #081607;
-  --linkup-background-deep: #031007;
-  --linkup-surface: #142217;
+  --linkup-background-deep: var(--linkup-background);
+  --linkup-surface: var(--linkup-background);
   --linkup-ivory: #f5efd7;
   --linkup-text-secondary: #c6c1b5;
   --linkup-olive: #545335;
@@ -22,29 +22,6 @@
 
 :global(body):has(.page) :global(.theme-toggle) {
   display: none;
-}
-
-.page::after {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  content: '';
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath filter='url(%23n)' opacity='.6' d='M0 0h180v180H0z'/%3E%3C/svg%3E");
-}
-
-.foliage {
-  position: absolute;
-  z-index: -1;
-  top: 0;
-  left: 0;
-  width: clamp(290px, 40vw, 620px);
-  aspect-ratio: 1;
-  background: url('/events/the-link-up/foliage.webp') top left / cover;
-  opacity: 0.62;
-  mask-image: linear-gradient(130deg, #000 15%, transparent 76%);
-  pointer-events: none;
 }
 
 .header,

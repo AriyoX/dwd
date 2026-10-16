@@ -7,7 +7,6 @@ import styles from './the-link-up.module.css';
 export function TheLinkUp() {
   return (
     <div className={styles['page']}>
-      <div className={styles['foliage']} aria-hidden="true" />
       <header className={styles['header']}>
         <span className={styles['miniWordmark']}>THE LINK UP</span>
         <nav className={styles['headerActions']} aria-label="Event links">
