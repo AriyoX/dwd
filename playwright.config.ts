@@ -56,10 +56,14 @@ export default defineConfig({
     reuseExistingServer: false,
     env: {
       DWD_E2E: '1',
+      DWD_E2E_DIST_DIR: process.env['E2E_DIST_DIR'] ?? '.next-e2e',
       DWD_EMAIL_CONFIRMATION_CODE_ENABLED: process.env['E2E_CONFIRMATION_CODES'] ?? 'true',
       NEXT_PUBLIC_SUPABASE_URL: backend,
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
         process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] ?? 'local-browser-test-key',
+      SUPABASE_SECRET_KEY: process.env['E2E_SUPABASE_SECRET_KEY'] ?? 'local-browser-test-key',
+      // Never use local developer R2 credentials during isolated browser tests.
+      R2_BUCKET_NAME: '',
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3100',
       NEXT_PUBLIC_DWD_ADS_URL: process.env['E2E_ADS_URL'] ?? '',
       NEXT_PUBLIC_DWD_AD_IMAGE_ORIGINS: process.env['E2E_AD_IMAGE_ORIGINS'] ?? '',

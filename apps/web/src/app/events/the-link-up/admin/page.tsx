@@ -1,5 +1,6 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
+import { ArrowUpRight } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { requireOrganizer, LINK_UP_ADMIN_PATH } from '@/lib/link-up/organizer';
 import { PageAccessError } from '@/lib/auth/page-access';
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 export const dynamic = 'force-dynamic';
+export const viewport: Viewport = { themeColor: '#f5f6f8', colorScheme: 'light' };
 export default async function OrganizerPage() {
   let access: 'allowed' | 'sign-in' | 'denied' | 'unavailable' = 'unavailable';
   try {
@@ -23,8 +25,15 @@ export default async function OrganizerPage() {
   if (access === 'sign-in') redirect(`/login?next=${encodeURIComponent(LINK_UP_ADMIN_PATH)}`);
   return (
     <main id="main-content" className={styles['admin']}>
-      <Link href="/events/the-link-up">← The Link Up</Link>
-      <h1>Organizer dashboard</h1>
+      <header className={styles['adminHeader']}>
+        <div>
+          <p>The Link Up</p>
+          <h1>Photo dashboard</h1>
+        </div>
+        <Link href="/events/the-link-up">
+          View event <ArrowUpRight size={17} aria-hidden="true" />
+        </Link>
+      </header>
       {access === 'allowed' && <PhotoAdmin />}
       {access === 'denied' && (
         <>
@@ -36,7 +45,7 @@ export default async function OrganizerPage() {
       )}
       {access === 'unavailable' && (
         <p role="alert">
-          Organizer access could not connect. Check the photo-sharing configuration and try again.
+          We couldn’t check your organizer access. Please refresh the page and try again.
         </p>
       )}
     </main>

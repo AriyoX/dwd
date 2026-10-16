@@ -58,7 +58,9 @@ const nextConfig: NextConfig = {
         (addresses ?? []).filter((address) => !address.internal).map((address) => address.address),
       )
     : [],
-  ...(process.env.DWD_E2E === '1' ? { distDir: '.next-e2e' } : {}),
+  ...(process.env.DWD_E2E === '1'
+    ? { distDir: process.env['DWD_E2E_DIST_DIR'] || '.next-e2e' }
+    : {}),
   reactStrictMode: true,
   transpilePackages: ['@dwd/core', '@dwd/contracts', '@dwd/data'],
   poweredByHeader: false,

@@ -38,6 +38,8 @@ export const batchSchema = z
 
 export async function sessionStatus(session: string, hostname: string): Promise<SessionStatus> {
   const db = photoDatabase();
+  const expired = await db.rpc('link_up_expire_uploads', {});
+  if (expired.error) databaseError(expired.error);
   const event = await eventConfig();
   const { error } = await db
     .from('photo_guest_sessions')
@@ -49,8 +51,7 @@ export async function sessionStatus(session: string, hostname: string): Promise<
       .from('photo_upload_reservations')
       .select('id', { count: 'exact', head: true })
       .eq('session_id', session)
-      .in('status', ['pending', 'verifying'])
-      .gt('expires_at', new Date().toISOString()),
+      .in('status', ['pending', 'verifying']),
     db
       .from('photo_upload_reservations')
       .select('id,client_id,status')
@@ -166,9 +167,11 @@ export async function cleanupObjects(limit = 30) {
   if (due.error) databaseError(due.error);
   let removed = 0;
   const queue = [...due.data];
+  const deadline = Date.now() + 15_000;
   await Promise.all(
     Array.from({ length: 3 }, async () => {
-      for (let item = queue.shift(); item; item = queue.shift()) {
+      // Drain large or slow backlogs over repeated calls within the route's time limit.
+      for (let item = queue.shift(); item && Date.now() < deadline; item = queue.shift()) {
         try {
           await removeObject(item.object_key);
           const ack = await db
@@ -214,7 +217,11 @@ export function decodeCursor(value: string | null) {
     throw new PhotoError('invalid_cursor', 'Refresh the gallery to continue.');
   }
 }
-export async function gallery(cursor: string | null, admin = false): Promise<GalleryPage> {
+export async function gallery(
+  cursor: string | null,
+  admin = false,
+  status?: 'published' | 'hidden',
+): Promise<GalleryPage> {
   const event = await eventConfig();
   if (!admin && !event.gallery_enabled)
     return { photos: [], nextCursor: null, galleryEnabled: false };
@@ -225,7 +232,11 @@ export async function gallery(cursor: string | null, admin = false): Promise<Gal
     .order('published_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(25);
-  query = admin ? query.neq('status', 'deleted') : query.eq('status', 'published');
+  query = admin
+    ? status
+      ? query.eq('status', status)
+      : query.in('status', ['published', 'hidden'])
+    : query.eq('status', 'published');
   const position = decodeCursor(cursor);
   if (position)
     query = query.or(
@@ -281,6 +292,9 @@ export async function reportPhoto(
 }
 export async function adminSummary(): Promise<AdminSummary> {
   const db = photoDatabase();
+  // Release stale holds before reading counters, rather than reporting them until cleanup runs.
+  const expired = await db.rpc('link_up_expire_uploads', {});
+  if (expired.error) databaseError(expired.error);
   const event = await eventConfig();
   const statuses = ['published', 'hidden', 'deleting', 'deleted'] as const;
   const counts = await Promise.all(
@@ -296,13 +310,13 @@ export async function adminSummary(): Promise<AdminSummary> {
   const [reports, errors, guests, pending] = await Promise.all([
     db
       .from('photo_reports')
-      .select('id,photo_id,reason,status,created_at')
+      .select('id,photo_id,reason,status,created_at', { count: 'exact' })
       .eq('status', 'open')
       .order('created_at', { ascending: false })
       .limit(100),
     db
       .from('photo_upload_reservations')
-      .select('id,error_code,created_at')
+      .select('id,error_code,status,created_at')
       .eq('event_id', event.id)
       .not('error_code', 'is', null)
       .order('created_at', { ascending: false })
@@ -328,11 +342,14 @@ export async function adminSummary(): Promise<AdminSummary> {
       reserved_bytes: event.reserved_bytes,
       storage_budget_bytes: event.storage_budget_bytes,
       upload_error_count: event.upload_error_count,
+      session_photo_limit: event.session_photo_limit,
+      batch_limit: event.batch_limit,
     },
     counts: {
       ...Object.fromEntries(statuses.map((status, i) => [status, counts[i]?.count ?? 0])),
       guests: guests.count ?? 0,
       pending: pending.count ?? 0,
+      reports: reports.count ?? 0,
     },
     reports: reports.data ?? [],
     errors: errors.data ?? [],

@@ -11,13 +11,12 @@ export function TheLinkUp() {
       <header className={styles['header']}>
         <span className={styles['miniWordmark']}>THE LINK UP</span>
         <a href="#memories" className={styles['headerLink']}>
-          Our shared album <ArrowDown size={13} aria-hidden="true" />
+          Photos <ArrowDown size={13} aria-hidden="true" />
         </a>
       </header>
 
       <main id="main-content" className={styles['main']}>
         <section className={styles['hero']} aria-labelledby="link-up-heading">
-          <p className={styles['eyebrow']}>A night worth keeping</p>
           <h1 id="link-up-heading" className={styles['wordmark']}>
             <Image
               src="/events/the-link-up/wordmark.webp"
@@ -31,7 +30,6 @@ export function TheLinkUp() {
           <p className={styles['tagline']}>
             The night. The people. <em>The memories.</em>
           </p>
-          <p className={styles['heroNote']}>Every link-up has a story. Let’s capture ours.</p>
           <a href="#memories" className={styles['heroLink']} aria-label="Explore our shared album">
             <ArrowDown size={18} aria-hidden="true" />
           </a>
@@ -53,15 +51,11 @@ export function TheLinkUp() {
               <GlassWater size={14} aria-hidden="true" /> DWD Quick Log
             </span>
             <h2 id="quick-log-heading">
-              Enjoy the Night.
-              <br />
-              <em>Keep Count.</em>
+              Keep <em>count.</em>
             </h2>
-            <p className={styles['description']}>
-              Track your drinks and shots with just a tap. No account needed.
-            </p>
+            <p className={styles['description']}>Track your drinks. No sign-in needed.</p>
             <Link href="/quick-log?scope=guest" className={styles['quickLogButton']}>
-              Start Quick Log <ArrowUpRight size={19} aria-hidden="true" />
+              Track drinks <ArrowUpRight size={19} aria-hidden="true" />
             </Link>
           </div>
           <span className={styles['quickLogMark']} aria-hidden="true">
@@ -81,7 +75,6 @@ export function TheLinkUp() {
             <Link href="/terms">Terms</Link>
           </nav>
         </div>
-        <p>Good company. Lasting memories.</p>
       </footer>
     </div>
   );

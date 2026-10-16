@@ -152,9 +152,20 @@ async function handle(request: NextRequest, context: Context) {
 
   if (path[0] === 'admin') {
     await requireOrganizer(); // Every admin route, including reads, passes this check.
-    if (method === 'GET' && route === 'admin/summary') return adminSummary();
-    if (method === 'GET' && route === 'admin/gallery')
-      return gallery(request.nextUrl.searchParams.get('cursor'), true);
+    if (method === 'GET' && route === 'admin/summary') {
+      const summary = await adminSummary();
+      backgroundCleanup();
+      return summary;
+    }
+    if (method === 'GET' && route === 'admin/gallery') {
+      const status = request.nextUrl.searchParams.get('status');
+      const filter = z
+        .enum(['published', 'hidden'])
+        .optional()
+        .safeParse(status ?? undefined);
+      if (!filter.success) throw new PhotoError('invalid_filter', 'Choose a photo filter.');
+      return gallery(request.nextUrl.searchParams.get('cursor'), true, filter.data);
+    }
     if (
       method === 'GET' &&
       path[1] === 'photos' &&
@@ -199,7 +210,9 @@ async function handle(request: NextRequest, context: Context) {
         p_action: action.data,
       });
       if (result.error) databaseError(result.error);
-      if (action.data === 'delete') await cleanupObjects(30);
+      // Removal from the album is immediate. Slow storage must not make a successful
+      // deletion look like a failed request; the durable cleanup queue retries it.
+      if (action.data === 'delete') backgroundCleanup();
       return { updated: true };
     }
     if (method === 'POST' && path[1] === 'reports' && path[3] === 'review' && path.length === 4) {

@@ -4,7 +4,9 @@ Event: Saturday, 17 October 2026. Public entry point: https://dwdug.vercel.app/e
 
 ## Implementation
 
-The existing landing page, wordmark, tropical artwork, forest green/ivory/gold styling and guest Quick Log link are preserved. Upload Photos opens a focused panel; View Gallery opens the shared album on the same page. There is no events hub or connection between photo sessions and drink records.
+The landing page keeps its wordmark, tropical artwork, forest green/ivory/gold styling and guest Quick Log link. Add photos opens a focused panel; View photos opens the shared album on the same page. There is no events hub or connection between photo sessions and drink records.
+
+The local dashboard and wording follow-up is documented in [the dashboard guide](link-up-dashboard.md). Deployment and production verification below refer to the earlier deployed release.
 
 Guests select up to ten JPEG, PNG, WebP or HEIC/HEIF files. Preparation runs sequentially to limit phone memory use, preserves orientation, draws to a canvas, strips metadata and produces JPEGs with a 2048px maximum edge. Compression targets approximately 1 MiB and enforces a 2 MiB ceiling. HEIC uses the browser decoder first, then loads `heic-to/csp` only if necessary. An unsupported/corrupt image receives an explanation. Raw inputs above 50 MiB or 60 megapixels are rejected to protect phone memory.
 

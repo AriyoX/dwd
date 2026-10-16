@@ -107,8 +107,16 @@ export interface AdminSummary {
     | 'reserved_bytes'
     | 'storage_budget_bytes'
     | 'upload_error_count'
+    | 'session_photo_limit'
+    | 'batch_limit'
   >;
   counts: Record<string, number>;
   reports: Pick<ReportRow, 'id' | 'photo_id' | 'reason' | 'status' | 'created_at'>[];
-  errors: { id: string; error_code: string | null; created_at: string }[];
+  errors: { id: string; error_code: string | null; status: string; created_at: string }[];
+}
+
+export interface CleanupResult {
+  expired: number;
+  removed: number;
+  deleted: number;
 }

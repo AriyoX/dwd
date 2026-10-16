@@ -1,6 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Camera, Images, Scan, Upload } from 'lucide-react';
 import styles from './the-link-up.module.css';
 
@@ -14,44 +14,48 @@ const PhotoGallery = dynamic(
 );
 
 export function LinkUpMemories() {
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadState, setUploadState] = useState<'unopened' | 'open' | 'closed'>('unopened');
+  const uploadOpen = uploadState === 'open';
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [revision, setRevision] = useState(0);
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const scrollToGallery = useRef(false);
+  useEffect(() => {
+    if (!galleryOpen || !scrollToGallery.current || uploadOpen) return;
+    galleryRef.current?.scrollIntoView({ block: 'start' });
+    galleryRef.current?.focus({ preventScroll: true });
+    scrollToGallery.current = false;
+  }, [galleryOpen, uploadOpen]);
   return (
     <>
       <section className={styles['memories']} id="memories" aria-labelledby="memories-heading">
         <div className={styles['memoryCopy']}>
-          <div className={styles['sectionLabel']}>
-            <span className={styles['eyebrow']}>Our shared album</span>
-          </div>
           <h2 id="memories-heading">
-            Share the <em>Night.</em>
+            Our <em>memories.</em>
           </h2>
-          <p className={styles['description']}>
-            Got a moment worth remembering? Drop your photos and relive the night together.
-          </p>
           <div className={styles['photoActions']}>
-            <button type="button" onClick={() => setUploadOpen(true)}>
+            <button type="button" onClick={() => setUploadState('open')}>
               <Upload size={18} aria-hidden="true" />
-              <span>Upload Photos</span>
+              <span>Add photos</span>
             </button>
             <button
               type="button"
               onClick={() => {
+                scrollToGallery.current = true;
                 setGalleryOpen(true);
-                window.setTimeout(
-                  () =>
-                    document.getElementById('shared-gallery')?.scrollIntoView({ block: 'start' }),
-                  100,
-                );
+                if (galleryRef.current) {
+                  galleryRef.current.scrollIntoView({ block: 'start' });
+                  galleryRef.current.focus({ preventScroll: true });
+                  scrollToGallery.current = false;
+                }
               }}
             >
               <Images size={18} aria-hidden="true" />
-              <span>View Gallery</span>
+              <span>View photos</span>
             </button>
           </div>
           <p id="sharing-status" className={styles['availability']}>
-            No account needed. Photos are shared publicly through this gallery.
+            No sign-in needed. Photos are public.
           </p>
         </div>
         <div className={styles['albumPreview']}>
@@ -64,21 +68,26 @@ export function LinkUpMemories() {
               <span>The Link Up</span>
             </div>
           </div>
-          <p>A little space for a night to remember.</p>
-          <span className={styles['previewLabel']}>Your memories belong here.</span>
         </div>
       </section>
-      {uploadOpen && (
+      {uploadState !== 'unopened' && (
         <PhotoUploader
           open={uploadOpen}
-          onClose={() => setUploadOpen(false)}
+          onClose={() => {
+            setUploadState('closed');
+            if (galleryOpen) scrollToGallery.current = true;
+          }}
           onPublished={() => {
             setGalleryOpen(true);
             setRevision((value) => value + 1);
           }}
         />
       )}
-      {galleryOpen && <PhotoGallery revision={revision} />}
+      {galleryOpen && (
+        <div ref={galleryRef} tabIndex={-1} className={styles['galleryAnchor']}>
+          <PhotoGallery revision={revision} onAddPhotos={() => setUploadState('open')} />
+        </div>
+      )}
     </>
   );
 }

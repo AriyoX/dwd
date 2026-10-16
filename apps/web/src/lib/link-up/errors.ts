@@ -9,15 +9,16 @@ export class PhotoError extends Error {
 }
 const messages: Record<string, [number, string]> = {
   uploads_paused: [409, 'Photo uploads are paused. Please try again later.'],
-  session_quota: [409, 'This browser has reached its photo limit.'],
+  session_quota: [409, 'You’ve reached the photo limit for this event.'],
   storage_quota: [409, 'The album is full. Please contact an organizer.'],
   invalid_batch: [400, 'Choose up to 10 supported photos.'],
-  batch_changed: [409, 'This upload batch changed. Choose your photos again.'],
-  reservation_expired: [410, 'This upload expired. Start a new batch to try again.'],
-  renewal_limit: [429, 'This upload has been retried too often. Start a new batch.'],
-  verification_busy: [409, 'This photo is being verified. Retry in a moment.'],
-  upload_not_found: [404, 'This upload is unavailable in this browser.'],
+  batch_changed: [409, 'Your selection changed. Choose your photos again.'],
+  reservation_expired: [410, 'This upload expired. Choose the photo again to share it.'],
+  renewal_limit: [429, 'Please choose this photo again to restart the upload.'],
+  verification_busy: [409, 'This photo is still being checked. Try again in a moment.'],
+  upload_not_found: [404, 'This upload is no longer available. Choose the photo again.'],
   photo_not_found: [404, 'This photo is no longer available.'],
+  invalid_photo_action: [409, 'This photo has changed. Refresh the album and try again.'],
   lease_lost: [409, 'Verification was interrupted. Please retry.'],
 };
 export function databaseError(error: { message: string }): never {

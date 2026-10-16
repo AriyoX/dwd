@@ -38,9 +38,9 @@ const stateLabels = {
   preparing: 'Preparing',
   ready: 'Ready',
   uploading: 'Uploading',
-  verifying: 'Verifying',
-  complete: 'Published',
-  failed: 'Failed',
+  verifying: 'Checking',
+  complete: 'Shared',
+  failed: 'Needs attention',
 };
 
 export function PhotoUploader({
@@ -74,7 +74,7 @@ export function PhotoUploader({
       .then(() => savePhotoDrafts(next))
       .catch(() => {
         setNotice(
-          'This browser cannot save upload recovery. Keep this panel open until your uploads finish.',
+          'Keep this page open until your photos finish. Your selection can’t be saved on this device.',
         );
       });
   }
@@ -93,22 +93,50 @@ export function PhotoUploader({
       if (ticket.status === 'completed' && draft.state !== 'complete') {
         const { blob: _blob, ...rest } = draft;
         void _blob;
-        return { ...rest, reservationId: ticket.id, state: 'complete' as const };
+        return {
+          ...rest,
+          reservationId: ticket.id,
+          state: 'complete' as const,
+          error: '',
+          permanent: false,
+        };
       }
+      if (['expired', 'rejected'].includes(ticket.status) && !draft.permanent)
+        return {
+          ...draft,
+          reservationId: ticket.id,
+          state: 'failed' as const,
+          permanent: true,
+          error:
+            ticket.status === 'expired'
+              ? 'This upload expired. Choose the photo again to share it.'
+              : 'This photo couldn’t be shared. Please choose it again.',
+        };
       if (draft.reservationId === undefined) return { ...draft, reservationId: ticket.id };
       return draft;
     });
+    const recovered = nextDrafts.some(
+      (draft, index) => draft.state === 'complete' && current.current[index]?.state !== 'complete',
+    );
     if (nextDrafts.some((draft, index) => draft !== current.current[index])) commit(nextDrafts);
+    if (recovered) onPublished();
     return next;
   }
   useEffect(() => {
+    let mounted = true;
     void readPhotoDrafts()
       .then((items) => {
+        if (!mounted) return;
         current.current = items;
         setDrafts(items);
       })
       .catch(() => undefined)
-      .finally(() => setLoaded(true));
+      .finally(() => {
+        if (mounted) setLoaded(true);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
   useEffect(() => {
     if (!open || !loaded) return;
@@ -129,25 +157,37 @@ export function PhotoUploader({
     if (!files?.length || running.current) return;
     setError('');
     const selected = Array.from(files);
-    if (selected.length > MAX_BATCH) {
-      setError('Choose up to 10 photos per batch.');
+    if (input.current) input.current.value = '';
+    const batchLimit = Math.min(MAX_BATCH, status?.batchLimit ?? MAX_BATCH);
+    if (selected.length > batchLimit) {
+      setError('Choose up to ' + String(batchLimit) + ' photos at a time.');
       return;
     }
-    if (selected.length > (status?.remaining ?? 25)) {
-      setError(`You can add ${status?.remaining ?? 25} more photos from this browser.`);
+    if (selected.length > availableToChoose) {
+      setError(
+        'You can share ' +
+          String(availableToChoose) +
+          ' more photo' +
+          (availableToChoose === 1 ? '' : 's') +
+          ' for this event.',
+      );
       return;
     }
     if (
       current.current.some((item) => item.state !== 'complete') &&
-      !window.confirm(
-        'Replace the remaining prepared photos? Already published photos stay in the shared album.',
-      )
+      !window.confirm('Replace your unshared photos? Photos already shared will stay in the album.')
     )
       return;
     running.current = true;
     setBusy(true);
     try {
       await cancelPending();
+      const nextStatus = await refreshStatus();
+      if (selected.length > nextStatus.remaining) {
+        throw new Error(
+          'There isn’t enough room in your photo allowance for this selection. Choose fewer photos.',
+        );
+      }
     } catch (cause) {
       setError(photoErrorMessage(cause));
       running.current = false;
@@ -160,6 +200,8 @@ export function PhotoUploader({
       state: 'preparing',
     }));
     commit(next);
+    setProgress({});
+    setNotice('');
     try {
       for (let i = 0; i < selected.length; i++) {
         const file = selected[i];
@@ -227,6 +269,7 @@ export function PhotoUploader({
     try {
       if (!item.staged) {
         patch(clientId, { state: 'uploading', error: '' });
+        setProgress((values) => ({ ...values, [clientId]: 0 }));
         // Get each five-minute URL just before its worker starts uploading.
         const ticket = await photoRequest<{ url: string }>(`uploads/${item.reservationId}/url`, {
           method: 'POST',
@@ -263,15 +306,16 @@ export function PhotoUploader({
     setBusy(true);
     setError('');
     try {
-      await refreshStatus();
-      await ensureTickets();
+      const nextStatus = await refreshStatus();
+      if (nextStatus.uploadsEnabled) await ensureTickets();
       const queue = current.current
         .filter(
           (item) =>
             (!ids || ids.includes(item.clientId)) &&
             item.state !== 'complete' &&
             item.blob &&
-            !item.permanent,
+            !item.permanent &&
+            (nextStatus.uploadsEnabled || item.staged),
         )
         .map((item) => item.clientId);
       await Promise.all(
@@ -294,17 +338,39 @@ export function PhotoUploader({
   const pending = drafts.filter(
     (item) => item.state !== 'complete' && item.blob && !item.permanent,
   );
+  const readyToShare =
+    status?.uploadsEnabled === false ? pending.filter((item) => item.staged) : pending;
   const needsChallenge =
-    pending.some((item) => !item.reservationId) && status?.protection !== 'local-bypass';
-  const canUpload =
-    !busy && pending.length > 0 && (!needsChallenge || !!token) && status?.uploadsEnabled !== false;
+    readyToShare.some((item) => !item.reservationId) && status?.protection !== 'local-bypass';
+  const canUpload = !busy && !!status && readyToShare.length > 0 && (!needsChallenge || !!token);
+  const reservedHere = drafts.filter((item) =>
+    status?.recentUploads.some(
+      (ticket) =>
+        ticket.clientId === item.clientId && ['pending', 'verifying'].includes(ticket.status),
+    ),
+  ).length;
+  const availableToChoose = (status?.remaining ?? 0) + reservedHere;
   const completed = drafts.filter((item) => item.state === 'complete').length;
   async function cancelPending() {
     const ids = current.current
       .filter((item) => item.reservationId && item.state !== 'complete')
       .map((item) => item.reservationId)
       .filter((value): value is string => !!value);
-    if (ids.length) await photoRequest('batches/cancel', { method: 'POST', body: { ids } });
+    if (ids.length) {
+      const result = await photoRequest<{ cancelled: number }>('batches/cancel', {
+        method: 'POST',
+        body: { ids },
+      });
+      if (result.cancelled < ids.length) {
+        const next = await refreshStatus();
+        if (
+          next.recentUploads.some(
+            (ticket) => ids.includes(ticket.id) && ticket.status === 'verifying',
+          )
+        )
+          throw new Error('Some photos are still being checked. Please try again in a moment.');
+      }
+    }
   }
   async function clearBatch() {
     if (running.current) return;
@@ -323,26 +389,43 @@ export function PhotoUploader({
     }
   }
   return (
-    <PhotoDialog open={open} onClose={onClose} title="Upload Photos" busy={busy}>
+    <PhotoDialog open={open} onClose={onClose} title="Add photos" busy={busy}>
       <div className={styles['panelBody']}>
-        <p className={styles['notice']}>
-          Your photos become visible and downloadable by anyone who can access this event gallery.
-        </p>
+        <p className={styles['notice']}>Photos are public. Anyone can view and download them.</p>
         <p className={styles['muted']}>
-          Up to 10 photos per batch · 25 per browser. Photos are optimized to 2048px, with location
-          metadata removed.
+          Choose up to {Math.min(MAX_BATCH, status?.batchLimit ?? MAX_BATCH)} photos at a time.
         </p>
-        {status && (
-          <p className={styles['muted']}>
-            {status.remaining} photos available from this browser
-            {!status.uploadsEnabled ? ' · Uploads paused' : ''}
+        {status && !status.uploadsEnabled && (
+          <p role="status" className={styles['notice']}>
+            New uploads are paused. Photos already sent can still finish.
           </p>
+        )}
+        {status && availableToChoose === 0 && (
+          <p className={styles['notice']}>You’ve reached the photo limit for this event.</p>
         )}
         {!loaded && <p role="status">Restoring uploads…</p>}
         {error && (
           <p role="alert" className={styles['error']}>
             {error}
           </p>
+        )}
+        {!status && loaded && !error && (
+          <p role="status" className={styles['muted']}>
+            Connecting…
+          </p>
+        )}
+        {!status && loaded && error && (
+          <button
+            type="button"
+            className={styles['secondaryButton']}
+            disabled={busy}
+            onClick={() => {
+              setError('');
+              void refreshStatus().catch((cause: unknown) => setError(photoErrorMessage(cause)));
+            }}
+          >
+            Reconnect
+          </button>
         )}
         {notice && (
           <p role="status" className={styles['muted']}>
@@ -351,7 +434,7 @@ export function PhotoUploader({
         )}
         {status?.protection === 'unavailable' && (
           <p role="alert" className={styles['error']}>
-            Upload verification is not configured. Please contact an organizer.
+            Photo sharing is unavailable right now. Please try again later.
           </p>
         )}
         <input
@@ -367,10 +450,18 @@ export function PhotoUploader({
         <button
           type="button"
           className={styles['primaryButton']}
-          disabled={busy || !loaded || status?.uploadsEnabled === false || status?.remaining === 0}
+          disabled={
+            busy ||
+            !loaded ||
+            !status ||
+            !status.uploadsEnabled ||
+            availableToChoose === 0 ||
+            status.protection === 'unavailable'
+          }
           onClick={() => input.current?.click()}
         >
-          <Camera size={18} /> {drafts.length ? 'Choose another batch' : 'Choose photos'}
+          <Camera size={18} aria-hidden="true" />{' '}
+          {drafts.length ? 'Choose different photos' : 'Choose photos'}
         </button>
         {drafts.length > 0 && (
           <ul className={styles['uploadList']} aria-label="Selected photos">
@@ -392,7 +483,7 @@ export function PhotoUploader({
                   )}
                   {item.error && <p className={styles['error']}>{item.error}</p>}
                 </div>
-                {item.state === 'complete' && <Check size={20} aria-label="Published" />}
+                {item.state === 'complete' && <Check size={20} aria-label="Shared" />}
                 {item.state === 'failed' && !item.permanent && (
                   <button
                     type="button"
@@ -413,7 +504,8 @@ export function PhotoUploader({
         {open &&
           loaded &&
           status?.protection === 'turnstile' &&
-          pending.some((item) => !item.reservationId) && (
+          status.uploadsEnabled &&
+          readyToShare.some((item) => !item.reservationId) && (
             <div className={styles['verification']}>
               <PhotoTurnstile resetKey={verificationKey} onToken={setToken} />
               <button
@@ -425,11 +517,11 @@ export function PhotoUploader({
                   setVerificationKey((key) => key + 1);
                 }}
               >
-                Refresh verification
+                Try verification again
               </button>
             </div>
           )}
-        {pending.length > 0 && (
+        {readyToShare.length > 0 && (
           <button
             type="button"
             className={styles['primaryButton']}
@@ -439,13 +531,15 @@ export function PhotoUploader({
             }}
           >
             {busy
-              ? 'Uploading…'
-              : `Upload ${pending.length} photo${pending.length === 1 ? '' : 's'}`}
+              ? drafts.some((item) => item.state === 'preparing')
+                ? 'Preparing photos…'
+                : 'Sharing…'
+              : `${status?.uploadsEnabled === false ? 'Finish' : 'Share'} ${readyToShare.length} photo${readyToShare.length === 1 ? '' : 's'}`}
           </button>
         )}
         {completed > 0 && (
           <p role="status">
-            {completed} photo{completed === 1 ? '' : 's'} published in the shared gallery.
+            {completed} photo{completed === 1 ? '' : 's'} shared.
           </p>
         )}
         {busy && (
@@ -461,7 +555,12 @@ export function PhotoUploader({
               void clearBatch();
             }}
           >
-            Clear this batch
+            Clear selection
+          </button>
+        )}
+        {!busy && completed > 0 && pending.length === 0 && (
+          <button type="button" className={styles['primaryButton']} onClick={onClose}>
+            View photos
           </button>
         )}
       </div>

@@ -1,4 +1,5 @@
 import 'server-only';
+import type { User } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createServiceSupabaseClient } from '@/lib/supabase/service';
 
@@ -24,14 +25,23 @@ export class PageAccessError extends Error {
 }
 
 export async function requirePageAdmin(pagePath: string) {
-  const client = await createServerSupabaseClient();
-  // Validate the current user, never a caller-supplied email or editable JWT metadata.
-  const {
-    data: { user },
-    error,
-  } = await client.auth.getUser();
-  if (error || !user)
-    throw new PageAccessError('authentication_required', 'Sign in to access this page.', 401);
+  let user: User;
+  try {
+    const client = await createServerSupabaseClient();
+    // Validate the current user, never a caller-supplied email or editable JWT metadata.
+    const result = await client.auth.getUser();
+    if (result.error && ![400, 401, 403].includes(Number(result.error.status))) throw result.error;
+    if (result.error)
+      throw new PageAccessError('authentication_required', 'Sign in to access this page.', 401);
+    user = result.data.user;
+  } catch (cause) {
+    if (cause instanceof PageAccessError) throw cause;
+    throw new PageAccessError(
+      'authorization_unavailable',
+      'Sign-in could not connect. Please try again.',
+      503,
+    );
+  }
   if (user.is_anonymous || !user.email_confirmed_at || !user.email) {
     throw new PageAccessError('forbidden', 'This account does not have access to this page.', 403);
   }

@@ -20,20 +20,28 @@ export async function photoRequest<T>(
     ...(options.body === undefined
       ? {}
       : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options.body) }),
-    signal: AbortSignal.timeout(path.endsWith('/complete') ? 65_000 : 30_000),
+    signal: AbortSignal.timeout(
+      path.endsWith('/complete') || path === 'admin/cleanup' ? 65_000 : 30_000,
+    ),
   });
-  const data: unknown = await response.json();
+  // Proxies and interrupted deployments can return HTML or an empty response.
+  const data: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = data as { error?: string; code?: string };
+    const error = data as { error?: string; code?: string } | null;
     throw new PhotoApiError(
-      error.error ?? 'The album could not connect. Please retry.',
-      error.code ?? 'unavailable',
+      error?.error ?? 'The album could not connect. Please try again.',
+      error?.code ?? 'unavailable',
       response.status,
     );
   }
+  if (data === null)
+    throw new PhotoApiError('The album could not connect. Please try again.', 'unavailable', 503);
   return data as T;
 }
 export function photoErrorMessage(error: unknown) {
+  if (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name))
+    return 'This is taking too long. Check your connection and try again.';
+  if (error instanceof TypeError) return 'Could not connect. Check your connection and try again.';
   return error instanceof Error ? error.message : 'Could not connect. Please retry.';
 }
 export async function downloadPhoto(id: string, admin = false) {

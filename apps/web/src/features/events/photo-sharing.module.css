@@ -6,6 +6,11 @@
   --album-ivory: #f5efd7;
   --album-gold: #bdaa68;
   --album-muted: #c6c1b5;
+  --album-border: #545335;
+  --album-error: #ffb9ad;
+  --album-danger: #ffcdc5;
+  --album-danger-bg: #41231f;
+  --album-danger-border: #b66b61;
   color: var(--album-ivory);
   color-scheme: dark;
 }
@@ -37,6 +42,7 @@
 .dangerButton,
 .iconButton,
 .textButton,
+.deleteButton,
 .photoTile {
   min-height: 44px;
   touch-action: manipulation;
@@ -65,12 +71,12 @@
 .secondaryButton {
   color: var(--album-ivory);
   background: transparent;
-  border: 1px solid #545335;
+  border: 1px solid var(--album-border);
 }
 .dangerButton {
-  color: #ffcdc5;
-  border: 1px solid #b66b61;
-  background: #41231f;
+  color: var(--album-danger);
+  border: 1px solid var(--album-danger-border);
+  background: var(--album-danger-bg);
 }
 .iconButton {
   display: inline-grid;
@@ -79,7 +85,7 @@
   padding: 8px;
   color: inherit;
   background: transparent;
-  border: 1px solid #545335;
+  border: 1px solid var(--album-border);
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -99,8 +105,14 @@
   opacity: 0.45;
   cursor: default;
 }
+.deleteButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .primaryButton:active:not(:disabled),
 .secondaryButton:active:not(:disabled),
+.dangerButton:active:not(:disabled),
+.deleteButton:active:not(:disabled),
 .iconButton:active:not(:disabled) {
   opacity: 0.75;
 }
@@ -112,6 +124,11 @@
   outline: 2px solid var(--album-gold);
   outline-offset: 4px;
 }
+.admin summary:focus-visible,
+.admin a:focus-visible {
+  outline: 2px solid var(--album-gold);
+  outline-offset: 4px;
+}
 .photoGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -119,6 +136,8 @@
   margin-bottom: 20px;
 }
 .photoTile {
+  display: block;
+  width: 100%;
   position: relative;
   overflow: hidden;
   padding: 0;
@@ -182,14 +201,17 @@
   font-size: 13px;
 }
 .error {
-  color: #ffb9ad;
+  color: var(--album-error);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 .empty {
   padding: 40px 20px;
   text-align: center;
-  border: 1px dashed #545335;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  border: 1px dashed var(--album-border);
   border-radius: 5px;
   color: var(--album-muted);
 }
@@ -204,7 +226,7 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  border-top: 1px solid #545335;
+  border-top: 1px solid var(--album-border);
   padding-top: 12px;
   min-width: 0;
 }
@@ -219,7 +241,7 @@
 .previewPlaceholder {
   display: grid;
   place-items: center;
-  border: 1px solid #545335;
+  border: 1px solid var(--album-border);
 }
 .uploadInfo {
   display: grid;
@@ -286,60 +308,429 @@
   font-size: 16px;
   padding: 12px;
   color: var(--album-ivory);
-  border: 1px solid #545335;
+  border: 1px solid var(--album-border);
   border-radius: 4px;
   background: var(--album-bg);
 }
 .admin {
   min-height: 100svh;
   background: var(--album-bg);
-  padding: calc(24px + env(safe-area-inset-top, 0px)) max(16px, calc((100% - 1100px) / 2))
-    calc(40px + env(safe-area-inset-bottom, 0px));
+  padding: calc(28px + env(safe-area-inset-top, 0px)) max(20px, calc((100% - 1200px) / 2))
+    calc(48px + env(safe-area-inset-bottom, 0px));
 }
-.admin > h1 {
-  margin: 24px 0;
-  font-size: clamp(28px, 5vw, 42px);
-  letter-spacing: -0.04em;
+.admin,
+.admin .gallery,
+.admin .dialog {
+  --album-bg: #f5f6f8;
+  --album-surface: #ffffff;
+  --album-ivory: #20262d;
+  --album-gold: #245944;
+  --album-muted: #606a76;
+  --album-border: #d9dee5;
+  --album-error: #a3312b;
+  --album-danger: #a3312b;
+  --album-danger-bg: #fff5f4;
+  --album-danger-border: #e8c3bf;
+  color: var(--album-ivory);
+  color-scheme: light;
+}
+:global(body):has(.admin) {
+  background: #f5f6f8;
+}
+:global(body):has(.admin) :global(.theme-toggle) {
+  display: none;
+}
+.adminHeader,
+.dashboardToolbar,
+.refreshStatus,
+.cardHeading,
+.settingRow,
+.buttonGroup,
+.photoCardMeta,
+.photoCardActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.adminHeader {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding-bottom: 26px;
+}
+.adminHeader h1 {
+  margin-top: 4px;
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+}
+.adminHeader p,
+.refreshStatus > span {
+  color: var(--album-muted);
+  font-size: 13px;
 }
 .admin a {
   color: var(--album-gold);
   text-underline-offset: 4px;
 }
+.adminHeader > a {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 550;
+}
+.dashboardToolbar {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding-block: 14px;
+  border-block: 1px solid var(--album-border);
+  margin-bottom: 24px;
+}
+.dashboardToolbar nav {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.dashboardToolbar nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--album-muted);
+  font-size: 14px;
+  font-weight: 550;
+  text-decoration: none;
+}
+.dashboardToolbar nav a:first-child {
+  color: var(--album-ivory);
+}
+.refreshStatus {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.errorBanner,
+.successBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--album-border);
+  border-radius: 8px;
+  margin-block: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.errorBanner {
+  background: #fff5f4;
+  color: var(--album-error);
+  border-color: #e8c3bf;
+}
+.successBanner {
+  background: #eef6f1;
+  color: #245944;
+  border-color: #c7ddcf;
+}
+.successBanner svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
 .stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-block: 24px;
+  margin-bottom: 24px;
+  scroll-margin-top: 24px;
 }
 .stat {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   padding: 20px;
-  border: 1px solid #545335;
-  border-radius: 6px;
+  border: 1px solid var(--album-border);
+  border-radius: 10px;
   background: var(--album-surface);
 }
 .stat strong {
-  font-size: 24px;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
-.stat span {
+.stat > span {
+  font-size: 14px;
+  color: var(--album-muted);
+}
+.dashboardColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.dashboardCard,
+.admin .gallery {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--album-border);
+  border-radius: 10px;
+  background: var(--album-surface);
+  scroll-margin-top: 24px;
+}
+.admin .gallery {
+  margin-block: 24px;
+}
+.cardHeading {
+  margin-bottom: 22px;
+  color: var(--album-muted);
+}
+.cardHeading h2,
+.admin .sectionHeader h2 {
+  color: var(--album-ivory);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.storageTotal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.storageTotal strong {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+.storageTotal span {
+  color: var(--album-muted);
+  font-size: 14px;
+}
+.dashboardCard > progress {
+  width: 100%;
+  height: 8px;
+  display: block;
+  accent-color: var(--album-gold);
+  appearance: none;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #e9ecef;
+}
+.dashboardCard > progress::-webkit-progress-bar {
+  background: #e9ecef;
+}
+.dashboardCard > progress::-webkit-progress-value {
+  background: var(--album-gold);
+}
+.dashboardCard > progress::-moz-progress-bar {
+  background: var(--album-gold);
+}
+.storageBreakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-block: 20px;
+}
+.storageBreakdown dt {
   font-size: 12px;
   color: var(--album-muted);
 }
-.settings {
-  justify-content: flex-start;
-  margin-block: 20px;
+.storageBreakdown dd {
+  font-size: 15px;
+  font-weight: 550;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
 }
-.storage {
-  margin-block: 20px;
-  display: grid;
+.help {
+  margin-top: 12px;
+  width: 100%;
+  color: var(--album-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.help summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 36px;
+  cursor: pointer;
+  color: var(--album-gold);
+  list-style: none;
+}
+.help summary::-webkit-details-marker {
+  display: none;
+}
+.help summary svg {
+  flex-shrink: 0;
+}
+.help[open] summary {
+  font-weight: 550;
+}
+.help > div {
+  border-left: 2px solid var(--album-border);
+  padding: 8px 0 8px 12px;
+}
+.help p + p,
+.helpDefinitions > div + div {
+  margin-top: 12px;
+}
+.helpDefinitions dt {
+  font-weight: 600;
+  color: var(--album-ivory);
+}
+.settingRow {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding-block: 16px;
+  border-top: 1px solid var(--album-border);
+}
+.settingRow > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.settingRow h3 {
+  font-size: 14px;
+  font-weight: 550;
+}
+.badge,
+.badgeMuted,
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 5px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.badge {
+  background: #eaf3ed;
+  color: #245944;
+}
+.badgeMuted,
+.countBadge {
+  background: #eef0f3;
+  color: #606a76;
+}
+.warning {
+  margin-block: 14px;
+  padding: 12px;
+  background: #fff8e7;
+  color: #75510b;
+  border: 1px solid #efdfb6;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.buttonGroup {
+  flex-wrap: wrap;
   gap: 8px;
+}
+.galleryToolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--album-bg);
+  border: 1px solid var(--album-border);
+  border-radius: 7px;
+}
+.filters button {
+  padding: 8px 12px;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--album-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  touch-action: manipulation;
+}
+.filters button[aria-pressed='true'] {
+  background: var(--album-surface);
+  color: var(--album-ivory);
+  border-color: var(--album-border);
+}
+.galleryToolbar > span {
+  align-self: center;
+}
+.photoCard {
+  overflow: hidden;
+  border: 1px solid var(--album-border);
+  border-radius: 8px;
+  background: var(--album-surface);
+}
+.photoCard .photoTile {
+  border: 0;
+  border-radius: 0;
+}
+.photoCardBody {
+  padding: 12px;
+}
+.photoCardMeta {
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--album-muted);
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.photoCardActions {
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.photoCardActions .secondaryButton {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--album-danger);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 550;
+}
+.imageUnavailable {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 12px;
+  color: var(--album-muted);
+  font-size: 12px;
+}
+.inlineNotice {
+  color: var(--album-gold);
+  margin-bottom: 16px;
   font-size: 14px;
 }
-.storage progress {
-  width: 100%;
-  accent-color: var(--album-gold);
+.quietState {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-block: 28px;
+  color: var(--album-muted);
+  font-size: 14px;
 }
 .reportList {
   display: grid;
@@ -354,13 +745,156 @@
   gap: 12px;
   align-items: center;
   padding: 14px;
-  border: 1px solid #545335;
+  border: 1px solid var(--album-border);
   border-radius: 4px;
 }
-.errorList {
-  margin: 16px 0;
-  padding-left: 20px;
+.reportInfo,
+.activityList li > div {
+  display: grid;
+  gap: 6px;
+}
+.reportInfo strong,
+.activityList strong {
   font-size: 13px;
+  font-weight: 550;
+}
+.reportInfo time,
+.activityList time {
+  color: var(--album-muted);
+  font-size: 12px;
+}
+.activityCount {
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.activityDetails {
+  margin-block: 16px;
+  border-block: 1px solid var(--album-border);
+}
+.activityDetails summary {
+  min-height: 48px;
+  padding-block: 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.activityList {
+  display: grid;
+  list-style: none;
+  padding: 0;
+}
+.activityList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-block: 14px;
+  border-top: 1px solid var(--album-border);
+}
+.admin .secondaryButton {
+  border-radius: 6px;
+  background: var(--album-surface);
+}
+.admin .primaryButton {
+  background: #245944;
+  color: #ffffff;
+  border-color: #245944;
+  border-radius: 6px;
+}
+.admin .dialogHeader {
+  border-bottom-color: var(--album-border);
+}
+.admin .viewerDialog {
+  background: var(--album-surface);
+}
+.admin .viewerImage {
+  background: #e9ecef;
+}
+.admin .sectionHeader {
+  margin-bottom: 18px;
+}
+.admin .help {
+  margin-top: 6px;
+}
+.admin .stat .help summary {
+  font-size: 12px;
+}
+.admin .photoGrid {
+  gap: 16px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .primaryButton:hover:not(:disabled),
+  .secondaryButton:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
+  .deleteButton:hover:not(:disabled) {
+    background: var(--album-danger-bg);
+  }
+  .help summary:hover,
+  .dashboardToolbar nav a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}
+@media (max-width: 960px) {
+  .admin .photoGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .dashboardColumns {
+    gap: 16px;
+  }
+}
+@media (max-width: 760px) {
+  .dashboardColumns {
+    grid-template-columns: 1fr;
+  }
+  .dashboardToolbar {
+    align-items: flex-start;
+  }
+  .refreshStatus > span {
+    display: none;
+  }
+  .admin .photoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .admin {
+    padding-inline: 16px;
+  }
+  .dashboardToolbar nav {
+    gap: 22px;
+  }
+  .dashboardToolbar {
+    gap: 8px;
+  }
+  .dashboardCard,
+  .admin .gallery {
+    padding: 18px;
+  }
+  .admin .photoGrid {
+    gap: 10px;
+  }
+  .photoCardBody {
+    padding: 8px;
+  }
+  .photoCardActions {
+    gap: 2px;
+  }
+  .photoCardActions .secondaryButton {
+    padding-inline: 8px;
+  }
+  .admin .stat .help summary {
+    align-items: flex-start;
+    font-size: 11px;
+  }
+  .admin .stat .help summary svg {
+    margin-top: 2px;
+  }
+  .help > div {
+    padding-left: 8px;
+  }
+}
+.activityList {
   color: var(--album-muted);
 }
 @media (max-width: 640px) {

@@ -229,7 +229,7 @@ describe('organizer authorization', () => {
     expect(authMocks.rpc).not.toHaveBeenCalled();
   });
   it('requires an authenticated session and rejects revoked database access', async () => {
-    authMocks.getUser.mockResolvedValue({ data: { user: null }, error: new Error('expired') });
+    authMocks.getUser.mockResolvedValue({ data: { user: null }, error: { status: 401 } });
     await expect(requireOrganizer()).rejects.toMatchObject({ status: 401 });
     authMocks.getUser.mockResolvedValue({
       data: { user: { id: 'id', email: 'shebatindy@gmail.com', email_confirmed_at: 'yes' } },
@@ -283,5 +283,21 @@ describe('organizer authorization', () => {
       code: 'authorization_unavailable',
       status: 503,
     });
+  });
+  it.each([429, 500, 503, 0])(
+    'reports Auth failure %s as unavailable instead of signing the user out',
+    async (status) => {
+      authMocks.getUser.mockResolvedValue({ data: { user: null }, error: { status } });
+      await expect(requireOrganizer()).rejects.toMatchObject({
+        code: 'authorization_unavailable',
+        status: 503,
+      });
+      expect(authMocks.rpc).not.toHaveBeenCalled();
+    },
+  );
+  it('fails closed when Auth throws a connection error', async () => {
+    authMocks.getUser.mockRejectedValue(new TypeError('network failure'));
+    await expect(requireOrganizer()).rejects.toMatchObject({ status: 503 });
+    expect(authMocks.rpc).not.toHaveBeenCalled();
   });
 });
