@@ -324,7 +324,7 @@ describe('organizer authorization', () => {
       Promise.resolve({ data: args.p_page_path === LINK_UP_ADMIN_PATH, error: null }),
     );
     await expect(requireOrganizer()).resolves.toMatchObject({ id: 'id' });
-    await expect(requirePageAdmin('/events/another-event/admin')).rejects.toMatchObject({
+    await expect(requirePageAdmin('/events/admin/another-event')).rejects.toMatchObject({
       status: 403,
     });
     authMocks.rpc.mockResolvedValue({ data: false, error: null });

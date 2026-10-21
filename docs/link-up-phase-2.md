@@ -1,8 +1,8 @@
 # The Link Up — Phase 2 handover
 
-Latest: [16 October readiness review and 9 GB capacity update](link-up-readiness.md).
+Latest: [21 October events admin portal, access migration and ZIP export](page-admin-access.md). Earlier: [16 October readiness review and 9 GB capacity update](link-up-readiness.md).
 
-Event: Saturday, 17 October 2026. Public entry point: https://dwdug.vercel.app/events/the-link-up. Organizer entry point: https://dwdug.vercel.app/events/the-link-up/admin.
+Event: Saturday, 17 October 2026. Public entry point: https://dwdug.vercel.app/events/the-link-up. Organizer portal: https://dwdug.vercel.app/events/admin. The Link Up dashboard: https://dwdug.vercel.app/events/admin/the-link-up.
 
 ## Implementation
 
@@ -43,7 +43,7 @@ Hiding or closing the gallery stops new public responses/viewing URLs immediatel
 - `apps/web/src/features/events/photo-*`, `prepare-event-photo.ts`: upload, recovery, gallery, viewer and organizer UI; `photo-sharing.module.css` contains matching styles.
 - `apps/web/src/lib/auth/page-access.ts`, `lib/supabase/service.ts`: reusable server-side page authorization and privileged client. See `docs/page-admin-access.md` for permission management.
 - Existing event page/memories/CSS: activate the two existing actions and set safe-area viewport behavior.
-- `apps/web/src/app/events/the-link-up/admin/`: protected dashboard and a legacy callback redirect to ordinary DWD login.
+- `apps/web/src/app/events/admin/the-link-up/`: protected dashboard and a legacy callback redirect to ordinary DWD login.
 - `apps/web/next.config.ts`: event-only R2/Turnstile/HEIC CSP. Other application pages retain their existing policy.
 - `apps/web/package.json`, `package-lock.json`: pinned S3 SDK, presigner, Sharp and on-demand HEIC decoder.
 - `apps/web/vercel.json`: daily cleanup at 03:00 UTC; `.vercelignore`: excludes local caches, environment files, native build artifacts and the user-created temporary CORS file.
@@ -112,9 +112,9 @@ For a new local environment, `node scripts/setup-link-up-local.mjs` generates in
 
 ## Organizer sign-in and permissions
 
-Open `/events/the-link-up/admin` and use ordinary DWD password or Google sign-in. Already signed-in users go directly to the access check. The login's `next` destination returns to the dashboard. The separate event email-link flow was removed after an end-user reported its hosted callback returning to the home page.
+Open `/events/admin/the-link-up` and use ordinary DWD password or Google sign-in. Already signed-in users go directly to the access check. The login's `next` destination returns to the dashboard. The separate event email-link flow was removed after an end-user reported its hosted callback returning to the home page.
 
-`shebatindy@gmail.com` and `ahumuzaariyo@gmail.com` receive equivalent, page-specific grants in `public.page_admin_access`. Both accounts already existed with verified emails. The follow-up migration seeds them once for `/events/the-link-up/admin`. Every protected page/API request verifies the authenticated user, current verified email and enabled exact-page grant. Changing the email, disabling the row or deleting the row revokes access. Sign-in never recreates a revoked grant. Neither account receives global administrative privileges.
+`shebatindy@gmail.com` and `ahumuzaariyo@gmail.com` receive equivalent, page-specific grants in `public.page_admin_access`. Both accounts already existed with verified emails. The follow-up migration seeds them once for `/events/admin/the-link-up`. Every protected page/API request verifies the authenticated user, current verified email and enabled exact-page grant. Changing the email, disabling the row or deleting the row revokes access. Sign-in never recreates a revoked grant. Neither account receives global administrative privileges.
 
 See [page-specific admin access](page-admin-access.md) for exact Supabase Table Editor instructions, explicit provisioning SQL, revocation, and adding different administrators to future pages. The old `photo_event_organizers` table is historical metadata and no longer controls permissions. The old callback page redirects to ordinary login; old event sign-in APIs have been removed. Existing DWD signup, Google callbacks, password recovery and email verification remain unchanged.
 

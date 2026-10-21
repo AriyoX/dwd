@@ -1,8 +1,22 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { CheckCircle2, Flag, HardDrive, Info, RefreshCw, Settings2, Trash2 } from 'lucide-react';
+import {
+  CheckCircle2,
+  Download,
+  Flag,
+  HardDrive,
+  Info,
+  RefreshCw,
+  Settings2,
+  Trash2,
+} from 'lucide-react';
 import type { AdminSummary, CleanupResult, GalleryPhoto } from './photo-contracts';
-import { PhotoApiError, photoErrorMessage, photoRequest } from './photo-client';
+import {
+  downloadPhotoArchive,
+  PhotoApiError,
+  photoErrorMessage,
+  photoRequest,
+} from './photo-client';
 import { PhotoGallery } from './photo-gallery';
 import styles from './photo-sharing.module.css';
 
@@ -43,6 +57,7 @@ export function PhotoAdmin() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [focusPhoto, setFocusPhoto] = useState<GalleryPhoto | null>(null);
   const working = useRef(false);
@@ -188,6 +203,29 @@ export function PhotoAdmin() {
           <a href="#activity">Activity</a>
         </nav>
         <div className={styles['refreshStatus']}>
+          <button
+            type="button"
+            className={styles['secondaryButton']}
+            disabled={
+              exporting ||
+              busy ||
+              loading ||
+              !summary ||
+              !(summary.counts['published'] || summary.counts['hidden'])
+            }
+            onClick={() => {
+              setExporting(true);
+              setError('');
+              setNotice('');
+              void downloadPhotoArchive()
+                .then(() => setNotice('ZIP download started. Includes visible and hidden photos.'))
+                .catch((cause: unknown) => setError(photoErrorMessage(cause)))
+                .finally(() => setExporting(false));
+            }}
+          >
+            <Download size={16} aria-hidden="true" />{' '}
+            {exporting ? 'Preparing ZIP…' : 'Export photos (.zip)'}
+          </button>
           {updatedAt && (
             <span>
               Updated{' '}

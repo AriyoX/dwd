@@ -5,7 +5,9 @@ import { LogOut } from 'lucide-react';
 import { signOutAction } from './actions';
 import { removePushSubscriptionAction } from '@/features/notifications/actions';
 
-export function SignOutButton() {
+export function SignOutButton({
+  className = 'icon-text-button',
+}: { className?: string | undefined } = {}) {
   const [pending, setPending] = useState(false);
   async function signOut() {
     if (pending) return;
@@ -32,12 +34,7 @@ export function SignOutButton() {
     }
   }
   return (
-    <button
-      className="icon-text-button"
-      type="button"
-      disabled={pending}
-      onClick={() => void signOut()}
-    >
+    <button className={className} type="button" disabled={pending} onClick={() => void signOut()}>
       <LogOut aria-hidden="true" size={18} /> {pending ? 'Signing out…' : 'Sign out'}
     </button>
   );

@@ -2,7 +2,9 @@ import { test, expect, type Page } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
 import { mkdirSync, readFileSync } from 'node:fs';
+import { unzipSync, zipSync } from 'fflate';
 import type {
   AdminSummary,
   GalleryPhoto,
@@ -12,7 +14,8 @@ import type {
 
 test.use({ serviceWorkers: 'block' });
 const api = '/api/events/the-link-up/';
-const adminPath = '/events/the-link-up/admin';
+const adminPath = '/events/admin/the-link-up';
+const adminApi = '/api/events/admin/the-link-up/';
 const image = readFileSync('apps/web/public/events/the-link-up/cocktail.webp');
 function localBackend() {
   const url = process.env['E2E_SUPABASE_URL'] ?? '';
@@ -36,9 +39,10 @@ test.beforeAll(async () => {
   });
   if (result.error) throw result.error;
   userId = result.data.user.id;
-  const grant = await admin
-    .from('page_admin_access')
-    .insert({ page_path: adminPath, user_id: userId, email });
+  const grant = await admin.from('page_admin_access').insert([
+    { page_path: '/events/admin', user_id: userId, email },
+    { page_path: adminPath, user_id: userId, email },
+  ]);
   if (grant.error) throw grant.error;
 });
 test.afterAll(async () => {
@@ -136,9 +140,13 @@ async function mockAlbum(page: Page) {
       body: image,
     }),
   );
-  await page.route('**/api/events/the-link-up/**', async (route) => {
-    const path = new URL(route.request().url()).pathname.slice(api.length);
+  await page.route(/\/api\/events\/(?:the-link-up|admin\/the-link-up)\//, async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const path = pathname.startsWith(adminApi)
+      ? 'admin/' + pathname.slice(adminApi.length)
+      : pathname.slice(api.length);
     const method = route.request().method();
+    if (path === 'admin/export') return route.fallback();
     if (state.forbidden && path.startsWith('admin/'))
       return route.fulfill({
         status: 403,
@@ -296,6 +304,181 @@ test('dashboard explains storage and provides hide, restore and confirmed deleti
   ).toBeVisible();
 });
 
+test('events portal opens the permitted dashboard and redirects old links', async ({
+  page,
+}, info) => {
+  await mockAlbum(page);
+  await page.goto('/events/admin');
+  await expect(page).toHaveURL(/\/login\?next=%2Fevents%2Fadmin/);
+  await page.getByLabel('Email address', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Events admin', exact: true })).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator('[aria-label="Your events"] img')
+        .evaluateAll(
+          (images) =>
+            images.length > 0 &&
+            images.every(
+              (image) =>
+                image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0,
+            ),
+        ),
+    )
+    .toBe(true);
+  await screenshot(page, 'portal', info.project.name);
+  await page
+    .getByRole('navigation', { name: 'Your events' })
+    .getByRole('link', { name: 'The Link Up' })
+    .click();
+  await expect(page).toHaveURL(adminPath);
+  await expect(page.getByRole('heading', { name: 'Photo dashboard' })).toBeVisible();
+  await page.getByRole('link', { name: 'All events', exact: true }).click();
+  await expect(page).toHaveURL('/events/admin');
+  await page.goto('/events/the-link-up/admin');
+  await expect(page).toHaveURL(adminPath);
+  await page.goto('/events/the-link-up/admin/confirm');
+  await expect(page).toHaveURL(/\/login\?next=%2Fevents%2Fadmin%2Fthe-link-up/);
+});
+
+test('events portal hides a revoked event grant and blocks direct access', async ({ page }) => {
+  await mockAlbum(page);
+  await signIn(page);
+  const db = localBackend();
+  try {
+    const changed = await db
+      .from('page_admin_access')
+      .update({ enabled: false })
+      .eq('page_path', adminPath)
+      .eq('user_id', userId);
+    if (changed.error) throw changed.error;
+    await page.goto('/events/admin');
+    await expect(page.getByText('No event dashboards assigned.')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'The Link Up', exact: true })).toHaveCount(0);
+    await page.goto(adminPath);
+    await expect(
+      page.getByText('This account doesn’t have access to The Link Up dashboard.'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Export photos (.zip)', exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    const restored = await db
+      .from('page_admin_access')
+      .update({ enabled: true })
+      .eq('page_path', adminPath)
+      .eq('user_id', userId);
+    expect(restored.error).toBeNull();
+  }
+});
+
+test('revoked portal membership blocks the portal, event page and every private API', async ({
+  page,
+}) => {
+  await mockAlbum(page);
+  await signIn(page);
+  const db = localBackend();
+  try {
+    const result = await db
+      .from('page_admin_access')
+      .update({ enabled: false })
+      .eq('page_path', '/events/admin')
+      .eq('user_id', userId);
+    if (result.error) throw result.error;
+    const portal = await page.goto('/events/admin');
+    expect(portal?.status()).toBe(403);
+    await expect(page.getByRole('heading', { name: 'Access restricted' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Your events' })).toHaveCount(0);
+    const event = await page.goto(adminPath);
+    expect(event?.status()).toBe(403);
+    await expect(page.getByRole('heading', { name: 'Access restricted' })).toBeVisible();
+    for (const path of [
+      adminApi + 'summary',
+      adminApi + 'gallery',
+      adminApi + 'export',
+      adminApi + 'export?download=1',
+      api + 'admin/summary',
+    ]) {
+      expect((await page.request.get(path)).status()).toBe(403);
+    }
+  } finally {
+    const result = await db
+      .from('page_admin_access')
+      .update({ enabled: true })
+      .eq('page_path', '/events/admin')
+      .eq('user_id', userId);
+    expect(result.error).toBeNull();
+  }
+});
+
+test('organizers can sign out from both the portal and event dashboard', async ({ page }) => {
+  await mockAlbum(page);
+  for (const path of ['/events/admin', adminPath]) {
+    await signIn(page);
+    await page.goto(path);
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await expect(page).toHaveURL('/login');
+    expect((await page.request.get(adminApi + 'export')).status()).toBe(401);
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/login\?next=/);
+  }
+});
+
+test('dashboard exports a ZIP and reports denied export access', async ({ page }) => {
+  const state = await mockAlbum(page);
+  const archive = zipSync({
+    'photos/photo.jpg': new Uint8Array(image),
+    'hidden/photo.jpg': new Uint8Array(image),
+  });
+  // Chromium's native downloads bypass Playwright route fulfillment. Use a real
+  // local HTTP transfer while keeping API preparation and its errors mocked.
+  const zipServer = createServer((_request, response) => {
+    response.writeHead(200, {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': 'attachment; filename="the-link-up-photos.zip"',
+      'Content-Length': String(archive.length),
+    });
+    response.end(archive);
+  });
+  await new Promise<void>((resolve) => zipServer.listen(0, '127.0.0.1', resolve));
+  const address = zipServer.address();
+  if (!address || typeof address === 'string') throw new Error('ZIP fixture server failed.');
+  const archiveUrl = `http://127.0.0.1:${address.port}/album.zip`;
+  try {
+    await page.context().route('**/api/events/admin/the-link-up/export*', async (route) => {
+      if (state.forbidden)
+        return route.fulfill({
+          status: 403,
+          json: { code: 'forbidden', error: 'Export access revoked.' },
+        });
+      return route.fulfill({ json: { url: archiveUrl } });
+    });
+    await signIn(page);
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export photos (.zip)', exact: true }).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe('the-link-up-photos.zip');
+    const path = await download.path();
+    if (!path) throw new Error('The ZIP download was not saved.');
+    expect(Object.keys(unzipSync(readFileSync(path)))).toEqual([
+      'photos/photo.jpg',
+      'hidden/photo.jpg',
+    ]);
+    await expect(
+      page.getByRole('status').filter({ hasText: 'ZIP download started.' }),
+    ).toBeVisible();
+    state.forbidden = true;
+    await page.getByRole('button', { name: 'Export photos (.zip)', exact: true }).click();
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Export access revoked.' }),
+    ).toBeVisible();
+  } finally {
+    await new Promise<void>((resolve) => zipServer.close(() => resolve()));
+  }
+});
+
 test('reported photos open even outside the active gallery filter', async ({ page }) => {
   await mockAlbum(page);
   await signIn(page);
@@ -315,7 +498,7 @@ test('a late gallery response cannot overwrite the selected photo filter', async
     release = resolve;
   });
   let intercepted = false;
-  await page.route('**/api/events/the-link-up/admin/gallery?*', async (route) => {
+  await page.route('**/api/events/admin/the-link-up/gallery?*', async (route) => {
     const params = new URL(route.request().url()).searchParams;
     if (!params.has('status') && !intercepted) {
       intercepted = true;
@@ -329,7 +512,9 @@ test('a late gallery response cannot overwrite the selected photo filter', async
   await expect.poll(() => intercepted).toBe(true);
   await page.getByRole('button', { name: 'Hidden', exact: true }).click();
   await expect(page.getByRole('button', { name: /^Open photo/ })).toHaveCount(1);
-  const stale = page.waitForResponse((response) => response.url().endsWith('/admin/gallery?'));
+  const stale = page.waitForResponse((response) =>
+    response.url().endsWith('/the-link-up/gallery?'),
+  );
   release();
   await (await stale).finished();
   await expect(page.getByRole('button', { name: 'Hidden', exact: true })).toHaveAttribute(
@@ -505,7 +690,7 @@ test('real protected APIs release expired holds, queue deletion and enforce live
         })
       ).error,
     ).toBeNull();
-    const removed = await page.request.post(api + 'admin/photos/' + uploadId + '/delete', {
+    const removed = await page.request.post(adminApi + 'photos/' + uploadId + '/delete', {
       headers: { Origin: 'http://localhost:3100' },
     });
     expect(removed.status()).toBe(200);
@@ -532,7 +717,7 @@ test('real protected APIs release expired holds, queue deletion and enforce live
           .eq('status', 'pending')
       ).error,
     ).toBeNull();
-    const response = await page.request.get(api + 'admin/summary');
+    const response = await page.request.get(adminApi + 'summary');
     expect(response.status()).toBe(200);
     const fresh = (await response.json()) as AdminSummary;
     expect(fresh.event.reserved_bytes).toBe(0);
@@ -547,10 +732,10 @@ test('real protected APIs release expired holds, queue deletion and enforce live
           .eq('page_path', adminPath)
       ).error,
     ).toBeNull();
-    expect((await page.request.get(api + 'admin/summary')).status()).toBe(403);
+    expect((await page.request.get(adminApi + 'summary')).status()).toBe(403);
     expect(
       (
-        await page.request.patch(api + 'admin/settings', {
+        await page.request.patch(adminApi + 'settings', {
           headers: { Origin: 'http://localhost:3100' },
           data: { uploads_enabled: false },
         })

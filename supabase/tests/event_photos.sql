@@ -54,7 +54,7 @@ insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values
  ('ea400000-0000-4000-8000-000000000002','ahumuzaariyo@gmail.com',now(),'{"display_name":"Organizer B","age_confirmed":true}'),
  ('ea400000-0000-4000-8000-000000000003','other@example.test',now(),'{"display_name":"Other account","age_confirmed":true}');
 insert into public.page_admin_access(page_path,user_id,email)
-select '/events/the-link-up/admin',id,lower(btrim(email)) from auth.users
+select paths.page_path,id,lower(btrim(email)) from auth.users cross join (values ('/events/admin'),('/events/admin/the-link-up')) as paths(page_path)
 where id in ('ea400000-0000-4000-8000-000000000001','ea400000-0000-4000-8000-000000000002');
 set local role service_role;
 select extensions.ok(public.link_up_provision_organizer('ea400000-0000-4000-8000-000000000001'),'verified Sheba organizer has page access case-insensitively');

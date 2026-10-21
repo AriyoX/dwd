@@ -6,6 +6,20 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('album connection recovery', () => {
+  it('sends protected requests to the new admin API and keeps guest upload URLs', async () => {
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(Response.json({ ok: true })));
+    vi.stubGlobal('fetch', fetcher);
+    await photoRequest('admin/summary');
+    expect(fetcher).toHaveBeenLastCalledWith(
+      '/api/events/admin/the-link-up/summary',
+      expect.objectContaining({ credentials: 'same-origin', cache: 'no-store' }),
+    );
+    await photoRequest('batches', { method: 'POST', body: {} });
+    expect(fetcher).toHaveBeenLastCalledWith(
+      '/api/events/the-link-up/batches',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
   it('loads on browsers without AbortSignal.timeout and releases its timer', async () => {
     vi.useFakeTimers();
     vi.stubGlobal('AbortSignal', {});

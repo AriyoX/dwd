@@ -1,4 +1,4 @@
-import { PHOTO_API } from './photo-contracts';
+import { PHOTO_ADMIN_API, PHOTO_API } from './photo-contracts';
 
 const CONNECTION_MESSAGE =
   'Could not connect. Check your connection, then refresh the page or try again.';
@@ -23,7 +23,10 @@ export async function photoRequest<T>(
     path.endsWith('/complete') || path === 'admin/cleanup' ? 65_000 : 30_000,
   );
   try {
-    const response = await fetch(`${PHOTO_API}/${path}`, {
+    const url = path.startsWith('admin/')
+      ? `${PHOTO_ADMIN_API}/${path.slice('admin/'.length)}`
+      : `${PHOTO_API}/${path}`;
+    const response = await fetch(url, {
       method: options.method ?? 'GET',
       credentials: 'same-origin',
       cache: 'no-store',
@@ -64,6 +67,16 @@ export async function downloadPhoto(id: string, admin = false) {
   link.href = result.url;
   link.rel = 'noreferrer';
   link.download = `the-link-up-${id}.jpg`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+export async function downloadPhotoArchive() {
+  const { url } = await photoRequest<{ url: string }>('admin/export');
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'the-link-up-photos.zip';
   document.body.append(link);
   link.click();
   link.remove();

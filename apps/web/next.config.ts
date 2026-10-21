@@ -52,6 +52,7 @@ const eventContentSecurityPolicy = contentSecurityPolicy
   .concat("; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:");
 
 const nextConfig: NextConfig = {
+  experimental: { authInterrupts: true },
   // Allow this computer's LAN addresses for phone testing without opening all origins.
   allowedDevOrigins: isDevelopment
     ? Object.values(networkInterfaces()).flatMap((addresses) =>
@@ -86,6 +87,13 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: contentSecurityPolicy.concat("; worker-src 'self' blob:"),
           },
+        ],
+      },
+      {
+        source: '/events/admin/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: eventContentSecurityPolicy },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
         ],
       },
       {

@@ -1,4 +1,5 @@
 export const PHOTO_API = '/api/events/the-link-up';
+export const PHOTO_ADMIN_API = '/api/events/admin/the-link-up';
 export const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 export const MAX_THUMBNAIL_BYTES = 128 * 1024;
 export const MAX_PHOTO_EDGE = 2048;

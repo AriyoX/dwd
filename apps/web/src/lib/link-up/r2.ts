@@ -8,6 +8,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { MAX_PHOTO_BYTES } from '@/features/events/photo-contracts';
 import type { ReservationRow } from '@/features/events/photo-contracts';
 import { PhotoError } from './errors';
@@ -79,6 +80,15 @@ export async function signedView(key: string, downloadName?: string) {
     }),
     { expiresIn: 120 },
   );
+}
+export async function readPhotoObject(key: string, signal: AbortSignal) {
+  const { client, bucket } = storage();
+  const readSignal = AbortSignal.any([signal, AbortSignal.timeout(30_000)]);
+  const object = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }), {
+    abortSignal: readSignal,
+  });
+  if (!(object.Body instanceof Readable)) throw new Error('Missing photo object');
+  return Readable.addAbortSignal(readSignal, object.Body);
 }
 export async function readStaged(r: ReservationRow) {
   const { client, bucket } = storage();
