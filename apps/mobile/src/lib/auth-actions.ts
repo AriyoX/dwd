@@ -95,12 +95,14 @@ export async function confirmCode(client: AuthClient, email: string, token: stri
   const parsed = emailValid(email);
   if (!parsed.success || !/^\d{6,10}$/.test(token.trim()))
     return fail('Enter your email and the code from the latest email.');
-  const { error } = await client.auth.verifyOtp({
+  const { data, error } = await client.auth.verifyOtp({
     email: parsed.data,
     token: token.trim(),
-    type: 'signup',
+    type: 'email',
   });
   if (error) return fail('That code has expired or is incorrect. Try again or resend the email.');
+  if (!data.session)
+    return fail('Could not finish signing in. Sign in with your email and password.');
 }
 
 export async function requestRecovery(client: AuthClient, email: string, redirectTo: string) {

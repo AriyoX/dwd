@@ -166,41 +166,13 @@ export async function verifyConfirmationAction(
   if (!parsed.success) return { error: 'Enter your email and the code from the latest email.' };
   try {
     const client = await createServerSupabaseClient();
-    const { error } = await client.auth.verifyOtp({ ...parsed.data, type: 'signup' });
+    const { data, error } = await client.auth.verifyOtp({ ...parsed.data, type: 'email' });
     if (error)
       return { error: 'That code has expired or is incorrect. Try again or resend the email.' };
+    if (!data.session)
+      return { error: 'Couldn’t finish signing in. Sign in with your email and password.' };
   } catch {
     return { error: 'Couldn’t connect. Please try again.' };
-  }
-  await clearPendingConfirmation();
-  const next = formData.get('next');
-  redirect(safeReturnPath(typeof next === 'string' ? next : undefined));
-}
-
-export async function isConfirmationComplete(email: string): Promise<boolean> {
-  try {
-    const client = await createServerSupabaseClient();
-    const { data, error } = await client.auth.getUser();
-    return (
-      !error &&
-      data.user.email?.toLowerCase() === email.toLowerCase() &&
-      Boolean(data.user.email_confirmed_at)
-    );
-  } catch {
-    return false;
-  }
-}
-
-export async function continueAfterConfirmationAction(
-  _previousState: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const email = formData.get('email');
-  if (typeof email !== 'string' || !(await isConfirmationComplete(email))) {
-    return {
-      error:
-        'Open the email link in this browser first. If you confirmed on another device, sign in here.',
-    };
   }
   await clearPendingConfirmation();
   const next = formData.get('next');

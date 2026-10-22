@@ -6,15 +6,15 @@ The hosted redirect allow list now includes `/auth/callback?**` for localhost, t
 
 ## Email confirmation
 
-**Email still uses Supabase's default sender.** The application defaults to the improved link flow: a persistent confirmation screen, automatic continuation when the original tab regains focus, a manual confirmation check, resend cooldown, and invitation-preserving recovery. The one-hour HttpOnly pending-email cookie contains no password or token.
+Signup now uses email codes on web and native. Entering the code confirms the email and establishes a session on that device. The application no longer asks whether a confirmation link was clicked or gates code entry behind an environment flag. The one-hour HttpOnly pending-email cookie contains no password or token. Password-reset emails still use their existing recovery links; older signup links remain supported.
 
-Code confirmation is implemented but disabled by default. Supabase rejected the custom email template because this free project has no custom SMTP sender. To activate codes:
+The hosted email template must be updated before deploying this flow. The September setup used Supabase's default sender, and custom-template installation was rejected without custom SMTP. If that setup remains in use:
 
 1. Configure a verified custom SMTP sender in Supabase Auth.
-2. Install `supabase/templates/confirmation.html` as the confirmation template. It includes both `{{ .Token }}` and a direct app link that works across browsers.
-3. Set the server-only application variable `DWD_EMAIL_CONFIRMATION_CODE_ENABLED=true`, restart/redeploy, and test actual delivery and confirmation.
+2. Install `supabase/templates/confirmation.html` as the confirmation template. It includes `{{ .Token }}` and no verification link.
+3. Enable Confirm email in the email provider settings. Deploy/rebuild both clients and test actual delivery, code verification and resending. `DWD_EMAIL_CONFIRMATION_CODE_ENABLED` is obsolete and can be removed.
 
-Do not enable that flag before the template is installed: the default email contains only a link. No SMTP credentials or Google secret belong in the browser. See [email template variables](https://supabase.com/docs/guides/auth/auth-email-templates) and [free-tier template restrictions](https://supabase.com/changelog/46599-changes-to-email-template-customisation-on-free-tier).
+Do not deploy the code-only screens while the hosted template still sends only links. No SMTP credentials or Google secret belong in the browser. See [email template variables](https://supabase.com/docs/guides/auth/auth-email-templates) and [free-tier template restrictions](https://supabase.com/changelog/46599-changes-to-email-template-customisation-on-free-tier).
 
 ## Email callback repair, October 7, 2026
 

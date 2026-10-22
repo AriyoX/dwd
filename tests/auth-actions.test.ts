@@ -44,8 +44,6 @@ import {
   loginAction,
   verifyConfirmationAction,
   completeSignupAction,
-  isConfirmationComplete,
-  continueAfterConfirmationAction,
 } from '../apps/web/src/features/auth/actions';
 
 function form(values: Record<string, string>) {
@@ -166,24 +164,13 @@ describe('signup confirmation recovery', () => {
 });
 
 describe('confirmation and Google onboarding', () => {
-  it('continues only when this browser has the confirmed account', async () => {
-    mocks.getUser.mockResolvedValue({
-      data: { user: { email: 'person@example.com', email_confirmed_at: '2026-09-16' } },
-      error: null,
-    });
-    expect(await isConfirmationComplete('other@example.com')).toBe(false);
-    await expect(
-      continueAfterConfirmationAction(
-        {},
-        form({ email: 'person@example.com', next: '/join/saved' }),
-      ),
-    ).rejects.toThrow('redirect:/join/saved');
-  });
-  it('explains how to recover when the email link has not established a session here', async () => {
-    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { code: 'session_missing' } });
+  it('does not continue or clear signup when verification produces no session', async () => {
+    mocks.verifyOtp.mockResolvedValue({ data: { session: null }, error: null });
     expect(
-      (await continueAfterConfirmationAction({}, form({ email: 'person@example.com' }))).error,
-    ).toContain('another device');
+      (await verifyConfirmationAction({}, form({ email: 'person@example.com', token: '123456' })))
+        .error,
+    ).toContain('Couldn’t finish signing in');
+    expect(mocks.clearPendingConfirmation).not.toHaveBeenCalled();
   });
   it('resumes unfinished onboarding after a successful sign-in', async () => {
     mocks.signInWithPassword.mockResolvedValue({ data: { user: { id: 'id' } }, error: null });
@@ -206,7 +193,10 @@ describe('confirmation and Google onboarding', () => {
     expect(mocks.rememberConfirmation).toHaveBeenCalledWith('person@example.com');
   });
   it('verifies a signup code and continues to the invitation', async () => {
-    mocks.verifyOtp.mockResolvedValue({ error: null });
+    mocks.verifyOtp.mockResolvedValue({
+      data: { session: { access_token: 'verified' } },
+      error: null,
+    });
     await expect(
       verifyConfirmationAction(
         {},
@@ -216,7 +206,7 @@ describe('confirmation and Google onboarding', () => {
     expect(mocks.verifyOtp).toHaveBeenCalledWith({
       email: 'person@example.com',
       token: '123456',
-      type: 'signup',
+      type: 'email',
     });
     expect(mocks.clearPendingConfirmation).toHaveBeenCalledOnce();
   });
@@ -236,7 +226,10 @@ describe('confirmation and Google onboarding', () => {
     expect(mocks.verifyOtp).not.toHaveBeenCalled();
   });
   it('rejects external return URLs after code verification', async () => {
-    mocks.verifyOtp.mockResolvedValue({ error: null });
+    mocks.verifyOtp.mockResolvedValue({
+      data: { session: { access_token: 'verified' } },
+      error: null,
+    });
     await expect(
       verifyConfirmationAction(
         {},

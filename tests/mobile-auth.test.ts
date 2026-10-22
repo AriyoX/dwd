@@ -292,6 +292,22 @@ describe('native account flows', () => {
     auth.verifyOtp.mockResolvedValue({ error: { code: 'otp_expired' } });
     await expect(confirmCode(client, 'person@example.com', '123456')).rejects.toThrow('expired');
   });
+  it('verifies email codes on this device and requires a resulting session', async () => {
+    auth.verifyOtp.mockResolvedValue({
+      data: { session: { access_token: 'verified' } },
+      error: null,
+    });
+    await confirmCode(client, 'person@example.com', '123456');
+    expect(auth.verifyOtp).toHaveBeenCalledWith({
+      email: 'person@example.com',
+      token: '123456',
+      type: 'email',
+    });
+    auth.verifyOtp.mockResolvedValue({ data: { session: null }, error: null });
+    await expect(confirmCode(client, 'person@example.com', '123456')).rejects.toThrow(
+      'finish signing in',
+    );
+  });
   it('uses the native recovery callback and a neutral response', async () => {
     auth.resetPasswordForEmail.mockResolvedValue({ error: null });
     expect(

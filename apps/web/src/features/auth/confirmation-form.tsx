@@ -5,31 +5,23 @@ import { useActionState, useEffect, useState } from 'react';
 import {
   resendConfirmationAction,
   verifyConfirmationAction,
-  continueAfterConfirmationAction,
-  isConfirmationComplete,
   type AuthActionState,
 } from './actions';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/feedback/submit-button';
-import { safeReturnPath } from '@/lib/navigation';
 
 export function ConfirmationForm({
   next,
   email = '',
   retryAt = 0,
-  codeEnabled = false,
 }: {
   next: string;
   email?: string;
   retryAt?: number;
-  codeEnabled?: boolean;
 }) {
   const [address, setAddress] = useState(email);
   const [state, resend, pending] = useActionState(resendConfirmationAction, {} as AuthActionState);
-  const [verification, verify] = useActionState(
-    codeEnabled ? verifyConfirmationAction : continueAfterConfirmationAction,
-    {} as AuthActionState,
-  );
+  const [verification, verify] = useActionState(verifyConfirmationAction, {} as AuthActionState);
   const [now, setNow] = useState(0);
   useEffect(() => {
     const update = () => setNow(Date.now());
@@ -37,36 +29,6 @@ export function ConfirmationForm({
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => {
-    if (!email) return;
-    let cancelled = false;
-    let checking = false;
-    const check = async () => {
-      if (document.visibilityState !== 'visible' || checking) return;
-      checking = true;
-      try {
-        const confirmed = await isConfirmationComplete(email);
-        if (!cancelled && confirmed) {
-          window.location.replace(safeReturnPath(next));
-        }
-      } catch {
-        // Code entry and retry remain usable while offline.
-      } finally {
-        checking = false;
-      }
-    };
-    void check();
-    const onFocus = () => void check();
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onFocus);
-    const timer = window.setInterval(onFocus, 5000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onFocus);
-    };
-  }, [email, next]);
   const seconds =
     now === 0
       ? retryAt > 0
@@ -77,8 +39,7 @@ export function ConfirmationForm({
     <div className="stack-lg">
       {email ? (
         <p className="muted confirmation-email">
-          Open the link sent to <strong>{email}</strong>
-          {codeEnabled ? ', or enter the code from that email here.' : ' to continue.'}
+          Enter the code sent to <strong>{email}</strong>.
         </p>
       ) : (
         <p className="muted">Enter your signup email to confirm your account.</p>
@@ -104,23 +65,23 @@ export function ConfirmationForm({
             />
           </label>
         )}
-        {codeEnabled && (
-          <label className="field">
-            Confirmation code
-            <input
-              className="input"
-              name="token"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6,10}"
-              minLength={6}
-              maxLength={10}
-              required
-              aria-describedby="code-help"
-            />
-          </label>
-        )}
+        <label className="field">
+          Confirmation code
+          <input
+            className="input"
+            name="token"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoCapitalize="none"
+            spellCheck={false}
+            pattern="[0-9]{6,10}"
+            minLength={6}
+            maxLength={10}
+            required
+            aria-describedby="code-help"
+          />
+        </label>
         <p id="code-help" className="muted small">
           Use the most recent email. Check spam if it hasn’t arrived.
         </p>
@@ -129,10 +90,7 @@ export function ConfirmationForm({
             {verification.error}
           </p>
         )}
-        <SubmitButton
-          idle={codeEnabled ? 'Confirm and continue' : 'I’ve confirmed my email'}
-          pending={codeEnabled ? 'Confirming…' : 'Checking…'}
-        />
+        <SubmitButton idle="Confirm and continue" pending="Confirming…" />
       </form>
       <form action={resend} className="stack">
         <input type="hidden" name="next" value={next} />
@@ -154,7 +112,7 @@ export function ConfirmationForm({
           disabled={pending || seconds > 0 || !address}
           aria-busy={pending}
         >
-          {pending ? 'Sending…' : seconds > 0 ? `Resend in ${seconds}s` : 'Resend email'}
+          {pending ? 'Sending…' : seconds > 0 ? `Resend in ${seconds}s` : 'Resend code'}
         </Button>
       </form>
       <div className="stack small">
