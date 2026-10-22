@@ -17,7 +17,11 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: '#081607', colorScheme: 'dark', viewportFit: 'cover' };
+export const viewport: Viewport = {
+  themeColor: '#081607',
+  colorScheme: 'dark',
+  viewportFit: 'cover',
+};
 
 export default function TheLinkUpPage() {
   return <TheLinkUp />;

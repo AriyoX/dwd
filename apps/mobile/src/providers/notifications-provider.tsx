@@ -394,7 +394,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       }
       tap(Notifications.getLastNotificationResponse());
       const taps = Notifications.addNotificationResponseReceivedListener(tap);
-      const received = Notifications.addNotificationReceivedListener(() => setVersion((v) => v + 1));
+      const received = Notifications.addNotificationReceivedListener(() =>
+        setVersion((v) => v + 1),
+      );
       const tokens = Notifications.addPushTokenListener(() => void sync());
       const foreground = AppState.addEventListener('change', (next) => {
         if (next === 'active') {

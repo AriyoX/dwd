@@ -133,10 +133,9 @@ export function QuickLogProvider({ children }: { children: ReactNode }) {
           setHandle({
             store,
             writable: false,
-            issue:
-              window.isSecureContext
-                ? 'This browser can’t save Quick Log safely. Try an updated browser.'
-                : 'Open DWD with HTTPS to use Quick Log on this phone. Your saved logs are still here.',
+            issue: window.isSecureContext
+              ? 'This browser can’t save Quick Log safely. Try an updated browser.'
+              : 'Open DWD with HTTPS to use Quick Log on this phone. Your saved logs are still here.',
           });
       });
       return close;

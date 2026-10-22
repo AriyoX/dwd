@@ -9,5 +9,7 @@ coverage
 supabase/.temp
 **/supabase/.temp
 .tmp
+# Installed skill documentation is maintained by its source packages.
+.agents/skills
 # Generated compact offline country boundaries.
 packages/core/src/config/country-boundaries.json

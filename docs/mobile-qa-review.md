@@ -8,22 +8,22 @@ Reviewed the working-tree diff and `mobile-qa-implementation.md`, including star
 
 PASS here means code evidence is sufficient for the stated requirement; it does not imply device acceptance.
 
-| Requirement | Status | Evidence |
-|---|---|---|
-| Location popup | PASS | Home prompt removed; default location opt-in is false; only the explicit Settings action requests permission. |
-| Tour behaviour | PARTIAL | Settings replay and persisted seen state exist; cold-start notification resolution is not coordinated with automatic touring (F2). |
-| Pending entries | UNVERIFIED | Integrated into expandable Entries, with global saved-entry access and missing-night fallback. Offline/reconnect acceptance remains. |
-| Connectivity copy | PASS | Reviewed changed notices use plain language; saved API errors are sanitized. |
-| Dismissible messages | UNVERIFIED | Close control and horizontal swipe implemented; actual gesture/scroll interaction remains untested. |
-| Collapsible activity | UNVERIFIED | Local expanded state, accessible header and conditional entries implemented; simulator interaction remains untested. |
-| Link text | PASS | Share invite, Copy link, Open invitation and Email DWD support replace raw or unclear labels. |
-| Setup cleanup | UNVERIFIED | Unsubmitted state is ephemeral; submitted commands retain identity; completion marker protects cleanup. Bottle recovery migration deployed and inspected; runtime recovery remains unverified. |
-| Shared bottles | PARTIAL | Creation, joining, partial pours, adjustment and undo exist; uncertain form identity is lost on unmount (F3). |
-| Custom drinks | UNVERIFIED | Shared validated form, busy guard, wrapping categories and keyboard changes exist. Keyboard/scroll/safe-area acceptance remains. |
-| Automatic invites | PARTIAL | Persist-before-send, account/night coalescing, expiry and revocation handling exist; reconnect can be dropped during an in-flight failure (F4). |
-| Logging buttons | UNVERIFIED | Main/chooser controls are at least 84 points; secondary large actions are 72 points; one-tap path and duplicate guard exist. Real interaction remains untested. |
-| Android notifications | UNVERIFIED | All 25 targeted tests pass; user reports Settings works normally in Expo Go. Installed-build push delivery explicitly deferred. |
-| General UX | PARTIAL | Simpler labels, larger controls and fewer panels are present. Tour interruption (F2) and unavailable-notification retry controls (F5) remain. |
+| Requirement           | Status     | Evidence                                                                                                                                                                                       |
+| --------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Location popup        | PASS       | Home prompt removed; default location opt-in is false; only the explicit Settings action requests permission.                                                                                  |
+| Tour behaviour        | PARTIAL    | Settings replay and persisted seen state exist; cold-start notification resolution is not coordinated with automatic touring (F2).                                                             |
+| Pending entries       | UNVERIFIED | Integrated into expandable Entries, with global saved-entry access and missing-night fallback. Offline/reconnect acceptance remains.                                                           |
+| Connectivity copy     | PASS       | Reviewed changed notices use plain language; saved API errors are sanitized.                                                                                                                   |
+| Dismissible messages  | UNVERIFIED | Close control and horizontal swipe implemented; actual gesture/scroll interaction remains untested.                                                                                            |
+| Collapsible activity  | UNVERIFIED | Local expanded state, accessible header and conditional entries implemented; simulator interaction remains untested.                                                                           |
+| Link text             | PASS       | Share invite, Copy link, Open invitation and Email DWD support replace raw or unclear labels.                                                                                                  |
+| Setup cleanup         | UNVERIFIED | Unsubmitted state is ephemeral; submitted commands retain identity; completion marker protects cleanup. Bottle recovery migration deployed and inspected; runtime recovery remains unverified. |
+| Shared bottles        | PARTIAL    | Creation, joining, partial pours, adjustment and undo exist; uncertain form identity is lost on unmount (F3).                                                                                  |
+| Custom drinks         | UNVERIFIED | Shared validated form, busy guard, wrapping categories and keyboard changes exist. Keyboard/scroll/safe-area acceptance remains.                                                               |
+| Automatic invites     | PARTIAL    | Persist-before-send, account/night coalescing, expiry and revocation handling exist; reconnect can be dropped during an in-flight failure (F4).                                                |
+| Logging buttons       | UNVERIFIED | Main/chooser controls are at least 84 points; secondary large actions are 72 points; one-tap path and duplicate guard exist. Real interaction remains untested.                                |
+| Android notifications | UNVERIFIED | All 25 targeted tests pass; user reports Settings works normally in Expo Go. Installed-build push delivery explicitly deferred.                                                                |
+| General UX            | PARTIAL    | Simpler labels, larger controls and fewer panels are present. Tour interruption (F2) and unavailable-notification retry controls (F5) remain.                                                  |
 
 ## Findings
 
