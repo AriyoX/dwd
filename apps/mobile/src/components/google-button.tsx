@@ -1,5 +1,5 @@
-import { ActivityIndicator, Image, Text } from 'react-native';
-import { Action } from '@/components/primary-button';
+import { Image } from 'react-native';
+import { SocialSignInButton, SOCIAL_LOGO_SIZE } from './social-sign-in-button';
 // Current, unmodified Google asset: https://developers.google.com/identity/branding-guidelines
 import googleLogo from '../../assets/google-g.png';
 
@@ -13,48 +13,20 @@ export function GoogleButton({
   busy?: boolean;
 }) {
   return (
-    <Action
-      label={busy ? 'Connecting to Google' : 'Continue with Google'}
-      disabled={disabled || busy}
+    <SocialSignInButton
+      provider="Google"
+      disabled={disabled}
+      busy={busy}
       onPress={onPress}
-      style={{
-        minHeight: 44,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#747775',
-        backgroundColor: '#FFFFFF',
-      }}
-    >
-      {busy ? (
-        <ActivityIndicator accessibilityLabel="Connecting to Google" color="#1F1F1F" />
-      ) : (
-        <>
-          <Image
-            alt=""
-            source={googleLogo}
-            style={{ width: 20, height: 20 }}
-            resizeMode="contain"
-            accessible={false}
-          />
-          <Text
-            style={{
-              color: '#1F1F1F',
-              fontSize: 17,
-              fontWeight: '500',
-              flexShrink: 1,
-              textAlign: 'center',
-            }}
-          >
-            Continue with Google
-          </Text>
-        </>
-      )}
-    </Action>
+      icon={
+        <Image
+          alt=""
+          source={googleLogo}
+          style={{ width: SOCIAL_LOGO_SIZE, height: SOCIAL_LOGO_SIZE }}
+          resizeMode="contain"
+          accessible={false}
+        />
+      }
+    />
   );
 }

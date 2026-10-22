@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { LoginForm } from '@/features/auth/auth-form';
 import { safeReturnPath } from '@/lib/navigation';
-import { QuickLogEntry } from '@/features/quick-log/entry-point';
+import Link from 'next/link';
+import { ArrowUpRight } from 'lucide-react';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
@@ -13,14 +14,14 @@ export default async function LoginPage({
   const params = await searchParams;
   const next = safeReturnPath(params.next);
   return (
-    <section className="stack-lg">
+    <section className="stack-lg auth-login">
       <header>
-        <h1>Welcome back.</h1>
+        <h1>Sign in.</h1>
       </header>
-      <QuickLogEntry />
-      {params.error === 'google' && (
+      {(params.error === 'google' || params.error === 'apple') && (
         <p className="error-box" role="alert">
-          Google sign-in wasn’t completed. Try again or use email.
+          {params.error === 'apple' ? 'Apple' : 'Google'} sign-in wasn’t completed. Try again or use
+          email.
         </p>
       )}
       {params.error === 'confirmation' ? (
@@ -39,6 +40,9 @@ export default async function LoginPage({
         </p>
       ) : null}
       <LoginForm next={next} />
+      <Link className="auth-guest-link" href="/quick-log?scope=guest">
+        Continue without an account <ArrowUpRight size={16} aria-hidden="true" />
+      </Link>
     </section>
   );
 }

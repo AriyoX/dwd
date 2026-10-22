@@ -5,7 +5,8 @@ import { safeReturnPath } from '@/lib/navigation';
 export async function GET(request: NextRequest) {
   const next = safeReturnPath(request.nextUrl.searchParams.get('next'));
   const code = request.nextUrl.searchParams.get('code');
-  let destination = `/login?error=google&next=${encodeURIComponent(next)}`;
+  const provider = request.nextUrl.searchParams.get('provider') === 'apple' ? 'apple' : 'google';
+  let destination = `/login?error=${provider}&next=${encodeURIComponent(next)}`;
   try {
     if (code && !request.nextUrl.searchParams.has('error')) {
       const client = await createServerSupabaseClient();
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch {
-    // Keep the destination when Google is cancelled or the code cannot be exchanged.
+    // Keep the return path when consent is cancelled or the code cannot be exchanged.
   }
   const response = NextResponse.redirect(new URL(destination, request.url));
   response.headers.set('Cache-Control', 'private, no-store');

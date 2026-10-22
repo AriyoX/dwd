@@ -12,7 +12,33 @@ vi.mock('@/lib/supabase/server', () => ({
 import { GET } from '../apps/web/src/app/auth/callback/route';
 
 beforeEach(() => vi.resetAllMocks());
-describe('Google callback', () => {
+describe('social sign-in callback', () => {
+  it('recovers from cancelled Apple consent and preserves the destination', async () => {
+    const response = await GET(
+      new NextRequest(
+        'https://dwd.example/auth/callback?provider=apple&error=access_denied&next=%2Fevents%2Fadmin',
+      ),
+    );
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(response.headers.get('location')).toBe(
+      'https://dwd.example/login?error=apple&next=%2Fevents%2Fadmin',
+    );
+  });
+  it('requires profile completion for a new Apple account', async () => {
+    mocks.exchangeCodeForSession.mockResolvedValue({
+      data: { user: { id: 'apple-user' } },
+      error: null,
+    });
+    mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
+    const response = await GET(
+      new NextRequest(
+        'https://dwd.example/auth/callback?provider=apple&code=apple-code&next=%2Fquick-log',
+      ),
+    );
+    expect(response.headers.get('location')).toBe(
+      'https://dwd.example/complete-signup?next=%2Fquick-log',
+    );
+  });
   it('uses the verifier associated with this callback rather than a newer signup', async () => {
     mocks.exchangeCodeForSession.mockResolvedValue({ data: { user: { id: 'id' } }, error: null });
     mocks.maybeSingle.mockResolvedValue({ data: { id: 'id' }, error: null });

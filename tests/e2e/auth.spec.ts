@@ -80,6 +80,51 @@ test('Google starts OAuth with the original invitation and a PKCE challenge', as
   expect(callback.searchParams.get('next')).toBe(next);
 });
 
+test('Apple is available on both forms and recovers if the provider is unavailable', async ({
+  page,
+}) => {
+  await page.route('**/auth/v1/settings', (route) =>
+    route.fulfill({ json: { external: { apple: false } } }),
+  );
+  for (const path of ['/login', '/signup']) {
+    await page.goto(path);
+    await page.getByRole('button', { name: 'Continue with Apple' }).click();
+    await expect(page.getByRole('main').getByRole('alert')).toContainText(
+      'Apple sign-in isn’t available yet',
+    );
+    await expect(page.getByRole('button', { name: 'Continue with Apple' })).toBeEnabled();
+    await expect(page.getByLabel('Email address')).toBeEditable();
+  }
+});
+
+test('Apple starts PKCE OAuth and cancellation keeps the original destination', async ({
+  page,
+}) => {
+  const next = '/events/admin/the-link-up';
+  await page.route('**/auth/v1/settings', (route) =>
+    route.fulfill({ json: { external: { apple: true } } }),
+  );
+  await page.route('**/auth/v1/authorize?**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<h1>Apple consent handoff</h1>' }),
+  );
+  await page.goto(`/login?next=${encodeURIComponent(next)}`);
+  await page.getByRole('button', { name: 'Continue with Apple' }).click();
+  await expect(page.getByRole('heading', { name: 'Apple consent handoff' })).toBeVisible();
+  const url = new URL(page.url());
+  expect(url.searchParams.get('provider')).toBe('apple');
+  expect(url.searchParams.get('code_challenge')).toBeTruthy();
+  const callback = new URL(url.searchParams.get('redirect_to') ?? '');
+  expect(callback.pathname).toBe('/auth/callback');
+  expect(callback.searchParams.get('provider')).toBe('apple');
+  expect(callback.searchParams.get('next')).toBe(next);
+  callback.searchParams.set('error', 'access_denied');
+  await page.goto(callback.toString());
+  await expect(page.getByRole('main').getByRole('alert')).toContainText(
+    'Apple sign-in wasn’t completed',
+  );
+  expect(new URL(page.url()).searchParams.get('next')).toBe(next);
+});
+
 test('cancelled Google and expired reset links retain the invitation', async ({ page }) => {
   const next = '/join/preserved';
   await page.goto(`/auth/callback?error=access_denied&next=${encodeURIComponent(next)}`);
@@ -120,34 +165,17 @@ test('pending signup survives refresh and confirms directly into the invitation'
     await page.reload();
     await expect(page.getByText(email, { exact: true })).toBeVisible();
     expect(page.url()).not.toContain(encodeURIComponent(email));
-    if (process.env['E2E_CONFIRMATION_CODES'] === 'false') {
-      await expect(page.getByLabel('Confirmation code')).toHaveCount(0);
-      await page.getByRole('button', { name: 'I’ve confirmed my email' }).click();
-      await expect(page.getByRole('main').getByRole('alert')).toContainText('Open the email link');
-      await page.screenshot({
-        path: `.tmp/ui-review/auth-confirmation-link-${info.project.name}.png`,
-        fullPage: true,
-      });
-      const emailTab = await page.context().newPage();
-      await emailTab.goto(
-        `/auth/confirm?token_hash=${data.properties.hashed_token}&type=email&next=${encodeURIComponent(next)}`,
-      );
-      await expect(emailTab).toHaveURL(new RegExp(next));
-      await emailTab.close();
-      await page.bringToFront();
-    } else {
-      await page.getByLabel('Confirmation code').fill('000000');
-      await page.getByRole('button', { name: 'Confirm and continue' }).click();
-      await expect(page.getByRole('main').getByRole('alert')).toContainText(
-        'expired or is incorrect',
-      );
-      await page.screenshot({
-        path: `.tmp/ui-review/auth-confirmation-code-${info.project.name}.png`,
-        fullPage: true,
-      });
-      await page.getByLabel('Confirmation code').fill(data.properties.email_otp);
-      await page.getByRole('button', { name: 'Confirm and continue' }).click();
-    }
+    await page.getByLabel('Confirmation code').fill('000000');
+    await page.getByRole('button', { name: 'Confirm and continue' }).click();
+    await expect(page.getByRole('main').getByRole('alert')).toContainText(
+      'expired or is incorrect',
+    );
+    await page.screenshot({
+      path: `.tmp/ui-review/auth-confirmation-code-${info.project.name}.png`,
+      fullPage: true,
+    });
+    await page.getByLabel('Confirmation code').fill(data.properties.email_otp);
+    await page.getByRole('button', { name: 'Confirm and continue' }).click();
     await expect(page).toHaveURL(new RegExp(next));
     expect(
       (await page.context().cookies()).some((cookie) => cookie.name === 'dwd-pending-confirmation'),
@@ -157,7 +185,9 @@ test('pending signup survives refresh and confirms directly into the invitation'
   }
 });
 
-test('confirming in another tab lets the original tab continue', async ({ page }, info) => {
+test('an older confirmation link remains usable and the waiting page can recover through sign-in', async ({
+  page,
+}, info) => {
   test.skip(
     !process.env['E2E_SUPABASE_SECRET_KEY'],
     'Local admin key required for email fixtures.',
@@ -185,6 +215,11 @@ test('confirming in another tab lets the original tab continue', async ({ page }
     await expect(emailTab).toHaveURL(new RegExp(next));
     await emailTab.close();
     await page.bringToFront();
+    await expect(page.getByRole('button', { name: 'I’ve confirmed my email' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Back to sign in' }).click();
+    await page.getByLabel('Email address').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(next));
   } finally {
     await removeLocalUser(admin, data.user.id);

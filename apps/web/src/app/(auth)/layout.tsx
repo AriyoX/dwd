@@ -8,7 +8,12 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="auth-shell" id="main-content">
       <aside className="auth-aside">
-        <Wordmark linked={false} />
+        <Wordmark />
+        <h2 className="auth-aside-heading">
+          A night of
+          <br />
+          <em>your own.</em>
+        </h2>
         <NightIllustration />
         <ol className="auth-steps" aria-label="How DWD works">
           <li>
@@ -30,8 +35,15 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       </aside>
       <div className="auth-main">
         <div className="auth-mobile-brand">
-          <Wordmark linked={false} />
+          <Wordmark />
+          <Link className="text-link small" href="/events">
+            Events
+          </Link>
         </div>
+        <nav className="auth-desktop-nav" aria-label="Site navigation">
+          <Link href="/">Home</Link>
+          <Link href="/events">Events</Link>
+        </nav>
         <div className="auth-form-wrap">{children}</div>
         <footer className="auth-footer">
           <span>For adults 18+</span>

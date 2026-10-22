@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Image, Platform, Text, View } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
@@ -10,6 +10,13 @@ import { Notice } from '@/components/screen';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
 import type { AppleButtonProps } from './apple-button';
+import {
+  SocialSignInButton,
+  SOCIAL_BUTTON_HEIGHT,
+  APPLE_LOGO_WIDTH,
+} from './social-sign-in-button';
+import appleBlack from '../../assets/apple-logo-black.png';
+import appleWhite from '../../assets/apple-logo-white.png';
 
 const adapter: AppleAuthAdapter = {
   randomUUID: Crypto.randomUUID,
@@ -90,26 +97,23 @@ export function AppleButton({ disabled, busy, onSignIn }: AppleButtonProps) {
     );
   }
   return (
-    <View style={{ gap: 8 }} pointerEvents={disabled || busy ? 'none' : 'auto'}>
-      <AppleAuthentication.AppleAuthenticationButton
-        buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-        buttonStyle={
-          scheme === 'dark'
-            ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-            : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-        }
-        cornerRadius={14}
-        style={{ width: '100%', height: 44, opacity: disabled && !busy ? 0.5 : 1 }}
-        accessibilityState={{ disabled: disabled || busy, busy }}
-        onPress={() => {
-          if (!disabled && !busy) onSignIn(() => appleSignIn(client, adapter));
-        }}
-      />
-      {busy ? (
-        <Text accessibilityLiveRegion="polite" style={typography.body}>
-          Signing in with Apple…
-        </Text>
-      ) : null}
-    </View>
+    <SocialSignInButton
+      provider="Apple"
+      disabled={disabled}
+      busy={busy}
+      dark={scheme !== 'dark'}
+      icon={
+        <Image
+          alt=""
+          source={scheme === 'dark' ? appleBlack : appleWhite}
+          resizeMode="contain"
+          accessible={false}
+          style={{ width: APPLE_LOGO_WIDTH, height: SOCIAL_BUTTON_HEIGHT }}
+        />
+      }
+      onPress={() => {
+        if (!disabled && !busy) onSignIn(() => appleSignIn(client, adapter));
+      }}
+    />
   );
 }

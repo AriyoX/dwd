@@ -218,16 +218,16 @@ function AuthForm({
     complete: 'Saving your account',
   };
   return (
-    <Screen contentStyle={{ gap: 28, paddingBottom: 24 }}>
+    <Screen contentStyle={{ gap: 24, paddingBottom: 24 }}>
       <AuthHeader back={mode !== 'reset' && mode !== 'complete'} disabled={busy} />
       <ScreenHeading
         title={headings[mode]}
         leading={
           <View
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: mode === 'signup' ? 22 : 32,
+              width: 48,
+              height: 48,
+              borderRadius: 18,
               backgroundColor:
                 mode === 'recover' || mode === 'reset' ? colors.waterSoft : colors.primarySoft,
               alignItems: 'center',
@@ -253,7 +253,6 @@ function AuthForm({
           </View>
         }
       />
-      {mode === 'login' || mode === 'signup' ? <QuickLogEntry /> : null}
       {status === 'unconfigured' ? (
         <Notice error message="DWD is unavailable. Try again." />
       ) : status === 'loading' || profilePending ? (
@@ -309,7 +308,7 @@ function AuthForm({
           {issue ? <Notice error message={issue} /> : null}
         </Panel>
       ) : (
-        <View style={{ gap: 20 }}>
+        <View style={{ gap: 20, backgroundColor: colors.surface, borderRadius: 24, padding: 20 }}>
           {sessionIssue ? <Notice error message={sessionIssue} /> : null}
           {handoff.read().next.startsWith('/join?') ? (
             <Notice message="Sign in or create an account to continue your invitation." />
@@ -340,7 +339,7 @@ function AuthForm({
             </>
           ) : null}
           {mode === 'confirm' ? (
-            <Notice message="Open the latest confirmation email on this device, or enter its code. If you confirmed on another device, sign in here." />
+            <Notice message="Enter the code from your latest email. Check spam if it hasn’t arrived." />
           ) : null}
           {showEmail ? (
             <TextField
@@ -458,11 +457,11 @@ function AuthForm({
           ) : null}
           {mode === 'confirm' ? (
             <PrimaryButton
-              label={countdown ? `Resend in ${countdown}s` : 'Resend confirmation'}
+              label={countdown ? `Resend in ${countdown}s` : 'Resend code'}
               variant="secondary"
               disabled={busy || countdown > 0}
               busy={busyAction === 'resend'}
-              busyLabel="Sending confirmation"
+              busyLabel="Sending code"
               onPress={() =>
                 void run(async () => {
                   if (client)
@@ -516,8 +515,15 @@ function AuthForm({
           onPress={() => router.push('/delete-account')}
         />
       ) : null}
+      {mode === 'login' || mode === 'signup' ? (
+        <PrimaryButton
+          label="Continue without an account"
+          variant="quiet"
+          disabled={busy}
+          onPress={() => router.push('/quick-log?scope=guest')}
+        />
+      ) : null}
       <LegalLinks />
     </Screen>
   );
 }
-import { QuickLogEntry } from './quick-log-entry';

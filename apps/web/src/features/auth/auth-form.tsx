@@ -6,7 +6,7 @@ import { loginAction, signupAction, type AuthActionState } from './actions';
 import { SubmitButton } from '@/components/feedback/submit-button';
 import { PasswordField } from '@/components/ui/password-field';
 
-import { GoogleSignIn } from './google-sign-in';
+import { SocialSignIn } from './social-sign-in';
 
 const initialState: AuthActionState = {};
 
@@ -47,7 +47,7 @@ export function LoginForm({ next }: { next: string }) {
   return (
     <form action={action} className="stack-lg">
       <input type="hidden" name="next" value={next} />
-      <GoogleSignIn next={next} />
+      <SocialSignIn next={next} />
       <div className="stack">
         <EmailField errors={state.fieldErrors?.['email']} />
         <PasswordField error={state.fieldErrors?.['password']?.[0]} />
@@ -80,7 +80,7 @@ export function SignupForm({ next }: { next: string }) {
   return (
     <form action={action} className="stack-lg">
       <input type="hidden" name="next" value={next} />
-      <GoogleSignIn next={next} />
+      <SocialSignIn next={next} />
       <div className="stack">
         <div className="field">
           <label htmlFor="displayName">Display name</label>

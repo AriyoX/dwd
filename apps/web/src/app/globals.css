@@ -954,6 +954,62 @@ p {
   padding: clamp(28px, 4vw, 64px);
   overflow: hidden;
 }
+.auth-aside-heading {
+  margin-top: 48px;
+  font-size: clamp(2.5rem, 4vw, 4.5rem);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.05em;
+  color: var(--primary);
+}
+.auth-aside-heading em {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+.auth-aside .night-illustration {
+  max-width: 340px;
+  margin-block: 0;
+}
+.auth-desktop-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 28px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.auth-social {
+  gap: 10px;
+}
+.auth-social .button {
+  min-height: 52px;
+  border-radius: 14px;
+}
+.auth-apple-button {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+}
+[data-theme='dark'] .auth-apple-button {
+  background: #fff;
+  border-color: #fff;
+  color: #111;
+}
+.auth-guest-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.home-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
 .auth-main {
   display: flex;
   flex-direction: column;
@@ -1776,6 +1832,14 @@ p {
   .action-list > :is(button, a):hover:not(:disabled) {
     background: var(--primary-soft);
   }
+  .button.auth-apple-button:hover:not(:disabled) {
+    background: #282828;
+    color: #fff;
+  }
+  [data-theme='dark'] .button.auth-apple-button:hover:not(:disabled) {
+    background: #e6e6e6;
+    color: #111;
+  }
   .button-danger:hover:not(:disabled) {
     background: var(--danger-hover);
   }
@@ -1839,7 +1903,13 @@ p {
     padding: 28px 24px 22px;
   }
   .auth-mobile-brand {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .auth-desktop-nav {
+    display: none;
   }
   .auth-form-wrap {
     padding-block: 48px;
@@ -2019,7 +2089,8 @@ body:has(.segment-nav) .theme-toggle {
 }
 /* Keep appearance controls from covering the logger's full-width actions. */
 body:has(.quick-log-shell) .theme-toggle,
-body:has(.active-night-shell) .theme-toggle {
+body:has(.active-night-shell) .theme-toggle,
+body:has(.auth-shell) .theme-toggle {
   position: relative;
   right: auto;
   bottom: auto;
