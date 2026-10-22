@@ -6,6 +6,7 @@ import { themeCss } from '@/lib/theme';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { AccountQuickSync } from '@/features/quick-log/account-sync';
 import { resolveSiteUrl } from '@/lib/site-url';
+import { CookiePreferences } from '@/features/privacy/cookie-preferences';
 
 export const metadata: Metadata = {
   metadataBase: new URL(resolveSiteUrl(process.env)),
@@ -53,9 +54,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a href="#main-content" className="skip-link">
           Skip to content
         </a>
-        {children}
-        <AccountQuickSync />
-        <ThemeToggle />
+        <CookiePreferences>
+          {children}
+          <AccountQuickSync />
+          <ThemeToggle />
+        </CookiePreferences>
       </body>
     </html>
   );

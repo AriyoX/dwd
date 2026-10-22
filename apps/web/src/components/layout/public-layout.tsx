@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { Wordmark } from './wordmark';
+import { CookieSettingsButton } from '@/features/privacy/cookie-preferences';
 import styles from './public-pages.module.css';
 
 export function PublicHeader({ signedIn = false }: { signedIn?: boolean }) {
@@ -46,6 +47,7 @@ export function PublicFooter() {
         <div>
           <span>The details</span>
           <Link href="/privacy">Privacy</Link>
+          <CookieSettingsButton />
           <Link href="/terms">Terms</Link>
           <Link href="/#questions">FAQs</Link>
         </div>

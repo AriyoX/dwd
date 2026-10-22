@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { LEGAL_UPDATED, LEGAL_CONTACT, type LegalDocument } from '@dwd/core';
 import { Wordmark } from '@/components/layout/wordmark';
+import { CookieSettingsButton } from '@/features/privacy/cookie-preferences';
 
 export function LegalPage({ document }: { document: LegalDocument }) {
   return (
@@ -13,7 +14,10 @@ export function LegalPage({ document }: { document: LegalDocument }) {
         <p className="muted small">Updated {LEGAL_UPDATED}</p>
         <p>{document.introduction}</p>
         {document.sections.map((section) => (
-          <section key={section.title}>
+          <section
+            key={section.title}
+            id={section.title === 'Website cookies' ? 'browser-storage' : undefined}
+          >
             <h2>{section.title}</h2>
             {section.paragraphs.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
@@ -38,6 +42,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
           <Link className="text-link" href="/support">
             Support
           </Link>
+          <CookieSettingsButton />
         </nav>
         <Link className="text-link" href="/">
           Back to DWD

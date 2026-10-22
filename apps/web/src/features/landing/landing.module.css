@@ -113,6 +113,9 @@
   font-size: 0.95rem;
   font-weight: 600;
 }
+.previewStage[data-preview-layout='straight'] .receipt {
+  transform: none;
+}
 .previewStage {
   position: relative;
   isolation: isolate;

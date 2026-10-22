@@ -1,5 +1,5 @@
 export const LEGAL_CONTACT = { name: 'Ariyo Ahumuza', email: 'ahumuzaariyo@gmail.com' };
-export const LEGAL_UPDATED = '14 October 2026';
+export const LEGAL_UPDATED = '22 October 2026';
 export interface LegalDocument {
   title: string;
   introduction: string;
@@ -48,6 +48,14 @@ export const PRIVACY_POLICY: LegalDocument = {
         'Guest Quick Log sessions and count-only entries stay on the device until you sign in. Signing in associates those sessions with your account and saves them to Supabase when connected, so they can appear in your account history across devices. Logs remain locally recoverable while saving is pending. Quick Log does not record drink sizes or alcohol strength. Only you can read standalone account sessions; choosing to add entries to a shared night makes those entries visible under that night’s access rules.',
         'Web authentication uses cookies. Mobile authentication tokens are stored in the platform’s encrypted secure storage. Pending entries, unfinished setups, support drafts, cached account/night data and theme/tour preferences may be stored locally so you can continue offline. Those local records are not all encrypted by DWD; use a trusted device and its screen lock.',
         'Signing out normally keeps account-separated pending entries for later recovery. Confirmed account deletion clears that account’s saved app data on the requesting mobile device. Browser records and copies on other devices must be cleared on each device. Clear website data or uninstall the app when retiring a device. Server access uses authenticated access rules and HTTPS. No service can guarantee absolute security.',
+      ],
+    },
+    {
+      title: 'Website cookies',
+      paragraphs: [
+        'Essential cookies support sign-in, pending email confirmation and your cookie choice. The cookie-choice preference lasts up to 180 days. Guest logs, pending actions and device preferences use separate local storage and remain available when you decline optional cookies.',
+        'Only if you allow optional cookies, the homepage remembers up to 100 illustrative demo taps and a randomly assigned receipt layout for up to 30 days. These demo taps are separate from your real drink logs. The layout experiment does not assign a unique visitor identifier or send analytics events; these cookies are sent with requests to the DWD website. No advertising or third-party analytics cookies are added.',
+        'Choose Essential only to decline, or reopen Cookie settings in the website footer or legal pages to withdraw permission. Withdrawing removes the optional demo and layout cookies and restores the default layout. Your actual drink logs and sign-in cookies are retained. Clearing website cookies may show the choice again. The native mobile app does not use these website demo cookies.',
       ],
     },
     {

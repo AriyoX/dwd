@@ -1,23 +1,23 @@
 'use client';
 
-import { useState } from 'react';
 import { Droplets, Plus, RotateCcw, Wine } from 'lucide-react';
+import { useCookiePreferences } from '@/features/privacy/cookie-preferences';
 import styles from './landing.module.css';
 
 type Entry = 'drink' | 'chaser';
 
-// This preview never reads or writes a visitor's actual logs or device storage.
+// This illustrative demo is separate from actual logs; persistence requires cookie opt-in.
 export function NightPreview() {
-  const [entries, setEntries] = useState<Entry[]>(['drink', 'chaser', 'drink']);
+  const { demo: entries, updateDemo, optional, previewLayout } = useCookiePreferences();
   const drinks = entries.filter((entry) => entry === 'drink').length;
   const chasers = entries.length - drinks;
 
   function add(entry: Entry) {
-    setEntries((current) => [...current, entry]);
+    updateDemo([...entries, entry]);
   }
 
   return (
-    <div className={styles['previewStage']}>
+    <div className={styles['previewStage']} data-preview-layout={previewLayout}>
       <div className={styles['coaster']} aria-hidden="true">
         <span>
           GOOD
@@ -70,10 +70,12 @@ export function NightPreview() {
           </button>
         </div>
         <div className={styles['receiptBottom']}>
-          <span>Try a tap. Demo resets on reload.</span>
+          <span>
+            {optional ? 'Demo remembered in this browser.' : 'Try a tap. Demo resets on reload.'}
+          </span>
           <button
             type="button"
-            onClick={() => setEntries((current) => current.slice(0, -1))}
+            onClick={() => updateDemo(entries.slice(0, -1))}
             disabled={entries.length === 0}
             aria-label="Undo last preview entry"
           >
