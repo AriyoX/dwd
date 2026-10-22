@@ -2,15 +2,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import {
-  ArrowLeft,
-  ChevronDown,
-  GlassWater,
-  History,
-  MoreHorizontal,
-  Plus,
-  Undo2,
-} from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ChevronDown, History, MoreHorizontal } from 'lucide-react';
 import {
   QUICK_LOG_RETENTION,
   availableQuickEntries,
@@ -32,6 +24,7 @@ import { useBrowserQuickLog, useQuickStoreState } from './provider';
 import styles from './quick-log.module.css';
 import { QuickLogAds } from './floating-ads';
 import { LinkedQuickLogger } from './linked-logger';
+import { QuickLogControls } from './log-controls';
 
 export function QuickLogger({
   history = false,
@@ -114,7 +107,10 @@ function Logger({
     .filter((e) => !e.removedAt)
     .sort((a, b) => compareQuickEntries(b, a));
   const historySessions = state.record.sessions
-    .filter((s) => (store.scope !== 'guest' || !s.claimedBy) && availableQuickEntries(s).length)
+    .filter(
+      (s) =>
+        (store.scope !== 'guest' || !s.claimedBy) && s.entries.some((entry) => !entry.removedAt),
+    )
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id));
   const canUndo =
     undo &&
@@ -209,6 +205,15 @@ function Logger({
         <h1 className={homepage ? styles['homepageHeading'] : undefined}>
           {history ? 'Past quick sessions' : homepage ? 'Just log it.' : 'Quick Log'}
         </h1>
+        {!history ? (
+          <Link
+            className={`button button-ghost ${styles['historyShortcut']}`}
+            href={`/quick-log/history${suffix}`}
+            aria-label="Quick Log history"
+          >
+            <History size={22} aria-hidden="true" />
+          </Link>
+        ) : null}
         <details ref={options} className={styles['options']}>
           <summary className="button button-ghost" aria-label="Session options">
             <MoreHorizontal size={24} aria-hidden="true" />
@@ -275,55 +280,98 @@ function Logger({
       {history ? (
         <>
           {historySessions.length ? (
-            historySessions.map((s) => (
-              <Card key={s.id} className="stack">
-                <span className="pill">Quick Log session</span>
-                <h2>{quickCountLabel(availableQuickEntries(s))}</h2>
-                {availableQuickEntries(s).some((e) => e.kind === 'shot') ? (
-                  <p className="muted small">
-                    Includes {availableQuickEntries(s).filter((e) => e.kind === 'shot').length}{' '}
-                    shots.
-                  </p>
-                ) : null}
-                <p className="muted small">Drink sizes and alcohol strength not recorded.</p>
-                <p className="muted small">
-                  {new Date(s.createdAt).toLocaleString()} ·{' '}
-                  {s.state === 'active' ? 'In progress' : 'Finished'}
-                </p>
-                <Link
-                  className="button button-secondary"
-                  href={`/quick-log?scope=${store.scope === 'guest' ? 'guest' : 'account'}&sessionId=${s.id}`}
-                >
-                  Open session
-                </Link>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={
-                    !writable ||
-                    unresolvedQuickTransfers(state.record).some((o) => o.sessionId === s.id)
-                  }
-                  onClick={() =>
-                    run(() => {
-                      if (
-                        s.entries.length &&
-                        !window.confirm(
-                          store.scope !== 'guest'
-                            ? 'Remove this device’s copy? Your account history is kept and may restore it when syncing.'
-                            : s.entries.some((e) => e.destination)
-                              ? 'Delete this local session? Entries already added to a night stay in that night.'
-                              : 'Delete this local session and its entries?',
-                        )
-                      )
-                        return;
-                      store.deleteSession(s.id);
-                    })
-                  }
-                >
-                  Delete local session
-                </Button>
-              </Card>
-            ))
+            historySessions.map((s) => {
+              const linked = quickLinkedNight(s);
+              const entries = s.entries.filter((entry) => !entry.removedAt);
+              const remaining = availableQuickEntries(s).length;
+              return (
+                <Card key={s.id} className={`stack ${styles['historyCard']}`}>
+                  <div className={styles['historyMeta']}>
+                    <time dateTime={s.createdAt}>
+                      {new Date(s.createdAt).toLocaleDateString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                      {' · '}
+                      {new Date(s.createdAt).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </time>
+                    <span className="pill">
+                      {linked
+                        ? 'Added to a night'
+                        : s.state === 'active'
+                          ? 'In progress'
+                          : 'Finished'}
+                    </span>
+                  </div>
+                  <div className={styles['historyCounts']}>
+                    <p className="muted small">
+                      {linked ? 'Earlier Quick Log entries' : 'Quick Log session'}
+                    </p>
+                    <h2>{quickCountLabel(entries)}</h2>
+                  </div>
+                  {entries.some((e) => e.kind === 'shot') ? (
+                    <p className="muted small">
+                      Includes {entries.filter((e) => e.kind === 'shot').length} shots.
+                    </p>
+                  ) : null}
+                  {linked ? (
+                    <p className="muted small">
+                      {remaining
+                        ? `${remaining} ${remaining === 1 ? 'entry still' : 'entries still'} to add.`
+                        : 'View current totals in the night.'}
+                    </p>
+                  ) : null}
+                  <div className={styles['historyActions']}>
+                    {linked ? (
+                      <Link className="button button-secondary" href={`/night/${linked.nightId}`}>
+                        Open night <ArrowUpRight size={18} aria-hidden="true" />
+                      </Link>
+                    ) : null}
+                    <Link
+                      className={`button ${linked ? 'button-ghost' : 'button-secondary'}`}
+                      href={`/quick-log?scope=${store.scope === 'guest' ? 'guest' : 'account'}&sessionId=${s.id}`}
+                    >
+                      Open session
+                    </Link>
+                  </div>
+                  <details className={styles['historyOptions']}>
+                    <summary>
+                      Session options <ChevronDown size={18} aria-hidden="true" />
+                    </summary>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={
+                        !writable ||
+                        unresolvedQuickTransfers(state.record).some((o) => o.sessionId === s.id)
+                      }
+                      onClick={() =>
+                        run(() => {
+                          if (
+                            s.entries.length &&
+                            !window.confirm(
+                              store.scope !== 'guest'
+                                ? 'Remove this device’s copy? Your account history is kept and may restore it when syncing.'
+                                : s.entries.some((e) => e.destination)
+                                  ? 'Delete this local session? Entries already added to a night stay in that night.'
+                                  : 'Delete this local session and its entries?',
+                            )
+                          )
+                            return;
+                          store.deleteSession(s.id);
+                        })
+                      }
+                    >
+                      Delete local session
+                    </Button>
+                  </details>
+                </Card>
+              );
+            })
           ) : (
             <p className="muted">No past quick sessions yet.</p>
           )}
@@ -366,47 +414,28 @@ function Logger({
               I am 18 or older and meet the local legal drinking age.
             </label>
           ) : null}
-          <div className={styles['logControl']}>
-            <Button
-              type="button"
-              className={styles['tap']}
-              disabled={!enabled}
-              onClick={() => log('drink')}
-              aria-label="Log one drink"
-            >
-              <Plus size={52} strokeWidth={1.7} aria-hidden="true" />
-              <span>Log drink</span>
-            </Button>
+          <QuickLogControls
+            label="Log drink"
+            accessibleLabel="Log one drink"
+            disabled={!enabled}
+            canUndo={Boolean(canUndo)}
+            undoDisabled={!writable}
+            chaserLabel="Log one non-alcoholic chaser"
+            undoLabel="Undo last action"
+            onLog={() => log('drink')}
+            onChaser={() => log('chaser')}
+            onUndo={() =>
+              run(() => {
+                if (undo) store.undo(undo);
+                setMessage('Action undone');
+              })
+            }
+          >
             <p className={styles['announcement']} role="status" aria-live="polite">
               {message}
             </p>
-            <div className={styles['secondaryActions']}>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!enabled}
-                onClick={() => log('chaser')}
-                aria-label="Log one non-alcoholic chaser"
-              >
-                <GlassWater size={20} aria-hidden="true" /> Chaser
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                aria-label="Undo last action"
-                disabled={!writable || !canUndo}
-                onClick={() =>
-                  run(() => {
-                    if (undo) store.undo(undo);
-                    setMessage('Action undone');
-                  })
-                }
-              >
-                <Undo2 size={18} aria-hidden="true" /> Undo
-              </Button>
-            </div>
             <p className="muted small">Chasers are non-alcoholic.</p>
-          </div>
+          </QuickLogControls>
           <details className={styles['recent']}>
             <summary>
               Recent activity <ChevronDown size={18} aria-hidden="true" />

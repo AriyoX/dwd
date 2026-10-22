@@ -18,9 +18,10 @@ import {
   calculatePlanTotal,
   isNightAlertRelevant,
   determineNightTimeStatus,
-  projectedPlanStatus,
-  requiredLogConfirmations,
+  requiredMemberLogConfirmations,
+  confirmationMessage,
   validateProspectivePlan,
+  quickMainDrink,
   type CustomDrinkInput,
   type MemberSnapshot,
   type NightSnapshot,
@@ -71,6 +72,7 @@ import {
 import { useBottleInvitations } from '@/features/bottles/use-bottle-invitations';
 
 import { LinkedControls, type LinkedQuickControls } from '@/features/quick-log/linked-controls';
+import { QuickNightReturnLink } from '@/features/quick-log/night-return-link';
 
 type Segment = 'tonight' | 'group' | 'more';
 type ActivityKind = 'alcohol' | 'water';
@@ -194,8 +196,7 @@ function ActiveNightView({
       : loggableMembers.find((member) => member.id === effectiveSelectedMemberId)) ?? currentMember;
   const invitations = useBottleInvitations(snapshot, selectedMember);
   const mainBottle = snapshot.sharedBottles?.find(
-    (bottle) =>
-      bottle.id === selectedMember.planItems.find((item) => item.isQuickLog)?.sharedBottleId,
+    (bottle) => bottle.id === quickMainDrink(selectedMember)?.sharedBottleId,
   );
   const [inviteOpen, setInviteOpen] = useState(false);
   const [bottlesOpen, setBottlesOpen] = useState(openBottlesInitially);
@@ -528,16 +529,12 @@ function ActiveNightView({
 
     let previewWarnings: Array<'plan_exceeded' | 'after_end'>;
     try {
-      previewWarnings = requiredLogConfirmations(
-        projectedPlanStatus(
-          withPendingDrinks(
-            snapshot.members.find((member) => member.id === draft.member.id) ?? draft.member,
-            optimisticLogs,
-          ),
-          (snapshot.members.find((member) => member.id === draft.member.id) ?? draft.member)
-            .planItems,
-          calculateEthanolGrams(drinkValues.volumeMl, drinkValues.abvPercent),
-        ),
+      const member =
+        snapshot.members.find((member) => member.id === draft.member.id) ?? draft.member;
+      previewWarnings = requiredMemberLogConfirmations(
+        member,
+        withPendingDrinks(member, optimisticLogs),
+        calculateEthanolGrams(drinkValues.volumeMl, drinkValues.abvPercent),
         Date.parse(draft.consumedAt) > Date.parse(snapshot.night.endsAt),
       );
     } catch {
@@ -980,7 +977,7 @@ function ActiveNightView({
     }
   }
 
-  async function catchUp(drinks: number, chasers: number, minutesAgo: number) {
+  async function catchUp(drinks: number, chasers: number, minutesAgo: number, recordedAt: Date) {
     if (activityInFlight.current) return;
     const quick =
       selectedMember.planItems.find((item) => item.isQuickLog) ?? selectedMember.planItems[0];
@@ -996,7 +993,7 @@ function ActiveNightView({
     // PostgreSQL retains microseconds; Date.parse truncates them. Round the
     // lower boundary up so catch-up never falls just before joining/plan setup.
     const consumedAt = new Date(
-      Math.max(earliest + 1, Date.now() - minutesAgo * 60_000),
+      Math.max(earliest + 1, recordedAt.getTime() - minutesAgo * 60_000),
     ).toISOString();
     if (drinks > 0 && quick === undefined) {
       setCatchUpOpen(false);
@@ -1006,6 +1003,10 @@ function ActiveNightView({
     }
     activityInFlight.current = true;
     setBusy(true);
+    const projectedLogs = withPendingDrinks(selectedMember, optimisticLogs).map((log) => ({
+      ethanolGrams: log.ethanolGrams,
+      deletedAt: log.deletedAt,
+    }));
     const records: PendingDrinkLog[] = Array.from({ length: drinks + chasers }, (_, index) => {
       const drink =
         index < drinks && quick !== undefined
@@ -1016,6 +1017,19 @@ function ActiveNightView({
               abvPercent: quick.abvPercent,
             }
           : undefined;
+      const warnings = drink
+        ? requiredMemberLogConfirmations(
+            selectedMember,
+            projectedLogs,
+            calculateEthanolGrams(drink.volumeMl, drink.abvPercent),
+            Date.parse(consumedAt) > Date.parse(snapshot.night.endsAt),
+          )
+        : [];
+      if (drink)
+        projectedLogs.push({
+          ethanolGrams: calculateEthanolGrams(drink.volumeMl, drink.abvPercent),
+          deletedAt: null,
+        });
       return {
         idempotencyKey: crypto.randomUUID(),
         kind: drink ? 'alcohol' : 'water',
@@ -1025,8 +1039,11 @@ function ActiveNightView({
         memberDisplayName: selectedMember.displayName,
         ...(drink ? { customDrink: drink, drinkSnapshot: drink } : {}),
         consumedAt,
-        createdLocallyAt: new Date().toISOString(),
-        status: 'pending',
+        createdLocallyAt: recordedAt.toISOString(),
+        status: warnings.length ? 'needs_confirmation' : 'pending',
+        ...(warnings.length
+          ? { requiredWarnings: warnings, lastError: confirmationMessage(warnings) }
+          : {}),
         retryCount: 0,
         acknowledgePlanExceeded: false,
         acknowledgeAfterEnd: false,
@@ -1086,7 +1103,12 @@ function ActiveNightView({
           onLog={() => quickLog(currentMember)}
           onWater={() => void logWater(currentMember)}
           onUndo={() => void undo(currentMember)}
-          onChoose={() => editPlan(currentMember)}
+          onChoose={() => setDrinkChooser(currentMember)}
+          onEditPlan={() => editPlan(currentMember)}
+          onBottles={() => {
+            setBottlePlanReturn(null);
+            setBottlesOpen(true);
+          }}
           onEnd={() => void end()}
         />
       ) : (
@@ -1103,12 +1125,14 @@ function ActiveNightView({
       ) : null}
       {!quickSession && segment === 'tonight' ? (
         <>
-          <ParticipantSwitcher
-            members={loggableMembers}
-            selectedId={selectedMember.id}
-            onSelect={setSelectedMemberId}
-            onAdd={isHost ? () => setGuestOpen(true) : undefined}
-          />
+          {loggableMembers.length > 1 ? (
+            <ParticipantSwitcher
+              members={loggableMembers}
+              selectedId={selectedMember.id}
+              onSelect={setSelectedMemberId}
+              onAdd={isHost ? () => setGuestOpen(true) : undefined}
+            />
+          ) : null}
           <TonightView
             onRefresh={refresh}
             bottle={mainBottle}
@@ -1128,6 +1152,11 @@ function ActiveNightView({
               (record) => record.nightMemberId === selectedMember.id,
             )}
           />
+          {isHost && loggableMembers.length < 2 ? (
+            <Button type="button" variant="secondary" onClick={() => setGuestOpen(true)}>
+              <UserPlus aria-hidden="true" size={18} /> Add person
+            </Button>
+          ) : null}
           <BottleLauncher
             count={bottleCount}
             onClick={() => {
@@ -1135,6 +1164,11 @@ function ActiveNightView({
               setBottlePlanReturn(null);
               setBottlesOpen(true);
             }}
+          />
+          <QuickNightReturnLink
+            accountId={snapshot.currentUserId}
+            nightId={snapshot.night.id}
+            memberId={snapshot.currentMemberId}
           />
         </>
       ) : null}
@@ -1433,7 +1467,9 @@ function ActiveNightView({
         onClose={() => {
           if (!busy) setCatchUpOpen(false);
         }}
-        onSave={(drinks, chasers, minutesAgo) => void catchUp(drinks, chasers, minutesAgo)}
+        onSave={(drinks, chasers, minutesAgo) =>
+          void catchUp(drinks, chasers, minutesAgo, new Date())
+        }
       />
       <GuestRemovalDialog
         guest={guestToRemove}

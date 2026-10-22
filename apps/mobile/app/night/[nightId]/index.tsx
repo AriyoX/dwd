@@ -13,17 +13,19 @@ import {
   calculateEthanolGrams,
   hasUnknownAmounts,
   quickCounts,
+  quickMainDrink,
+  quickTotalsLabel,
 } from '@dwd/core';
 import { endNight, extendNight, leaveNight, softDeleteActivity, visibleAlerts } from '@dwd/data';
 import { Choice } from '@/components/choice';
 import { NavigationRow } from '@/components/navigation-row';
-import { NightMetrics } from '@/components/night-metrics';
 import { NightPeople } from '@/components/night-people';
 import { NightCheckIns } from '@/components/night-check-ins';
 import { NightActivity } from '@/components/night-activity';
 import { Disclosure } from '@/components/disclosure';
 import { Action, PrimaryButton } from '@/components/primary-button';
-import { DrinkLogButton } from '@/components/drink-log-button';
+import { QuickLogControls } from '@/components/quick-log-controls';
+import { QuickLogReturn } from '@/components/quick-log-return';
 import { LoadingPanel, Notice, Panel, RetryPanel, Screen } from '@/components/screen';
 import { useNight } from '@/hooks/use-night';
 import { useLogging } from '@/hooks/use-logging';
@@ -44,7 +46,7 @@ export default function NightScreen() {
   const router = useRouter();
   const { client, session, status } = useSupabase();
   const { colors, typography } = useTheme();
-  const { records } = useOffline();
+  const { records, outbox } = useOffline();
   const { online } = useConnectivity();
   const { snapshot, issue, refresh, now, refreshing, cached } = useNight(nightId);
   const logging = useLogging((remote) => {
@@ -113,7 +115,7 @@ export default function NightScreen() {
           record.status !== 'needs_confirmation',
       )
     : [];
-  const quick = member?.planItems.find((p) => p.isQuickLog && !p.archivedAt);
+  const quick = member ? quickMainDrink(member) : undefined;
   const mainBottle = snapshot?.sharedBottles?.find((b) => b.id === quick?.sharedBottleId);
   const planned = calculatePlanTotal(member?.planItems.filter((p) => !p.archivedAt) ?? []);
   const planStatus = determinePlanStatus(
@@ -128,6 +130,36 @@ export default function NightScreen() {
       ),
     planned,
   );
+  const latest = [
+    ...drinks.map((entry) => ({ ...entry, kind: 'alcohol' as const })),
+    ...water.map((entry) => ({ ...entry, kind: 'water' as const })),
+  ]
+    .filter(
+      (entry) =>
+        snapshot &&
+        member &&
+        canUserDeleteLog(
+          {
+            actorUserId: snapshot.currentUserId,
+            actorMembership: actor,
+            targetMember: member,
+            night: snapshot.night,
+          },
+          entry.actorUserId,
+        ),
+    )
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+  async function undo() {
+    if (!member || !allowed || busy || logging.busy) return;
+    const local = [...pending].sort(
+      (a, b) => Date.parse(b.createdLocallyAt) - Date.parse(a.createdLocallyAt),
+    )[0];
+    if (local && (!latest || Date.parse(local.createdLocallyAt) >= Date.parse(latest.createdAt))) {
+      if (outbox) await mutate(() => outbox.remove(local.idempotencyKey), 'Entry removed.');
+    } else if (latest && client) {
+      await mutate(() => softDeleteActivity(client, latest.id, latest.kind), 'Entry removed.');
+    }
+  }
   const host = snapshot && canUserEndOrExtendNight(snapshot.currentUserId, snapshot.night);
   useEffect(() => {
     // Resume an unfinished invitation after a restart or reconnection. An
@@ -213,62 +245,12 @@ export default function NightScreen() {
     <Screen
       insetTop={false}
       footer={
-        snapshot?.night.status === 'active' &&
-        member &&
-        allowed &&
-        member.planSetupCompletedAt !== null ? (
-          <View style={{ gap: 8 }}>
-            {logging.issue || logging.notice ? (
-              <Notice
-                dismissible
-                message={logging.issue || logging.notice || ''}
-                error={Boolean(logging.issue)}
-              />
-            ) : null}
-            {mainBottle &&
-            quick &&
-            (mainBottle.closedAt || mainBottle.remainingMl < quick.volumeMl) ? (
-              <>
-                <Text style={typography.body}>
-                  {mainBottle.closedAt
-                    ? 'Bottle put away'
-                    : `${mainBottle.remainingMl} ml left in ${mainBottle.label}`}
-                </Text>
-                <PrimaryButton
-                  large
-                  label="Choose a drink"
-                  disabled={busy || logging.busy}
-                  onPress={() =>
-                    router.push({
-                      pathname: `/night/${nightId}/bottles`,
-                      params: { memberId: member.id },
-                    })
-                  }
-                />
-              </>
-            ) : quick ? (
-              <DrinkLogButton
-                primary
-                label={quick.label}
-                detail={`${member.id !== actor?.id ? `${member.displayName} · ` : ''}${quick.volumeMl} ml · ${quick.abvPercent}%${mainBottle ? ' · shared bottle' : ''}`}
-                busy={logging.busy}
-                disabled={busy}
-                onPress={() => void logging.log(member.id, { planItemId: quick.id })}
-              />
-            ) : (
-              <PrimaryButton
-                large
-                label="Log drink"
-                disabled={busy || logging.busy}
-                onPress={() =>
-                  router.push({
-                    pathname: `/night/${nightId}/log`,
-                    params: { memberId: member.id },
-                  })
-                }
-              />
-            )}
-          </View>
+        logging.issue || logging.notice ? (
+          <Notice
+            dismissible
+            message={logging.issue || logging.notice || ''}
+            error={Boolean(logging.issue)}
+          />
         ) : undefined
       }
       refreshControl={
@@ -350,21 +332,23 @@ export default function NightScreen() {
                 </View>
               ) : null}
               <Panel style={{ padding: 16, gap: 12 }}>
-                <QuickNightActivity member={member} refresh={refresh} />
-                <NightMetrics
-                  compact
-
-                  drinks={
+                <Text
+                  accessibilityRole="header"
+                  style={{
+                    ...typography.sectionTitle,
+                    textAlign: 'center',
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
+                  {quickTotalsLabel(
                     drinks.length +
-                    quickCounts(member.quickLogs ?? []).drink +
-                    pending.filter((record) => record.kind === 'alcohol').length
-                  }
-                  water={
+                      quickCounts(member.quickLogs ?? []).drink +
+                      pending.filter((record) => record.kind === 'alcohol').length,
                     water.length +
-                    quickCounts(member.quickLogs ?? []).chaser +
-                    pending.filter((record) => record.kind === 'water').length
-                  }
-                />
+                      quickCounts(member.quickLogs ?? []).chaser +
+                      pending.filter((record) => record.kind === 'water').length,
+                  )}
+                </Text>
                 <Text style={typography.body}>
                   {hasUnknownAmounts(member.quickLogs)
                     ? 'Some drink sizes are unknown. Plan progress cannot be shown.'
@@ -378,41 +362,63 @@ export default function NightScreen() {
                             ? 'Plan reached'
                             : 'Beyond your plan'}
                 </Text>
-                {member.planSetupCompletedAt === null &&
-                nightAccess(snapshot, member.id).canEdit ? (
-                  <PrimaryButton
-                    label="Set your plan"
-                    onPress={() =>
+                {allowed ? (
+                  <QuickLogControls
+                    mainDrink={quick}
+                    label={
+                      mainBottle &&
+                      (mainBottle.closedAt || mainBottle.remainingMl < (quick?.volumeMl ?? 0))
+                        ? 'Choose a drink'
+                        : quick
+                          ? `Log ${quick.label}`
+                          : member.planSetupCompletedAt === null
+                            ? 'Set your plan'
+                            : 'Choose a drink'
+                    }
+                    {...(quick
+                      ? {
+                          detail: `${quick.volumeMl} ml · ${quick.abvPercent}%${mainBottle ? ' · shared bottle' : ''}`,
+                        }
+                      : {})}
+                    busy={logging.busy}
+                    disabled={busy}
+                    canUndo={Boolean(pending.length || latest)}
+                    onLog={() => {
+                      if (
+                        mainBottle &&
+                        (mainBottle.closedAt || mainBottle.remainingMl < (quick?.volumeMl ?? 0))
+                      ) {
+                        router.push({
+                          pathname: `/night/${nightId}/bottles`,
+                          params: { memberId: member.id },
+                        });
+                      } else if (quick) {
+                        void logging.log(member.id, { planItemId: quick.id });
+                      } else {
+                        router.push({
+                          pathname: `/night/${nightId}/${member.planSetupCompletedAt === null ? 'plan' : 'log'}`,
+                          params: { memberId: member.id },
+                        });
+                      }
+                    }}
+                    onChaser={() => void logging.log(member.id, 'water')}
+                    onUndo={() => void undo()}
+                    onChoose={() =>
                       router.push({
-                        pathname: `/night/${nightId}/plan`,
+                        pathname: `/night/${nightId}/${member.planSetupCompletedAt === null ? 'plan' : 'log'}`,
                         params: { memberId: member.id },
                       })
                     }
                   />
                 ) : null}
-                {allowed ? (
-                  <>
-                    <PrimaryButton
-                      label="Log chaser"
-                      icon="water-outline"
-                      variant="water"
-                      busy={logging.busy}
-                      disabled={busy}
-                      onPress={() => void logging.log(member.id, 'water')}
-                    />
-                    <PrimaryButton
-                      label="Log another drink"
-                      variant="secondary"
-                      disabled={busy || logging.busy || member.planSetupCompletedAt === null}
-                      onPress={() =>
-                        router.push({
-                          pathname: `/night/${nightId}/log`,
-                          params: { memberId: member.id },
-                        })
-                      }
-                    />
-                  </>
+                {mainBottle && quick ? (
+                  <Text style={typography.body}>
+                    {mainBottle.closedAt
+                      ? 'Bottle put away'
+                      : `${mainBottle.remainingMl} ml left in ${mainBottle.label}`}
+                  </Text>
                 ) : null}
+                <QuickNightActivity member={member} refresh={refresh} />
               </Panel>
               {allowed ? (
                 <View style={{ gap: 12 }}>
@@ -458,6 +464,7 @@ export default function NightScreen() {
               ) : null}
             </>
           ) : null}
+          <QuickLogReturn nightId={nightId} memberId={snapshot.currentMemberId} />
           {activity}
           {snapshot.night.status === 'ended' ? (
             <PrimaryButton

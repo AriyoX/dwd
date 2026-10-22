@@ -2,7 +2,7 @@
 
 Code name: **dwd**. Shared packages use the `@dwd` scope.
 
-See the [September 28 product update](docs/product-update-2026-09-28.md) for night memories, Chaser logging, mid-night participants, plan adjustments, reminders, and release verification.
+Web and Expo Android/iOS clients share drink logging, planned nights, invitations, memories and account history. Public event albums and an organizer portal run on the web and are accessible from mobile campaign links.
 
 Live app: **https://dwdug.vercel.app** (the original address remains available). Public email delivery is deferred until SMTP setup.
 
@@ -10,15 +10,33 @@ dwd is a web and Expo Android/iOS app for adults who want a shared, factual reco
 
 dwd is not a drinking game, competition, medical device, BAC calculator, sobriety detector, or driving-safety tool. A personal plan is an intention, never a medically safe allowance. Do not use this product to decide whether anyone should drive.
 
-## MVP scope
+## App features
 
-The working web MVP includes email/password authentication, audited profile creation, transactional night creation, personal and managed-guest plans, hashed invitations, idempotent redemption, one-tap alcohol and water logging, deterministic checkpoints, Realtime snapshot refresh, offline queuing, corrections, prospective end-time extensions, irreversible ending, and factual summaries.
+**Quick Log** is available without an account or night setup. The large circle records a drink; Chaser records a non-alcoholic follow-up, and Undo corrects the last action. Guest sessions stay on their device. Signed-in sessions synchronize across devices, with separate account and guest identities, recent activity and past sessions. See [Quick Log and account flows](docs/quick-log-entry.md).
+
+**Start Tonight** offers Quick Log or Plan a Night on both clients. Planned nights use the same circular logging layout, with a highlighted Main drink card showing its name, size and strength. Choose another drink opens the drinks in your plan; the native picker also retains recent drinks and custom choices. Personal plans, chaser-only participation, shared bottles, managed guests, plan adjustments, reminders, check-ins, missed entries, invitations and factual recaps remain available. Ordinary drinks and chasers can queue offline; shared-bottle pours require a connection to check inventory.
+
+**Add to a night** explicitly transfers earlier quick entries to your own membership in a new, existing or invited night. Earlier entries retain their original counts and unknown measurements. Returning through Back to Quick Log uses that night's plan for new drinks, including its drink size and strength. Imported drink counts contribute to the planned number of drinks; each new drink beyond that plan asks for confirmation, including while offline. Confirming one entry only acknowledges that entry. It never invents measurements for earlier entries. See [logging changes and verification screens](docs/quick-log-planned-nights.md).
+
+**Accounts and memories** include email/password and configured social sign-in, light/dark appearance, first-time tours with Quick Log, night history, shared night photos, feedback, reports, blocking and account deletion. Hosts can log for managed guests; account participants control their own plans and entries. The [architecture guide](docs/architecture.md) covers transactional creation, invitations, realtime refresh, retry-safe logging and authorization.
 
 The Expo mobile app shares the core night, account, safety and legal flows with the web app. Optional foreground device location selects the supported country on-device, with Uganda as the fallback. Native notifications include recurring weekend and holiday planning reminders; delivery depends on permission, credentials and the operating system. Native Sign in with Apple requires the server setup described in the [App Store audit](docs/app-store-readiness.md).
 
 Supported markets are Uganda, Kenya, Tanzania, Rwanda, South Africa, UAE (including Dubai), UK, US and Canada. Coordinates stay on-device; only country and holiday region are saved. Planning reminders use local time, suppress active/recent Nights, enforce frequency caps and continue beyond 2026. One-off holidays and official moon-sighting dates still need calendar maintenance. See [country support](docs/country-expansion.md) and [pre-plot notifications](docs/preplot-notifications.md).
 
-## Release status — verified 6 October 2026
+## Events and organizer tools
+
+[The Link Up](https://dwdug.vercel.app/events/the-link-up) is the public album for the event held at Salama Springs on **17 October 2026**. Guests can browse photos, open the full-screen viewer, download individual photos, report content and add photos while uploads are enabled. Uploads support JPEG, PNG, WebP and HEIC/HEIF, with preparation, progress, retry and browser draft recovery. Event photo sessions are separate from DWD accounts and drink logs. Mobile campaign links open this web experience; there is no separate native event album.
+
+The [Events admin portal](https://dwdug.vercel.app/events/admin) uses ordinary DWD sign-in and lists only dashboards explicitly granted to the current account. [The Link Up dashboard](https://dwdug.vercel.app/events/admin/the-link-up) provides photo moderation, reports, storage and upload status, upload/gallery switches, cleanup and ZIP export. Portal membership and each event require separate enabled grants. See [event implementation and setup](docs/link-up-phase-2.md), [dashboard operations](docs/link-up-dashboard.md), and [admin access and ZIP export](docs/page-admin-access.md).
+
+The mobile Tonight screen, web Home and Quick Log have shared campaign banners. The Link Up campaign now promotes the completed event's memories and appears last, after Baby Steps, Super Badass Records, Sundiata Beach Resort and Kuri Hotel. Feed updates reach mobile when its configured web feed is deployed. See [ads configuration](docs/ads.md).
+
+## Releases and verification
+
+Current behavior and setup are described in the feature guides above. The following deployment evidence is historical; it does not certify the current workspace or an installed mobile build. Backend changes, web deployment and mobile distribution have separate release steps.
+
+### Backend baseline verified 6 October 2026
 
 - All 22 migrations through `20261006103849_apple_revocation_and_release_audit` are applied to the dedicated DWD backend.
 - Hosted functions match the reviewed source: `dispatch-notifications` v6, `delete-accounts` v2 and `apple-account-token` v1. Minute notification and hourly deletion Cron jobs are active; recent dispatch requests returned HTTP 200.
@@ -28,13 +46,11 @@ Supported markets are Uganda, Kenya, Tanzania, Rwanda, South Africa, UAE (includ
 
 This is not a store-approval claim. Apple readiness returns HTTP 503 until its server credentials are configured. Production SMTP, signing/push credentials, leaked-password protection, moderation coverage, final store declarations and real-device acceptance remain release gates. See [mobile release setup](docs/mobile-release-readiness.md), [Google Play audit](docs/google-play-readiness.md) and [App Store audit](docs/app-store-readiness.md).
 
-The mobile Tonight page and web home page include a swipeable banner placement with DWD house banners and an optional shared sponsor feed. See [connecting ads](docs/ads.md) for configuration and the separate AdMob integration path.
-
-The product has no marketing site, PIN or delegated account editing, spending, food logging, advertising analytics, achievements, public rankings, AI recommendations, BAC or sobriety estimation.
+The product has no PIN or delegated account editing, spending, food logging, advertising analytics, achievements, public rankings, AI recommendations, BAC or sobriety estimation.
 
 ## Self-service onboarding
 
-Use **Try a demo** on the sign-in/sign-up screen to explore a fictional night without an account. Demo actions remain in browser storage with Reset and Exit controls. DWD includes light/dark mode, email-confirmation recovery, water-only participation, saved night setup, finished-night history, and private feedback/deletion requests. Invite someone uses their account and phone; Track for someone lets the host manage a guest without an account.
+Open Quick Log to start counting immediately. New account users receive an optional tour covering Quick Log and planned nights; replay it from Take a tour on web or Explore DWD in mobile Settings. The mobile tour highlights real controls without creating data; the web tour offers an isolated practice night. The separate web **Try a demo** flow uses fictional data with Reset and Exit controls. See [product tour behavior](docs/product-tour.md).
 
 The repository is private and connected to the existing Vercel `dwd` project. Branch pushes create previews; `main` deploys production. Database migrations are an explicit separate release step, never part of a preview build. See [deployment and Git workflow](docs/deployment.md) and [support operations](docs/support-operations.md).
 
@@ -198,7 +214,7 @@ Pending email signups use a one-hour HttpOnly cookie so confirmation survives re
 
 See [docs/deployment.md](docs/deployment.md) for the live project settings, CLI commands, and deferred SMTP setup.
 
-## Known MVP limitations
+## Known limitations and release requirements
 
 - Persistent in-app notifications are available without browser permission. The hosted dispatcher and scheduler are deployed; browser/native delivery still depends on subscription, permission and channel credentials. Native pre-plot campaigns require a valid mobile subscription. See [deployment](docs/deployment.md).
 - The compact outbox uses guarded `localStorage`, not a general offline database. It stores only pending activity data needed for retry and is isolated by account and night.
@@ -208,7 +224,7 @@ See [docs/deployment.md](docs/deployment.md) for the live project settings, CLI 
 - Database authorization is covered by isolated PostgreSQL tests; mobile and desktop onboarding checks use Playwright. See the deployment guide for the latest validation and deferred SMTP work.
 - Optional foreground location chooses local campaigns and Help numbers on mobile/web, with Uganda as the default. Supported markets and African expansion priorities are in [country support](docs/country-expansion.md).
 - Native auth tokens use encrypted SecureStore with migration from legacy storage. Activity caches and pending entries remain unencrypted device data; test upgrades, offline recovery and account switching on real devices.
-- Shared photos require operator approval before other participants can see them. Reporting and blocking are implemented, but a person must monitor the moderation queue; see [moderation operations](docs/moderation-operations.md).
+- Night photos and public event photos have separate access and moderation flows. Event organizers can hide, restore and delete event photos and review reports. A person must monitor the queues; see [moderation operations](docs/moderation-operations.md) and [event operations](docs/link-up-dashboard.md).
 - The 6 October dependency review reduced npm audit findings from 20 to 18 high entries by updating Sharp. Remaining entries trace to the unpatched [braces](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) and [node-forge](https://github.com/advisories/GHSA-86w9-cpqp-85rv) advisories. Rerun `npm audit` before release; do not use `npm audit fix --force` to downgrade Expo to clear the count.
 
 See [architecture](docs/architecture.md), [database and RLS](docs/database-and-rls.md), [manual QA](docs/manual-qa-checklist.md), and [mobile portability](docs/mobile-portability.md) for operational detail.

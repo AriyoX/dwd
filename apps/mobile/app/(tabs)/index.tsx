@@ -58,11 +58,11 @@ export default function TonightScreen() {
         </Text>
       </View>
       <ScreenHeading title="Tonight" />
-      {currentQuick ? (
+      <TourTarget id="quick-log">
         <Action
-          label="Resume Quick Log"
+          label={currentQuick ? 'Resume Quick Log' : 'Quick Log'}
           onPress={() =>
-            router.push(currentQuick.scope === 'guest' ? '/quick-log?scope=guest' : '/quick-log')
+            router.push(currentQuick?.scope === 'guest' ? '/quick-log?scope=guest' : '/quick-log')
           }
           style={{
             flexDirection: 'row',
@@ -89,19 +89,21 @@ export default function TonightScreen() {
             <Ionicons name="add" size={24} color={colors.primary} accessible={false} />
           </View>
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={typography.sectionTitle}>Resume Quick Log</Text>
-            {
+            <Text style={typography.sectionTitle}>
+              {currentQuick ? 'Resume Quick Log' : 'Quick Log'}
+            </Text>
+            {currentQuick ? (
               <Text style={{ ...typography.body, color: colors.muted, fontSize: 13 }}>
                 {quickLinkedNight(currentQuick)
                   ? 'Linked to your night'
                   : quickCountLabel(currentQuick.entries)}
                 {currentQuick.scope === 'guest' && status === 'signed-in' ? ' · Guest session' : ''}
               </Text>
-            }
+            ) : null}
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.primary} accessible={false} />
         </Action>
-      ) : null}
+      </TourTarget>
       {status === 'signed-in' ? (
         <View style={{ gap: 12 }}>
           <Text accessibilityRole="header" style={typography.sectionTitle}>

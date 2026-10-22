@@ -20,7 +20,9 @@ export function determinePlanStatus(
   return 'within_plan';
 }
 
-export function calculateLoggedEthanol(logs: readonly AlcoholLog[]): number {
+export function calculateLoggedEthanol(
+  logs: readonly Pick<AlcoholLog, 'ethanolGrams' | 'deletedAt'>[],
+): number {
   return roundGrams(
     logs
       .filter((log) => log.deletedAt === null)
@@ -40,7 +42,7 @@ export function validateProspectivePlan(
 }
 
 export function projectedPlanStatus(
-  logs: readonly AlcoholLog[],
+  logs: readonly Pick<AlcoholLog, 'ethanolGrams' | 'deletedAt'>[],
   planItems: readonly PlanItemInput[],
   proposedEthanolGrams: number,
 ): PlanStatus {

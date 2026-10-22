@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadBannerAds, parseBannerAds } from '../apps/mobile/src/lib/banner-ads';
+import campaigns from '../apps/web/public/tonight-ads.json';
 
 const campaign = {
   id: 'ride-home',
@@ -12,6 +13,22 @@ const campaign = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('public sponsor feed', () => {
+  it('keeps the completed Link Up memories last and available after the event', () => {
+    const ads = parseBannerAds(campaigns, Date.parse('2026-10-21T12:00:00Z'));
+    expect(ads?.map((ad) => ad.id)).toEqual([
+      'baby-steps-waitlist',
+      'super-badass-records-studio',
+      'sundiata-beach-resort',
+      'kuri-hotel',
+      'the-link-up-2026',
+    ]);
+    expect(ads?.at(-1)).toMatchObject({
+      title: 'The Link Up memories',
+      cta: 'View event photos',
+      sponsored: false,
+      url: 'https://dwdug.vercel.app/events/the-link-up',
+    });
+  });
   it('validates campaigns, labels sponsorship, and preserves their display order', () => {
     const ads = parseBannerAds({
       ads: [campaign, { ...campaign, id: 'weekend', tone: 'amber' }],

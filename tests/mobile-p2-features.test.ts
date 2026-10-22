@@ -192,6 +192,11 @@ describe('catch-up logging', () => {
     expect(records.map((r) => r.kind)).toEqual(['alcohol', 'alcohol', 'water']);
     expect(new Set(records.map((r) => r.idempotencyKey)).size).toBe(3);
     expect(new Set(records.map((r) => r.consumedAt)).size).toBe(1);
+    expect(
+      records.every(
+        (record) => Date.parse(record.createdLocallyAt) > Date.parse(record.consumedAt),
+      ),
+    ).toBe(true);
     expect(records[0]?.customDrink).toMatchObject({ label: night.members[0]?.planItems[0]?.label });
   });
   it('rounds the join/setup floor up and keeps combined plan warnings for review', () => {

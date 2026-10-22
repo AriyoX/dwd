@@ -4,11 +4,9 @@ import { withRequestTimeout } from './request-timeout';
 import { entryFailureMessage } from './entry-message';
 import {
   calculateEthanolGrams,
-  calculatePlanTotal,
   confirmationMessage,
   customDrinkSchema,
-  determinePlanStatus,
-  requiredLogConfirmations,
+  requiredMemberLogConfirmations,
   type CustomDrinkInput,
   type AlcoholLog,
   type DrinkLogResult,
@@ -312,12 +310,27 @@ export class NativeLogOutbox {
     if (!this.current() || this.removing.has(key)) return;
     this.removing.add(key);
     try {
+      const original = this.store.getAll().find((item) => item.idempotencyKey === key);
+      const knownAccepted = this.accepted.get(key);
       await this.inFlight.get(key);
       if (!this.current()) return;
-      const record = this.store.getAll().find((item) => item.idempotencyKey === key);
-      // A concurrent sync may already have saved it. Refresh activity for its normal Undo action.
-      if (!record) throw new Error('Entry saved. Open Entries to undo it.');
-      if (
+      const saved = this.accepted.get(key) ?? knownAccepted;
+      const record =
+        this.store.getAll().find((item) => item.idempotencyKey === key) ??
+        (original?.attempted ? original : undefined);
+      if (saved) {
+        await withRequestTimeout((signal) =>
+          this.sender.delete(
+            saved.log.id,
+            'ethanolGrams' in saved.log ? 'alcohol' : 'water',
+            signal,
+          ),
+        );
+        if (!this.current()) return;
+        this.accepted.delete(key);
+      } else if (!record) {
+        throw new Error('Entry saved. Open Entries to undo it.');
+      } else if (
         record.attempted &&
         record.status !== 'needs_confirmation' &&
         record.status !== 'permanent_failure'
@@ -377,26 +390,23 @@ export function makePendingLog(
     (record) =>
       record.nightMemberId === targetMemberId &&
       record.kind === 'alcohol' &&
-      record.status !== 'permanent_failure',
+      record.status !== 'permanent_failure' &&
+      record.status !== 'needs_confirmation',
   );
-  const grams =
-    member.drinkLogs
-      .filter((log) => !log.deletedAt)
-      .reduce((sum, log) => sum + log.ethanolGrams, 0) +
-    waiting.reduce(
-      (sum, log) =>
-        sum +
-        (log.drinkSnapshot
-          ? calculateEthanolGrams(log.drinkSnapshot.volumeMl, log.drinkSnapshot.abvPercent)
-          : 0),
-      0,
-    );
+  const logs = [
+    ...member.drinkLogs,
+    ...waiting.map((log) => ({
+      deletedAt: null,
+      ethanolGrams: log.drinkSnapshot
+        ? calculateEthanolGrams(log.drinkSnapshot.volumeMl, log.drinkSnapshot.abvPercent)
+        : 0,
+    })),
+  ];
   const warnings: Warning[] = drink
-    ? requiredLogConfirmations(
-        determinePlanStatus(
-          grams + calculateEthanolGrams(drink.volumeMl, drink.abvPercent),
-          calculatePlanTotal(member.planItems.filter((plan) => !plan.archivedAt)),
-        ),
+    ? requiredMemberLogConfirmations(
+        member,
+        logs,
+        calculateEthanolGrams(drink.volumeMl, drink.abvPercent),
         Date.parse(consumedAt) > Date.parse(snapshot.night.endsAt),
       )
     : [];

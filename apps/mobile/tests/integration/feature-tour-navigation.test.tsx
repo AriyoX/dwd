@@ -44,7 +44,7 @@ describe('route-aware native tour', () => {
     await act(() => tour?.start());
     expect(runtime.dismissTo).toHaveBeenLastCalledWith('/');
     await arrive('/');
-    for (const index of [1, 2, 3, 4, 5, 4, 3, 2, 1, 0]) {
+    for (const index of [1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, 0]) {
       await act(() => tour?.go(index));
       expect(tour?.index).toBe(index);
       const route = FEATURE_TOUR_STEPS[index]?.route;
@@ -62,7 +62,7 @@ describe('route-aware native tour', () => {
   it('returns a manual replay to Settings and does not reopen on later navigation', async () => {
     await act(() => tour?.start('/account'));
     await arrive('/');
-    await act(() => tour?.go(3));
+    await act(() => tour?.go(FEATURE_TOUR_STEPS.findIndex((step) => step.id === 'notifications')));
     await arrive('/notifications');
     await act(() => tour?.finish());
     expect(runtime.dismissTo).toHaveBeenLastCalledWith('/account');

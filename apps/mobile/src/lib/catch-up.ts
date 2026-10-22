@@ -48,9 +48,10 @@ export function catchUpRecords(
             },
           }
         : ('water' as const);
-    records.push(
-      makePendingLog(snapshot, memberId, choice, [...pending, ...records], newKey(), consumedAt),
-    );
+    records.push({
+      ...makePendingLog(snapshot, memberId, choice, [...pending, ...records], newKey(), consumedAt),
+      createdLocallyAt: new Date(now).toISOString(),
+    });
   }
   return records;
 }

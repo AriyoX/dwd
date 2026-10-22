@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { lightTheme } from '@dwd/core';
 import QuickLogScreen from '../../app/quick-log';
+import QuickHistoryScreen from '../../app/quick-history';
 import QuickTransferScreen from '../../app/quick-transfer';
 import StartTonightScreen from '../../app/start-tonight';
 import QuickBenefitsScreen from '../../app/quick-benefits';
@@ -152,6 +153,42 @@ afterEach(async () => {
   root = null;
 });
 describe('native public Quick Log', () => {
+  it.each([false, true])('keeps transferred sessions in history (partial: %s)', async (partial) => {
+    const store = nativeQuickStore('guest');
+    store.acknowledgeEligibility();
+    const { sessionId } = store.log('drink');
+    const accountId = 'bd100000-0000-4000-8000-000000000077';
+    const nightId = 'bd300000-0000-4000-8000-000000000077';
+    const memberId = 'bd400000-0000-4000-8000-000000000077';
+    const operation = store.prepareTransfer(sessionId, accountId, nightId, memberId);
+    if (partial) store.log('chaser');
+    store.confirmTransfer(operation.id, {
+      operationId: operation.id,
+      accountId,
+      nightId,
+      memberId,
+      entries: operation.entries.map((entry) => ({
+        sourceEntryId: entry.id,
+        destinationEntryId: 'bd500000-0000-4000-8000-000000000077',
+        revision: entry.revision,
+      })),
+    });
+    await act(() => {
+      root = create(<QuickHistoryScreen />);
+    });
+    expect(content()).toContain('Added to a night');
+    expect(content()).toContain(partial ? '1 drink · 1 chaser' : '1 drink · 0 chasers');
+    expect(content()).toContain(
+      partial ? '1 entry still to add.' : 'View current totals in the night.',
+    );
+    await press('Open night');
+    expect(runtime.router.push).toHaveBeenCalledWith(`/night/${nightId}`);
+    await press('Open session');
+    expect(runtime.router.push).toHaveBeenCalledWith({
+      pathname: '/quick-log',
+      params: { scope: 'guest', sessionId },
+    });
+  });
   it('updates Undo when the mounted store receives a recovered action', async () => {
     const store = nativeQuickStore('guest');
     store.acknowledgeEligibility();

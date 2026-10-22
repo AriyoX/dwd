@@ -89,7 +89,10 @@ describe('tour targets on real screens', () => {
     { nights: [{ id: 'night', title: 'Tonight', role: 'host', endsAt: '2026-10-08T23:00:00Z' }] },
   ])('wraps the actual Start and Join buttons with any active-night state', async ({ nights }) => {
     await mount(TonightScreen, nights);
-    expect(targetIds()).toEqual(['start', 'join']);
+    expect(targetIds()).toEqual(['quick-log', 'start', 'join']);
+    expect(
+      root?.root.findByProps({ id: 'quick-log' }).findAllByProps({ label: 'Quick Log' }),
+    ).toHaveLength(1);
     expect(
       root?.root.findByProps({ id: 'start' }).findAllByProps({ label: 'Start Tonight' }),
     ).toHaveLength(1);

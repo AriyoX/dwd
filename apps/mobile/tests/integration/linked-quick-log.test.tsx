@@ -9,14 +9,17 @@ import {
   type QuickSession,
 } from '@dwd/core';
 import { LinkedQuickLog } from '@/components/linked-quick-log';
+import { QuickLogReturn } from '@/components/quick-log-return';
 const runtime = vi.hoisted(() => ({
   snapshot: null as NightSnapshot | null,
   log: vi.fn(),
   end: vi.fn(),
+  removeSaved: vi.fn(),
   finish: vi.fn(),
   alert: vi.fn(),
   records: [] as { nightId: string }[],
   online: true,
+  sessions: [] as QuickSession[],
   account: '00000000-0000-4000-8000-000000000001',
   router: { push: vi.fn(), replace: vi.fn(), dismissTo: vi.fn() },
 }));
@@ -24,16 +27,22 @@ vi.mock('react-native', () => ({
   Text: 'Text',
   View: 'View',
   Pressable: 'Pressable',
+  ActivityIndicator: 'ActivityIndicator',
   Alert: { alert: runtime.alert },
   useWindowDimensions: () => ({ width: 390, fontScale: 1 }),
 }));
 vi.mock('expo-router', () => ({ useRouter: () => runtime.router }));
 vi.mock('@expo/vector-icons', () => ({ Ionicons: 'Icon' }));
-vi.mock('@dwd/data', () => ({ endNight: runtime.end, softDeleteActivity: vi.fn() }));
+vi.mock('@dwd/data', () => ({ endNight: runtime.end, softDeleteActivity: runtime.removeSaved }));
 vi.mock('@/hooks/use-night', () => ({
   useNight: () => ({ snapshot: runtime.snapshot, refresh: vi.fn(), now: Date.now() }),
 }));
 vi.mock('@/hooks/use-logging', () => ({ useLogging: () => ({ log: runtime.log, busy: false }) }));
+vi.mock('@/hooks/use-quick-log', () => ({
+  useQuickLog: (guest: boolean) => ({
+    state: { record: { sessions: guest ? [] : runtime.sessions } },
+  }),
+}));
 vi.mock('@/hooks/use-night-action', () => ({
   useNightAction: () => ({
     run: async (work: () => Promise<void>, _message: string, saved?: () => void) => {
@@ -147,6 +156,7 @@ beforeEach(() => {
   runtime.account = id(1);
   runtime.records = [];
   runtime.online = true;
+  runtime.sessions = [];
   runtime.end.mockResolvedValue(undefined);
   quick = {
     id: id(10),
@@ -212,6 +222,32 @@ it('logs the current main drink and chaser into the night, and follows plan chan
   await press('Log Wine');
   expect(runtime.log).toHaveBeenLastCalledWith(id(2), { planItemId: id(5) });
 });
+it('undoes the most recently added entry when a missed entry was backdated', async () => {
+  const member = runtime.snapshot!.members[0]!;
+  const entry = {
+    id: id(30),
+    nightId: id(3),
+    nightMemberId: member.id,
+    actorUserId: runtime.account,
+    consumedAt: '2026-10-06T19:45:00.000Z',
+    createdAt: '2026-10-06T19:45:00.000Z',
+    idempotencyKey: id(31),
+    deletedAt: null,
+  };
+  member.waterLogs = [
+    entry,
+    {
+      ...entry,
+      id: id(32),
+      idempotencyKey: id(33),
+      consumedAt: '2026-10-06T19:30:00.000Z',
+      createdAt: '2026-10-06T19:59:00.000Z',
+    },
+  ];
+  await mount();
+  await press('Undo');
+  expect(runtime.removeSaved).toHaveBeenCalledExactlyOnceWith({}, id(32), 'water');
+});
 it('asks the host and keeps the session open if ending the night fails', async () => {
   await mount();
   await press('Finish session');
@@ -257,8 +293,36 @@ it('never logs to another account or a departed membership', async () => {
 });
 it('offers a choice when the invite member has no drink plan', async () => {
   runtime.snapshot!.members[0]!.planItems = [];
+  runtime.snapshot!.members[0]!.planSetupCompletedAt = null;
   expect(quickMainDrink(runtime.snapshot!.members[0]!)).toBeUndefined();
   await mount();
   await press('Choose a drink');
   expect(runtime.router.push).toHaveBeenCalledWith(`/night/${id(3)}/plan`);
+  await press('Choose another drink');
+  expect(runtime.router.push).toHaveBeenLastCalledWith(`/night/${id(3)}/plan`);
+});
+
+it('opens planned drink choices separately from editing the plan and sharing bottles', async () => {
+  await mount();
+  await press('Choose another drink');
+  expect(runtime.router.push).toHaveBeenLastCalledWith(`/night/${id(3)}/log`);
+  await press('Edit plan');
+  expect(runtime.router.push).toHaveBeenLastCalledWith(`/night/${id(3)}/plan`);
+  await press('Shared bottles');
+  expect(runtime.router.push).toHaveBeenLastCalledWith(`/night/${id(3)}/bottles`);
+  expect(runtime.log).not.toHaveBeenCalled();
+});
+
+it('returns from the planned night to its exact linked quick session', async () => {
+  runtime.sessions = [quick];
+  await act(() => {
+    root = create(<QuickLogReturn nightId={id(3)} memberId={id(2)} />);
+  });
+  await press('Back to Quick Log');
+  expect(runtime.router.dismissTo).toHaveBeenCalledExactlyOnceWith({
+    pathname: '/quick-log',
+    params: { scope: 'account', sessionId: quick.id },
+  });
+  await act(() => root?.update(<QuickLogReturn nightId={id(20)} memberId={id(2)} />));
+  expect(button('Back to Quick Log')).toBeUndefined();
 });

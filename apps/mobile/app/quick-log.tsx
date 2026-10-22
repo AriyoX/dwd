@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
@@ -29,6 +29,7 @@ import { LegalLinks } from '@/components/auth-chrome';
 import { useQuickSync } from '@/providers/quick-sync-provider';
 import { useQuickLogAds } from '@/components/quick-log-ads';
 import { LinkedQuickLog } from '@/components/linked-quick-log';
+import { QuickLogControls } from '@/components/quick-log-controls';
 
 export default function QuickLogScreen() {
   const params = useLocalSearchParams<{ scope?: string; sessionId?: string }>();
@@ -49,8 +50,6 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
   const { colors, typography } = useTheme();
   const router = useRouter();
   const reduced = useReducedMotion();
-  const { width, fontScale } = useWindowDimensions();
-  const circleSize = Math.min(width - 44, Math.max(232, 168 * fontScale));
   const [selected, setSelected] = useState(selectedId);
 
   const [expanded, setExpanded] = useState(false);
@@ -140,6 +139,18 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
         <Text accessibilityRole="header" style={{ ...typography.sectionTitle, flex: 1 }}>
           Quick Log
         </Text>
+        <Action
+          label="Quick Log history"
+          onPress={() =>
+            router.push({
+              pathname: '/quick-history',
+              params: { scope: scope === 'guest' ? 'guest' : 'account' },
+            })
+          }
+          style={{ alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="time-outline" size={24} color={colors.primary} />
+        </Action>
         <Action
           label="Session options"
           expanded={menu}
@@ -261,83 +272,26 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
           onPress={() => run(() => store.acknowledgeEligibility())}
         />
       ) : null}
-      <View style={{ alignItems: 'center', gap: 18, paddingVertical: 8 }}>
-        <Action
-          label="Log one drink"
-          disabled={!writable || !state.record.eligible}
-          onPress={() => log('drink')}
-          containerStyle={{ width: circleSize, maxWidth: '100%' }}
-          style={{
-            width: '100%',
-            aspectRatio: 1,
-            padding: 24,
-            gap: 12,
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderRadius: 999,
-            backgroundColor: colors.primaryFill,
-            borderWidth: 6,
-            borderColor: colors.primarySoft,
-          }}
-        >
-          <Ionicons name="add" size={52} color={colors.onPrimary} accessible={false} />
-          <Text
-            style={{
-              color: colors.onPrimary,
-              fontSize: 22,
-              fontWeight: '600',
-              textAlign: 'center',
-            }}
-          >
-            Log drink
-          </Text>
-        </Action>
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <PrimaryButton
-            label="Chaser"
-            icon="cafe-outline"
-            variant="secondary"
-            disabled={!writable || !state.record.eligible}
-            onPress={() => log('chaser')}
-          />
-          <Action
-            label="Undo last action"
-            disabled={!canUndo}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              paddingHorizontal: 16,
-            }}
-            onPress={() =>
-              run(() => {
-                if (undo) store.undo(undo);
-                announce('Action undone');
-              })
-            }
-          >
-            <Ionicons
-              name="arrow-undo-outline"
-              size={18}
-              color={colors.primary}
-              accessible={false}
-            />
-            <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>Undo</Text>
-          </Action>
-        </View>
+      <QuickLogControls
+        label="Log drink"
+        accessibleLabel="Log one drink"
+        disabled={!writable || !state.record.eligible}
+        canUndo={Boolean(canUndo)}
+        undoDisabled={false}
+        undoLabel="Undo last action"
+        onLog={() => log('drink')}
+        onChaser={() => log('chaser')}
+        onUndo={() =>
+          run(() => {
+            if (undo) store.undo(undo);
+            announce('Action undone');
+          })
+        }
+      >
         <Text style={{ ...typography.body, color: colors.muted, fontSize: 13 }}>
           Chasers are non-alcoholic.
         </Text>
-      </View>
+      </QuickLogControls>
       <Panel>
         <Action
           label="Recent activity"

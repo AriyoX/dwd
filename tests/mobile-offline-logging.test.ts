@@ -481,6 +481,75 @@ describe('native durable outbox', () => {
     expect(f.store.getAll()).toEqual([]);
   });
 
+  it.each(['alcohol', 'water'] as const)(
+    'undoes an %s entry while its upload completes',
+    async (kind) => {
+      const f = fixture();
+      const entry = record(10, kind === 'water' ? 'water' : { planItemId: id(4) });
+      const response = deferred<ReturnType<typeof accepted>>();
+      f.sender.send.mockImplementationOnce(() => response.promise);
+      f.outbox.enqueue(entry);
+      const sync = f.outbox.syncOne(entry.idempotencyKey);
+      const undo = f.outbox.remove(entry.idempotencyKey);
+      response.resolve(accepted(entry));
+      await sync;
+      await undo;
+      expect(f.sender.delete).toHaveBeenCalledExactlyOnceWith(
+        id(50),
+        kind,
+        expect.any(AbortSignal),
+      );
+      expect(f.store.getAll()).toEqual([]);
+      expect(f.outbox.withAccepted(snapshot()).members[0]?.drinkLogs).toEqual([]);
+      expect(f.outbox.withAccepted(snapshot()).members[0]?.waterLogs).toEqual([]);
+    },
+  );
+
+  it('can retry Undo after upload completes but the server deletion fails', async () => {
+    const f = fixture();
+    const entry = record();
+    const response = deferred<ReturnType<typeof accepted>>();
+    f.sender.send.mockImplementationOnce(() => response.promise);
+    f.sender.delete.mockRejectedValueOnce(new Error('Response lost'));
+    f.outbox.enqueue(entry);
+    const sync = f.outbox.syncOne(entry.idempotencyKey);
+    const undo = expect(f.outbox.remove(entry.idempotencyKey)).rejects.toThrow('Response lost');
+    response.resolve(accepted(entry));
+    await sync;
+    await undo;
+    expect(f.outbox.withAccepted(snapshot()).members[0]?.drinkLogs).toHaveLength(1);
+    await f.outbox.remove(entry.idempotencyKey);
+    expect(f.outbox.withAccepted(snapshot()).members[0]?.drinkLogs).toEqual([]);
+    expect(f.sender.delete).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers the uploaded entry by its original key if a refresh has already reconciled it', async () => {
+    const f = fixture();
+    const entry = record();
+    const response = deferred<ReturnType<typeof accepted>>();
+    f.sender.send.mockImplementationOnce(() => response.promise);
+    f.sender.send.mockResolvedValueOnce(accepted(entry, 'duplicate'));
+    f.changed.mockImplementation((synced) => {
+      if (synced) f.outbox.reconcileAccepted(snapshot(), f.outbox.acceptedVersion());
+    });
+    f.outbox.enqueue(entry);
+    const sync = f.outbox.syncOne(entry.idempotencyKey);
+    const undo = f.outbox.remove(entry.idempotencyKey);
+    response.resolve(accepted(entry));
+    await sync;
+    await undo;
+    expect(f.sender.send).toHaveBeenLastCalledWith(
+      expect.objectContaining({ idempotencyKey: entry.idempotencyKey }),
+      expect.any(AbortSignal),
+    );
+    expect(f.sender.delete).toHaveBeenCalledExactlyOnceWith(
+      id(50),
+      'alcohol',
+      expect.any(AbortSignal),
+    );
+    expect(f.store.getAll()).toEqual([]);
+  });
+
   it('keeps an ambiguous entry when removal cannot check the server', async () => {
     const f = fixture();
     f.store.save({ ...record(), attempted: true, status: 'failed' });

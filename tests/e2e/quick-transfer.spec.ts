@@ -62,6 +62,120 @@ async function reopen(page: Page, destination: string) {
   return next;
 }
 
+for (const imported of [false, true]) {
+  test(`every over-plan drink asks again ${imported ? 'after linking Quick Log' : 'in a planned night'}`, async ({
+    page,
+    context,
+  }, info) => {
+    test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local backend required.');
+    const user = await account('Plan confirmations');
+    const target = await night(user, 'Confirm each drink', [
+      {
+        label: 'Beer',
+        category: 'beer',
+        volumeMl: 330,
+        abvPercent: 5,
+        plannedQuantity: 1,
+        isQuickLog: true,
+      },
+      {
+        label: 'Wine',
+        category: 'wine',
+        volumeMl: 150,
+        abvPercent: 12,
+        plannedQuantity: 1,
+        isQuickLog: false,
+      },
+    ]);
+    await page.goto('/login');
+    await signIn(page, user);
+    await expect(page.getByRole('button', { name: 'Start Tonight', exact: true })).toBeVisible();
+    if (imported) {
+      await page.goto('/quick-log?scope=account');
+      await page
+        .getByRole('button', { name: 'Log one drink', exact: true })
+        .click({ clickCount: 2, delay: 35 });
+      await page.getByRole('button', { name: 'Add to a night', exact: true }).click();
+      await page.getByRole('button', { name: 'Confirm each drink', exact: true }).click();
+      await page.getByRole('button', { name: 'Add my logs', exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`/night/${target.night.id}`));
+    } else {
+      await page.goto(`/night/${target.night.id}`);
+      for (const total of [1, 2]) {
+        await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+        await expect(page.getByTestId('drink-count')).toHaveText(String(total));
+      }
+    }
+    const main = page.getByRole('group', { name: 'Main drink', exact: true });
+    await expect(main.getByText('Beer', { exact: true })).toBeVisible();
+    await expect(main).toContainText('330 ml');
+    await expect(main).toContainText('5%');
+    const confirmation = page.getByRole('dialog', { name: 'Confirm this log' });
+    const total = (drinks: number, chasers = 0) =>
+      page.getByText(`${drinks} drinks · ${chasers} ${chasers === 1 ? 'chaser' : 'chasers'}`, {
+        exact: true,
+      });
+    await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+    await expect(confirmation).toContainText('beyond the plan');
+    await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(total(2)).toBeVisible();
+    await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Log anyway', exact: true }).click();
+    await expect(total(3)).toBeVisible();
+    if (imported) {
+      await page.getByRole('link', { name: 'Back to Quick Log', exact: true }).click();
+      await expect(page).toHaveURL(/\/quick-log\?/);
+      await expect(page.getByRole('heading', { name: 'Quick Log', exact: true })).toBeVisible();
+      await expect(main.getByText('Beer', { exact: true })).toBeVisible();
+    }
+    await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Log anyway', exact: true }).click();
+    await expect(total(4)).toBeVisible();
+    await page.getByRole('button', { name: 'Choose another drink', exact: true }).click();
+    const chooser = page.getByRole('dialog', { name: 'Log for Plan confirmations' });
+    await chooser.getByRole('button', { name: /Wine.*150/ }).click();
+    await chooser.getByRole('button', { name: 'Log Wine', exact: true }).click();
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(total(4)).toBeVisible();
+    await main.click();
+    await page.screenshot({
+      path: `.tmp/ui-review/main-drink-${imported ? 'linked' : 'planned'}-${info.project.name}.png`,
+      fullPage: true,
+    });
+    await context.setOffline(true);
+    try {
+      for (const drinks of [5, 6]) {
+        await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+        await expect(confirmation).toBeVisible();
+        await confirmation.getByRole('button', { name: 'Log anyway', exact: true }).click();
+        await expect(total(drinks)).toBeVisible();
+      }
+      await page.getByRole('button', { name: 'Chaser', exact: true }).click();
+      await expect(confirmation).not.toBeVisible();
+      await expect(total(6, 1)).toBeVisible();
+    } finally {
+      await context.setOffline(false);
+    }
+    await expect
+      .poll(
+        async () =>
+          (await snapshot(user, target.night.id)).members[0]?.drinkLogs.filter(
+            (entry) => !entry.deletedAt,
+          ).length,
+      )
+      .toBe(imported ? 4 : 6);
+    await page.reload();
+    await expect(main.getByText('Beer', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(total(6, 1)).toBeVisible();
+  });
+}
+
 test('linked Quick Log uses the night plan, queues offline, and leaves clean back history', async ({
   page,
   context,
@@ -77,6 +191,14 @@ test('linked Quick Log uses the night plan, queues offline, and leaves clean bac
       plannedQuantity: 4,
       isQuickLog: true,
     },
+    {
+      label: 'Wine',
+      category: 'wine',
+      volumeMl: 150,
+      abvPercent: 12,
+      plannedQuantity: 2,
+      isQuickLog: false,
+    },
   ]);
   await page.goto('/login');
   await signIn(page, user);
@@ -89,7 +211,8 @@ test('linked Quick Log uses the night plan, queues offline, and leaves clean bac
   await page.getByRole('button', { name: 'Linked night', exact: true }).click();
   await page.getByRole('button', { name: 'Add my logs', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/night/${target.night.id}`));
-  await page.goBack();
+  await expect(page.getByRole('button', { name: 'Log Beer', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to Quick Log', exact: true }).click();
   await expect(page).toHaveURL(/\/quick-log\?/);
   await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
   await page.getByRole('button', { name: 'Chaser', exact: true }).click();
@@ -102,18 +225,50 @@ test('linked Quick Log uses the night plan, queues offline, and leaves clean bac
   // A committed database write can precede the UI's final snapshot refresh.
   await expect(page.getByText('2 drinks · 1 chaser', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Log Beer', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Choose another drink', exact: true }).click();
+  const choices = page.getByRole('dialog', { name: 'Log for Linked logger' });
+  await choices.getByRole('button', { name: /Wine.*150/ }).click();
+  await choices.getByRole('button', { name: 'Log Wine', exact: true }).click();
+  await expect(page.getByText('3 drinks · 1 chaser', { exact: true })).toBeVisible();
+  await page
+    .locator('[data-tour="drink-options"]')
+    .getByRole('button', { name: 'Undo', exact: true })
+    .click();
+  await expect(page.getByText('2 drinks · 1 chaser', { exact: true })).toBeVisible();
   await context.setOffline(true);
   await page.getByRole('button', { name: 'Log Beer', exact: true }).click();
   await expect(page.getByText('3 drinks · 1 chaser', { exact: true })).toBeVisible();
   await context.setOffline(false);
   await expect
-    .poll(async () => (await snapshot(user, target.night.id)).members[0]?.drinkLogs.length)
+    .poll(
+      async () =>
+        (await snapshot(user, target.night.id)).members[0]?.drinkLogs.filter(
+          (entry) => !entry.deletedAt,
+        ).length,
+    )
     .toBe(2);
   await page.getByRole('button', { name: 'Finish session', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'End the night too?' })).toBeVisible();
   await page.getByRole('button', { name: 'Finish Quick Log only', exact: true }).click();
   expect((await snapshot(user, target.night.id)).night.status).toBe('active');
   await expect(page.getByRole('button', { name: 'Log Beer', exact: true })).toBeDisabled();
+  await page.getByRole('link', { name: 'Quick Log history', exact: true }).click();
+  await expect(page.getByText('Added to a night', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: '1 drink · 0 chasers', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('View current totals in the night.', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('link', { name: 'Open night', exact: true })).toHaveAttribute(
+    'href',
+    `/night/${target.night.id}`,
+  );
+  await page.screenshot({
+    path: `.tmp/quick-history-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole('link', { name: 'Open night', exact: true }).click();
+  await expect(page.getByTestId('drink-count')).toHaveText('3');
 });
 
 test('signed-in Quick Log stays available and saves its handoff before night setup', async ({

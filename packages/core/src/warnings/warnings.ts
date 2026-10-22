@@ -5,8 +5,9 @@ import {
   PERSONAL_PACE_WINDOW_MINUTES,
   STALE_OFFLINE_ALERT_MINUTES,
 } from '../config/constants';
-import type { AlcoholLog, NightAlert, PlanStatus } from '../types/domain';
-import { determinePlanStatus } from '../plans/plans';
+import type { AlcoholLog, MemberSnapshot, NightAlert, PlanStatus } from '../types/domain';
+import { determinePlanStatus, projectedPlanStatus } from '../plans/plans';
+import { quickCounts } from '../quick-log/quick-log';
 
 export interface RollingLogValue {
   nightMemberId: string;
@@ -94,6 +95,25 @@ export function requiredLogConfirmations(
   if (projectedPlanStatusValue === 'exceeded') warnings.push('plan_exceeded');
   if (afterEnd) warnings.push('after_end');
   return warnings;
+}
+
+/** Earlier count-only drinks consume planned drink counts without inventing alcohol amounts. */
+export function requiredMemberLogConfirmations(
+  member: Pick<MemberSnapshot, 'planItems' | 'quickLogs'>,
+  logs: readonly Pick<AlcoholLog, 'ethanolGrams' | 'deletedAt'>[],
+  proposedEthanolGrams: number,
+  afterEnd: boolean,
+): Array<'plan_exceeded' | 'after_end'> {
+  const plan = member.planItems.filter((item) => !item.archivedAt);
+  const earlierDrinks = quickCounts(member.quickLogs ?? []).drink;
+  const exceedsCount =
+    earlierDrinks > 0 &&
+    logs.filter((log) => !log.deletedAt).length + earlierDrinks + 1 >
+      plan.reduce((total, item) => total + item.plannedQuantity, 0);
+  return requiredLogConfirmations(
+    exceedsCount ? 'exceeded' : projectedPlanStatus(logs, plan, proposedEthanolGrams),
+    afterEnd,
+  );
 }
 
 export function confirmationMessage(warnings: readonly ('plan_exceeded' | 'after_end')[]): string {

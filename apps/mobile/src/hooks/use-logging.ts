@@ -84,6 +84,17 @@ export function useLogging(onSaved: (remote?: boolean) => void, snapshot?: Night
       );
       if (record.drinkSnapshot?.sharedBottleId) {
         if (!client || !session || !owner) return false;
+        const warnings = record.requiredWarnings ?? [];
+        if (warnings.length) {
+          const confirmed = await confirmAction(
+            'Log outside your plan?',
+            record.lastError ?? '',
+            'Log drink',
+          );
+          if (!current()) return false;
+          // Keep any earlier attempt's identity if its response was lost.
+          if (!confirmed) return false;
+        }
         bottleAttempt.current = {
           fingerprint,
           key: record.idempotencyKey,
@@ -99,8 +110,8 @@ export function useLogging(onSaved: (remote?: boolean) => void, snapshot?: Night
             consumedAt: record.consumedAt,
             idempotencyKey: record.idempotencyKey,
             ...(choice === 'water' ? {} : choice),
-            acknowledgePlanExceeded: false,
-            acknowledgeAfterEnd: false,
+            acknowledgePlanExceeded: warnings.includes('plan_exceeded'),
+            acknowledgeAfterEnd: warnings.includes('after_end'),
           },
           async (command) =>
             (await sender.send({

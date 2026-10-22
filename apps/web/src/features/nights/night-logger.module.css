@@ -1,0 +1,26 @@
+.header {
+  gap: 12px;
+  padding-bottom: 0;
+}
+.header > :first-child {
+  padding-bottom: 8px;
+}
+.header h1 {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  line-height: 1.2;
+}
+:global(.personal-card.stack-lg).card {
+  padding: 16px;
+  gap: 16px;
+}
+.context {
+  padding: 8px 12px;
+}
+.context :global(.avatar) {
+  width: 36px;
+  height: 36px;
+}
+.context h2 {
+  font-size: 1.125rem;
+  line-height: 1.3;
+}

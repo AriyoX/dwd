@@ -13,12 +13,12 @@ test('bundled campaigns rotate, pause during interaction, and respect reduced mo
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await login(page);
   const placement = page.getByRole('region', { name: 'Featured', exact: true });
-  await expect(placement.getByRole('link')).toHaveCount(4);
+  await expect(placement.getByRole('link')).toHaveCount(5);
   await placement.scrollIntoViewIfNeeded();
   await page.mouse.move(0, 0);
   const dot = (index: number) =>
-    placement.getByRole('button', { name: `Show banner ${index} of 4` });
-  for (const next of [2, 3, 4, 1])
+    placement.getByRole('button', { name: `Show banner ${index} of 5` });
+  for (const next of [2, 3, 4, 5, 1])
     await expect(dot(next)).toHaveAttribute('aria-pressed', 'true', { timeout: 8000 });
   await expect(
     placement.getByRole('button', { name: /(?:Pause|Resume) automatic banners/ }),

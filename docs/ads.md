@@ -16,11 +16,13 @@ Paid campaigns are marked **Sponsored · advertiser**. Campaigns with `sponsored
 
 ## October 2026 campaign update
 
-The feed order is **The Link Up → Baby Steps → Super Badass Records → Sundiata Beach Resort → Kuri Hotel**. Super Badass Records now links to `https://superbadassrecords.com`; Sundiata and Kuri retain their destinations and imagery with evergreen copy.
+The feed order is **Baby Steps, Super Badass Records, Sundiata Beach Resort, Kuri Hotel, then The Link Up memories**. Super Badass Records links to `https://superbadassrecords.com`; Sundiata and Kuri retain their destinations and imagery with evergreen copy.
 
-The Link Up promotion links to the stable public `/events/the-link-up` page. It expires at **00:00 on 18 October 2026, East Africa Time** (`2026-10-18T00:00:00+03:00`), immediately after the event day. Shared parsing removes expired campaigns, and mounted carousels remove them when their expiration timer fires. This does not remove the landing page: printed QR codes remain valid. Publish the JSON, artwork, web code and shared parser together. **Ship a new mobile build** for the forest palette, promotion labeling, descriptions and expiration handling; older builds do not understand the new forest campaign and will skip it.
+The Link Up promotion now describes the completed event at Salama Springs on **17 October 2026**. Its action is **View event photos**, pointing to the stable public `/events/the-link-up` page. The former event-day expiration has been removed so the memories campaign remains in rotation at the end of the queue. Other campaigns still honor their own expiration dates. Printed event QR codes remain valid.
 
-The landing page uses lettering, foliage and a cocktail detail extracted from `public/ads/link-up.png`; the full poster is not displayed on the page. Upload and gallery buttons are intentionally disabled and labeled coming soon. The page links to the existing `/quick-log?scope=guest` experience. No storage, upload, moderation or gallery infrastructure is included; R2 configuration is unchanged. Future photo integration can replace `features/events/link-up-memories.tsx`.
+The landing page has live photo browsing, uploads while enabled, downloads and reports. It uses the existing private R2 photo infrastructure; this campaign edit does not change uploads, gallery settings, photos or organizer permissions. See [event implementation](link-up-phase-2.md) and [organizer tools](page-admin-access.md).
+
+Deploy the JSON with the website. Mobile uses that feed on its next screen focus; an overridden external feed needs the same campaign update. New native logging and tour UI still require an updated mobile build.
 
 ## Connect sponsors now
 

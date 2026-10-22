@@ -2018,7 +2018,8 @@ body:has(.segment-nav) .theme-toggle {
   bottom: calc(94px + var(--safe-bottom));
 }
 /* Keep appearance controls from covering the logger's full-width actions. */
-body:has(.quick-log-shell) .theme-toggle {
+body:has(.quick-log-shell) .theme-toggle,
+body:has(.active-night-shell) .theme-toggle {
   position: relative;
   right: auto;
   bottom: auto;

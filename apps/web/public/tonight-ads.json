@@ -1,19 +1,6 @@
 {
   "ads": [
     {
-      "id": "the-link-up-2026",
-      "advertiser": "The Link Up / Salama Springs",
-      "title": "THE LINK UP",
-      "description": "Good vibes. Great people. Unforgettable memories.",
-      "supportingText": "17 October 2026 · Salama Springs",
-      "cta": "Explore The Link Up",
-      "url": "https://dwdug.vercel.app/events/the-link-up",
-      "imageUrl": "https://dwdug.vercel.app/ads/link-up-banner.jpg",
-      "tone": "forest",
-      "sponsored": false,
-      "expiresAt": "2026-10-18T00:00:00+03:00"
-    },
-    {
       "id": "baby-steps-waitlist",
       "advertiser": "Baby Steps",
       "title": "Little games. Big roots. Learn Luganda with Baby Steps.",
@@ -50,6 +37,18 @@
       "imageUrl": "https://dwdug.vercel.app/ads/kuri-hotel.jpg",
       "tone": "plum",
       "description": "Your next memorable stay starts here."
+    },
+    {
+      "id": "the-link-up-2026",
+      "advertiser": "The Link Up / Salama Springs",
+      "title": "The Link Up memories",
+      "description": "Relive The Link Up at Salama Springs.",
+      "supportingText": "Held 17 October 2026 · Salama Springs",
+      "cta": "View event photos",
+      "url": "https://dwdug.vercel.app/events/the-link-up",
+      "imageUrl": "https://dwdug.vercel.app/ads/link-up-banner.jpg",
+      "tone": "forest",
+      "sponsored": false
     }
   ]
 }

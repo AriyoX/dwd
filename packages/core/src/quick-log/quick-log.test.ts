@@ -6,9 +6,61 @@ import {
   parseQuickRecord,
   quickCountLabel,
   quickCounts,
+  quickSessionForNight,
+  type QuickSession,
 } from './quick-log';
 let nextId = 0;
 const randomUUID = () => `fc100000-0000-4000-8000-${String(++nextId).padStart(12, '0')}`;
+
+describe('returning from a planned night', () => {
+  function session(nightId: string, memberId: string, updatedAt: string): QuickSession {
+    const id = randomUUID();
+    return {
+      id,
+      schemaVersion: 3,
+      scope: 'guest',
+      claimedBy: null,
+      createdAt: updatedAt,
+      updatedAt,
+      finishedAt: null,
+      state: 'active',
+      entries: [
+        {
+          id: randomUUID(),
+          sessionId: id,
+          kind: 'drink',
+          recordedAt: updatedAt,
+          updatedAt,
+          sequence: 1,
+          revision: 1,
+          removedAt: null,
+          destination: { nightId, memberId, entryId: randomUUID(), operationId: randomUUID() },
+        },
+      ],
+    };
+  }
+  it('finds the matching session instead of a newer unrelated night or membership', () => {
+    const linked = session('night', 'self', '2026-10-21T18:00:00Z');
+    const sessions = [
+      linked,
+      session('other', 'self', '2026-10-21T19:00:00Z'),
+      session('night', 'other', '2026-10-21T20:00:00Z'),
+    ];
+    const before = structuredClone(sessions);
+    expect(quickSessionForNight(sessions, 'night', 'self')).toBe(linked);
+    expect(quickSessionForNight(sessions, 'missing', 'self')).toBeUndefined();
+    expect(sessions).toEqual(before);
+  });
+  it('prefers a still-active matching session over finished history', () => {
+    const active = session('night', 'self', '2026-10-21T18:00:00Z');
+    const finished = {
+      ...session('night', 'self', '2026-10-21T19:00:00Z'),
+      state: 'finished' as const,
+    };
+    expect(quickSessionForNight([finished, active], 'night', 'self')).toBe(active);
+    expect(quickSessionForNight([finished], 'night', 'self')).toBe(finished);
+  });
+});
 
 describe('drink and chaser meaning', () => {
   it('counts legacy shots as drinks and excludes removed entries', () => {

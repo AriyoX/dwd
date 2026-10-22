@@ -43,6 +43,7 @@ export function QuickLogEntry({
   if (resumeOnly && !entry.resume) return null;
   return (
     <Link
+      data-tour="quick-log"
       className={`resume-card ${styles['entryCard']}`}
       href={entry.guest ? '/quick-log?scope=guest' : '/quick-log'}
     >

@@ -14,6 +14,7 @@ import {
   type Night,
   hasUnknownAmounts,
   quickCounts,
+  quickMainDrink,
 } from '@dwd/core';
 import type { PendingDrinkLog } from '@dwd/contracts';
 import { Card } from '@/components/ui/card';
@@ -23,6 +24,9 @@ import { withPendingDrinks } from './logged-drinks';
 import { BottleProgress } from '@/features/bottles/bottle-shelf';
 import { BottleMainHint } from '@/features/bottles/bottle-main-hint';
 import { QuickNightActivity } from '@/features/quick-log/night-activity';
+import { QuickLogControls } from '@/features/quick-log/log-controls';
+import logStyles from '@/features/quick-log/quick-log.module.css';
+import styles from './night-logger.module.css';
 export { DrinkChooser } from './drink-chooser';
 
 export function ParticipantSwitcher({
@@ -113,7 +117,10 @@ export function TonightView({
   const pendingWater = pendingLogs.filter((record) => record.kind === 'water').length;
   const planTotal = member.planItems.length === 0 ? 0 : calculatePlanTotal(member.planItems);
   const planStatus = determinePlanStatus(totals.ethanolGrams, planTotal);
-  const quick = member.planItems.find((item) => item.isQuickLog) ?? member.planItems[0];
+  const quick = quickMainDrink(member);
+  const earlier = quickCounts(member.quickLogs ?? []);
+  const drinkCount = totals.alcoholCount + earlier.drink;
+  const chaserCount = totals.waterCount + pendingWater + earlier.chaser;
   const pacing =
     night && now && !hasUnknownAmounts(member.quickLogs)
       ? calculatePlanPacing(member.planItems, drinks, member.id, night.startsAt, night.endsAt, now)
@@ -126,8 +133,11 @@ export function TonightView({
           <span>{chaserCopy(alert.message)}</span>
         </TimedNotice>
       ))}
-      <Card className="personal-card stack-lg" data-bottle-tracking={bottle ? '' : undefined}>
-        <div className="logging-context row-between">
+      <Card
+        className={`personal-card stack-lg ${styles['card']}`}
+        data-bottle-tracking={bottle ? '' : undefined}
+      >
+        <div className={`logging-context row-between ${styles['context']}`}>
           <div className="row">
             <span className="avatar avatar-large" aria-hidden="true">
               {initials(member.displayName)}
@@ -135,9 +145,9 @@ export function TonightView({
             <div>
               <p className="muted small">Logging for</p>
               <h2>{member.displayName}</h2>
-              <p className="muted small">
-                {managed ? 'You log for them' : member.memberType === 'guest' ? 'Guest' : 'You'}
-              </p>
+              {managed || member.memberType === 'guest' ? (
+                <p className="muted small">{managed ? 'You log for them' : 'Guest'}</p>
+              ) : null}
             </div>
           </div>
           <span
@@ -156,11 +166,12 @@ export function TonightView({
                       : 'Within plan'}
           </span>
         </div>
-        <div>
-          <strong data-testid="drink-count" className="big-count">
-            {totals.alcoholCount + quickCounts(member.quickLogs ?? []).drink}
-          </strong>
-          <span className="muted"> drinks logged</span>
+        <div className={logStyles['totals']}>
+          <div className={logStyles['summary']}>
+            <span data-testid="drink-count">{drinkCount}</span>{' '}
+            {drinkCount === 1 ? 'drink' : 'drinks'} · {chaserCount}{' '}
+            {chaserCount === 1 ? 'chaser' : 'chasers'}
+          </div>
           {totals.alcoholCount > 0 && (
             <p className="muted small">{formatCategories(totals.categoryCounts)}</p>
           )}
@@ -174,26 +185,6 @@ export function TonightView({
             <p className="pill pill-warning">{pendingAlcohol + pendingWater} waiting to save</p>
           )}
         </div>
-        <QuickNightActivity
-          member={member}
-          {...(member.userId ? { accountId: member.userId } : {})}
-          {...(onRefresh ? { refresh: onRefresh } : {})}
-        />
-        {quick && (
-          <div className="main-drink row-between">
-            <div>
-              <span className="muted small">Main drink</span>
-              <strong>
-                {quick.label} · {quick.volumeMl} ml · {quick.abvPercent}%
-              </strong>
-            </div>
-            {onEditPlan && (
-              <Button type="button" variant="ghost" disabled={busy} onClick={onEditPlan}>
-                Adjust
-              </Button>
-            )}
-          </div>
-        )}
         {bottle && quick?.sharedBottleId === bottle.id && (
           <>
             <BottleProgress bottle={bottle} member={{ ...member, drinkLogs: drinks }} />
@@ -205,49 +196,30 @@ export function TonightView({
             />
           </>
         )}
-        <Button
-          data-tour="log-drink"
-          data-fast-log="drink"
-          type="button"
-          full
+        <QuickLogControls
           disabled={busy}
-          onClick={onQuick}
-        >
-          <Plus aria-hidden="true" size={26} />{' '}
-          {quick === undefined
-            ? 'Plan drinks'
-            : bottle
-              ? `Log ${bottleDrinkWord(bottle.category)}`
-              : `Log ${quick.label}`}
-        </Button>
-        <div className="quick-actions" data-tour="drink-options">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={busy || member.planItems.length === 0}
-            onClick={onChoose}
-          >
-            Choose another drink
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="button-water"
-            data-fast-log="chaser"
-            disabled={busy}
-            onClick={onWater}
-          >
-            <Droplets aria-hidden="true" size={19} /> Chaser
-          </Button>
-          <Button type="button" variant="ghost" disabled={busy} onClick={onUndo}>
-            <Undo2 aria-hidden="true" size={19} /> Undo
-          </Button>
-        </div>
+          mainDrink={quick}
+          onEditMain={onEditPlan}
+          label={
+            quick === undefined
+              ? 'Plan drinks'
+              : bottle
+                ? `Log ${bottleDrinkWord(bottle.category)}`
+                : `Log ${quick.label}`
+          }
+          onLog={onQuick}
+          onChaser={onWater}
+          onUndo={onUndo}
+          onChoose={onChoose}
+        />
+        <QuickNightActivity
+          member={member}
+          {...(member.userId ? { accountId: member.userId } : {})}
+          {...(onRefresh ? { refresh: onRefresh } : {})}
+        />
         <div className="plan-summary" data-tour="plan">
           <span>
-            Your plan ·{' '}
-            {totals.waterCount + pendingWater + quickCounts(member.quickLogs ?? []).chaser}{' '}
-            {totals.waterCount + pendingWater === 1 ? 'chaser' : 'chasers'}
+            Your plan · {chaserCount} {chaserCount === 1 ? 'chaser' : 'chasers'}
           </span>
           <strong>
             {member.planItems

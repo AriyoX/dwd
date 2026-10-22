@@ -1,13 +1,15 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, GlassWater, Undo2 } from 'lucide-react';
+import { History } from 'lucide-react';
 import { quickCounts, quickTotalsLabel, quickMainDrink, type MemberSnapshot } from '@dwd/core';
 import type { PendingDrinkLog } from '@dwd/contracts';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { QuickLogAds } from './floating-ads';
+import { QuickLogControls } from './log-controls';
 import styles from './quick-log.module.css';
+import { useBrowserQuickLog } from './provider';
 
 export interface LinkedQuickControls {
   finished: boolean;
@@ -30,6 +32,8 @@ export function LinkedControls({
   onWater,
   onUndo,
   onChoose,
+  onEditPlan,
+  onBottles,
   onEnd,
 }: {
   controls: LinkedQuickControls;
@@ -45,9 +49,12 @@ export function LinkedControls({
   onWater: () => void;
   onUndo: () => void;
   onChoose: () => void;
+  onEditPlan: () => void;
+  onBottles: () => void;
   onEnd: () => void;
 }) {
   const [finishing, setFinishing] = useState(false);
+  const { store } = useBrowserQuickLog();
   const main = quickMainDrink(member);
   const earlier = quickCounts(member.quickLogs ?? []);
   const queued = pending.filter(
@@ -60,6 +67,13 @@ export function LinkedControls({
     <div className={styles['logger']}>
       <header className={styles['header']}>
         <h1>Quick Log</h1>
+        <Link
+          className={`button button-ghost ${styles['historyShortcut']}`}
+          href={`/quick-log/history?scope=${store?.scope === 'guest' ? 'guest' : 'account'}`}
+          aria-label="Quick Log history"
+        >
+          <History size={22} aria-hidden="true" />
+        </Link>
         <Link replace className="button button-ghost" href="/home">
           Home
         </Link>
@@ -83,31 +97,21 @@ export function LinkedControls({
           {controls.finished ? 'Quick Log finished' : 'Your total for this night'}
         </span>
       </div>
-      <div className={styles['logControl']}>
-        <Button
-          type="button"
-          className={styles['tap']}
-          disabled={disabled}
-          onClick={main ? onLog : onChoose}
-        >
-          <Plus size={40} aria-hidden="true" />
-          {main ? `Log ${main.label}` : 'Choose a drink'}
+      <QuickLogControls
+        mainDrink={main}
+        label={main ? `Log ${main.label}` : 'Choose a drink'}
+        disabled={disabled}
+        onLog={main ? onLog : onEditPlan}
+        onChaser={onWater}
+        onUndo={onUndo}
+        onChoose={onChoose}
+      />
+      <div className={styles['secondaryActions']}>
+        <Button type="button" variant="ghost" disabled={disabled} onClick={onEditPlan}>
+          Edit plan
         </Button>
-        {main ? (
-          <span className="pill">
-            {main.volumeMl} ml · {main.abvPercent}%
-          </span>
-        ) : null}
-        <div className={styles['secondaryActions']}>
-          <Button type="button" variant="secondary" disabled={disabled} onClick={onWater}>
-            <GlassWater size={18} /> Chaser
-          </Button>
-          <Button type="button" variant="ghost" disabled={disabled} onClick={onUndo}>
-            <Undo2 size={18} /> Undo
-          </Button>
-        </div>
-        <Button type="button" variant="ghost" disabled={disabled} onClick={onChoose}>
-          Change drink
+        <Button type="button" variant="secondary" disabled={disabled} onClick={onBottles}>
+          Shared bottles
         </Button>
       </div>
       <Link replace className="button button-secondary" href={`/night/${nightId}`}>

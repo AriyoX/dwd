@@ -21,10 +21,19 @@ export const tourSteps: readonly TourStep[] = [
     target: 'start',
     title: 'Start a night',
     description:
-      'Choose your drinks and an end time here. Tap to try a practice night, or choose Next.',
+      'Choose Quick Log for a simple count or Plan a Night for drinks, mates and an end time. Tap here to try a practice night.',
     placement: 'right',
     interactive: true,
     onTargetClick: 'log',
+  },
+  {
+    id: 'quick-log',
+    route: '/home?tour=quick-log',
+    target: 'quick-log',
+    title: 'Quick Log',
+    description:
+      'Tap the big circle to log a drink, then use Chaser or Undo. Add your session to a night to keep this layout with your planned drinks.',
+    placement: 'bottom',
   },
   {
     id: 'join',

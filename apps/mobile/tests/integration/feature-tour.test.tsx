@@ -4,7 +4,12 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import type { ScrollView, View } from 'react-native';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FeatureTour } from '@/components/feature-tour';
-import { tourCardLayout, type TourBox, type TourTargetId } from '@/lib/feature-tour';
+import {
+  FEATURE_TOUR_STEPS,
+  tourCardLayout,
+  type TourBox,
+  type TourTargetId,
+} from '@/lib/feature-tour';
 
 const runtime = vi.hoisted(() => ({ back: null as (() => boolean) | null }));
 vi.mock('react-native', () => ({
@@ -179,12 +184,12 @@ describe('native feature highlights', () => {
     expect(go).toHaveBeenLastCalledWith(1);
     await act(() => root?.unmount());
     targets.current.settings = targets.current.start ?? null;
-    await mount(5);
+    await mount(FEATURE_TOUR_STEPS.length - 1);
     await tick();
     await act(() => {
       expect(runtime.back?.()).toBe(true);
     });
-    expect(go).toHaveBeenLastCalledWith(4);
+    expect(go).toHaveBeenLastCalledWith(FEATURE_TOUR_STEPS.length - 2);
     await press('Done');
     expect(finish).toHaveBeenCalledTimes(2);
   });

@@ -1,4 +1,4 @@
-import { Alert, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -26,6 +26,7 @@ import { Action, PrimaryButton } from './primary-button';
 import { useQuickLogAds } from './quick-log-ads';
 import { NightActivity } from './night-activity';
 import { QuickNightActivity } from './quick-night-activity';
+import { QuickLogControls } from './quick-log-controls';
 
 export function LinkedQuickLog({
   quick,
@@ -47,7 +48,6 @@ export function LinkedQuickLog({
   const { client, session } = useSupabase();
   const { snapshot, refresh, now, issue: loadIssue } = useNight(link.nightId);
   const { colors, typography } = useTheme();
-  const { width, fontScale } = useWindowDimensions();
   const { records, outbox } = useOffline();
   const { online } = useConnectivity();
   const router = useRouter();
@@ -67,7 +67,6 @@ export function LinkedQuickLog({
     (entry) => !['permanent_failure', 'needs_confirmation'].includes(entry.status),
   );
   const earlier = quickCounts(member?.quickLogs ?? []);
-  const size = Math.min(width - 84, Math.max(196, 160 * fontScale));
   function finish() {
     const host = snapshot && canUserEndOrExtendNight(snapshot.currentUserId, snapshot.night);
     const waiting = records.some((entry) => entry.nightId === link.nightId);
@@ -110,11 +109,11 @@ export function LinkedQuickLog({
       ...member.waterLogs
         .filter((entry) => !entry.deletedAt)
         .map((entry) => ({ ...entry, kind: 'water' as const })),
-    ].sort((a, b) => Date.parse(b.consumedAt) - Date.parse(a.consumedAt))[0];
+    ].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
     const local = [...pending].sort(
-      (a, b) => Date.parse(b.consumedAt) - Date.parse(a.consumedAt),
+      (a, b) => Date.parse(b.createdLocallyAt) - Date.parse(a.createdLocallyAt),
     )[0];
-    if (local && (!latest || Date.parse(local.consumedAt) >= Date.parse(latest.consumedAt))) {
+    if (local && (!latest || Date.parse(local.createdLocallyAt) >= Date.parse(latest.createdAt))) {
       if (outbox) await action.run(() => outbox.remove(local.idempotencyKey), 'Entry removed.');
     } else if (latest)
       await action.run(
@@ -125,7 +124,19 @@ export function LinkedQuickLog({
   return (
     <Screen hidePermissionReminder contentStyle={{ gap: 16 }} footer={ads} floatingFooter>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={typography.sectionTitle}>Quick Log</Text>
+        <Text style={{ ...typography.sectionTitle, flex: 1 }}>Quick Log</Text>
+        <Action
+          label="Quick Log history"
+          onPress={() =>
+            router.push({
+              pathname: '/quick-history',
+              params: { scope: quick.scope === 'guest' ? 'guest' : 'account' },
+            })
+          }
+          style={{ alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="time-outline" size={24} color={colors.primary} />
+        </Action>
         <PrimaryButton label="Home" variant="quiet" onPress={() => router.dismissTo('/')} />
       </View>
       {!snapshot || !member ? (
@@ -183,66 +194,39 @@ export function LinkedQuickLog({
               {finished ? 'Quick Log finished' : 'Your total for this night'}
             </Text>
           </Panel>
-          <View style={{ alignItems: 'center', gap: 12 }}>
-            <Action
-              label={main ? `Log ${main.label}` : 'Choose a drink'}
-              disabled={disabled}
-              onPress={() =>
-                main
-                  ? void logging.log(member.id, { planItemId: main.id })
-                  : router.push(`/night/${link.nightId}/plan`)
-              }
-              containerStyle={{ width: size, maxWidth: '100%' }}
-              style={{
-                minHeight: size,
-                borderRadius: 999,
-                padding: 24,
-                gap: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: colors.primaryFill,
-                borderWidth: 6,
-                borderColor: colors.primarySoft,
-              }}
-            >
-              <Ionicons name="add" size={42} color={colors.onPrimary} />
-              <Text
-                style={{
-                  color: colors.onPrimary,
-                  textAlign: 'center',
-                  fontSize: 22,
-                  fontWeight: '600',
-                }}
-              >
-                {main ? `Log ${main.label}` : 'Choose a drink'}
-              </Text>
-            </Action>
-            {main ? (
-              <Text style={typography.body}>
-                {main.volumeMl} ml · {main.abvPercent}%
-              </Text>
-            ) : null}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-              <PrimaryButton
-                label="Chaser"
-                icon="cafe-outline"
-                variant="secondary"
-                disabled={disabled}
-                onPress={() => void logging.log(member.id, 'water')}
-              />
-              <PrimaryButton
-                label="Undo"
-                icon="arrow-undo-outline"
-                variant="quiet"
-                disabled={disabled}
-                onPress={() => void undo()}
-              />
-            </View>
+          <QuickLogControls
+            mainDrink={main}
+            label={main ? `Log ${main.label}` : 'Choose a drink'}
+            {...(main ? { detail: `${main.volumeMl} ml · ${main.abvPercent}%` } : {})}
+            disabled={disabled}
+            busy={logging.busy}
+            onLog={() =>
+              main
+                ? void logging.log(member.id, { planItemId: main.id })
+                : router.push(`/night/${link.nightId}/plan`)
+            }
+            onChaser={() => void logging.log(member.id, 'water')}
+            onUndo={() => void undo()}
+            onChoose={() =>
+              router.push(
+                `/night/${link.nightId}/${member.planSetupCompletedAt === null ? 'plan' : 'log'}`,
+              )
+            }
+          />
+          <View
+            style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}
+          >
             <PrimaryButton
-              label="Change drink"
+              label="Edit plan"
               variant="quiet"
               disabled={disabled}
               onPress={() => router.push(`/night/${link.nightId}/plan`)}
+            />
+            <PrimaryButton
+              label="Shared bottles"
+              variant="secondary"
+              disabled={disabled}
+              onPress={() => router.push(`/night/${link.nightId}/bottles`)}
             />
           </View>
           {availableQuickEntries(quick).length ? (

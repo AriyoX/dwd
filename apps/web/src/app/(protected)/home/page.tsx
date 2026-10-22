@@ -38,7 +38,7 @@ export default async function HomePage() {
         </span>
       </header>
       <div className="stack-lg">
-        <QuickLogEntry resumeOnly {...(userId ? { accountId: userId } : {})} />
+        <QuickLogEntry {...(userId ? { accountId: userId } : {})} />
         <Link data-tour="history" className="text-link" href="/history">
           Night history
         </Link>

@@ -4,6 +4,7 @@ import { HeartHandshake, Moon, Settings2, Users } from 'lucide-react';
 import { formatNightDateTime, type NightSnapshot } from '@dwd/core';
 import { Wordmark } from '@/components/layout/wordmark';
 import { Button } from '@/components/ui/button';
+import styles from './night-logger.module.css';
 export type NightSegment = 'tonight' | 'group' | 'more';
 export function NightFrame({
   snapshot,
@@ -31,7 +32,7 @@ export function NightFrame({
   if (compact) return <div className="stack">{children}</div>;
   return (
     <main className="page-shell active-night-shell" id="main-content">
-      <header className="night-header">
+      <header className={`night-header ${styles['header']}`}>
         <div className="row-between">
           <Wordmark />
           <span
@@ -53,13 +54,15 @@ export function NightFrame({
             Planned end {formatNightDateTime(snapshot.night.endsAt, snapshot.night.timezone)}
           </p>
         </div>
-        <div className="avatar-row" aria-label={`${snapshot.members.length} participants`}>
-          {snapshot.members.slice(0, 8).map((member) => (
-            <span className="avatar" title={member.displayName} key={member.id}>
-              {initials(member.displayName)}
-            </span>
-          ))}
-        </div>
+        {snapshot.members.length > 1 ? (
+          <div className="avatar-row" aria-label={`${snapshot.members.length} participants`}>
+            {snapshot.members.slice(0, 8).map((member) => (
+              <span className="avatar" title={member.displayName} key={member.id}>
+                {initials(member.displayName)}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       {children}

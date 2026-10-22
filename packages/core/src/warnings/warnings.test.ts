@@ -7,11 +7,111 @@ import {
   isAlertInCooldown,
   isNightAlertRelevant,
   requiredLogConfirmations,
+  requiredMemberLogConfirmations,
   shouldEmitRealtimePaceAlert,
   type RollingLogValue,
 } from './warnings';
+import type { MemberSnapshot } from '../types/domain';
+import type { NightQuickLog } from '../quick-log/quick-log';
 
 const asOf = '2026-07-31T22:00:00.000Z';
+
+describe('planned drink confirmations with earlier Quick Log entries', () => {
+  function member(kinds: NightQuickLog['kind'][]): Pick<MemberSnapshot, 'planItems' | 'quickLogs'> {
+    return {
+      planItems: [
+        {
+          id: 'plan',
+          nightMemberId: 'member',
+          createdBy: 'user',
+          createdAt: asOf,
+          updatedAt: asOf,
+          archivedAt: null,
+          label: 'Beer',
+          category: 'beer',
+          volumeMl: 330,
+          abvPercent: 5,
+          plannedQuantity: 2,
+          isQuickLog: true,
+        },
+      ],
+      quickLogs: kinds.map((kind, index) => ({
+        id: `quick-${index}`,
+        nightId: 'night',
+        nightMemberId: 'member',
+        actorUserId: 'user',
+        sourceSessionId: 'session',
+        sourceEntryId: `source-${index}`,
+        sourceRevision: 1,
+        sequence: index + 1,
+        kind,
+        recordedAt: asOf,
+        createdAt: asOf,
+        updatedAt: asOf,
+        deletedAt: null,
+        earlierLogging: true,
+        volumeMl: null,
+        abvPercent: null,
+        ethanolGrams: null,
+      })),
+    };
+  }
+  it('warns at each additional drink once earlier counts use the planned number', () => {
+    const target = member(['drink', 'shot']);
+    const before = structuredClone(target);
+    for (const knownCount of [0, 1, 2]) {
+      const logs = Array.from({ length: knownCount }, () => ({
+        ethanolGrams: 0.1,
+        deletedAt: null,
+      }));
+      expect(requiredMemberLogConfirmations(target, logs, 0.1, false)).toEqual(['plan_exceeded']);
+    }
+    expect(target).toEqual(before);
+  });
+  it('does not warn when combined counts reach the plan exactly', () => {
+    expect(requiredMemberLogConfirmations(member(['drink']), [], 1, false)).toEqual([]);
+    expect(
+      requiredMemberLogConfirmations(
+        member(['drink']),
+        [{ ethanolGrams: 1, deletedAt: null }],
+        1,
+        false,
+      ),
+    ).toEqual(['plan_exceeded']);
+  });
+  it('excludes chasers, deleted quick drinks and deleted measured entries', () => {
+    const target = member(['drink', 'chaser']);
+    const removed = target.quickLogs?.[0];
+    if (!removed) throw new Error('Missing fixture');
+    removed.deletedAt = asOf;
+    expect(
+      requiredMemberLogConfirmations(target, [{ ethanolGrams: 100, deletedAt: asOf }], 1, false),
+    ).toEqual([]);
+  });
+  it('retains measured-alcohol and planned-end checks independently of counts', () => {
+    expect(requiredMemberLogConfirmations(member([]), [], 100, true)).toEqual([
+      'plan_exceeded',
+      'after_end',
+    ]);
+    expect(requiredMemberLogConfirmations(member(['drink']), [], 1, true)).toEqual(['after_end']);
+    // Smaller measured servings retain the existing alcohol-based rule without unknown earlier drinks.
+    expect(
+      requiredMemberLogConfirmations(
+        member([]),
+        Array.from({ length: 3 }, () => ({ ethanolGrams: 1, deletedAt: null })),
+        1,
+        false,
+      ),
+    ).toEqual([]);
+  });
+  it('does not use archived plan quantities to dismiss a warning', () => {
+    const target = member(['drink', 'drink']);
+    const plan = target.planItems[0];
+    if (!plan) throw new Error('Missing fixture');
+    target.planItems.push({ ...plan, id: 'old-plan', plannedQuantity: 20, archivedAt: asOf });
+    expect(requiredMemberLogConfirmations(target, [], 1, false)).toEqual(['plan_exceeded']);
+  });
+});
 
 describe('current alert relevance', () => {
   const alert = {

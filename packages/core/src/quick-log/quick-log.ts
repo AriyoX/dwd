@@ -313,6 +313,24 @@ export function quickLinkedNight(session?: QuickSession) {
   );
 }
 
+/** Return to this membership's session, even when a newer unrelated session exists. */
+export function quickSessionForNight(
+  sessions: readonly QuickSession[],
+  nightId: string,
+  memberId: string,
+) {
+  return sessions
+    .filter((session) => {
+      const link = quickLinkedNight(session);
+      return link?.nightId === nightId && link.memberId === memberId;
+    })
+    .sort(
+      (a, b) =>
+        Number(b.state === 'active') - Number(a.state === 'active') ||
+        Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
+    )[0];
+}
+
 export function quickLinkedMember(
   snapshot: NightSnapshot,
   link: { nightId: string; memberId: string },

@@ -2,11 +2,13 @@
 
 ## Native tour
 
-The mobile tour is read-only and follows the real screens: Start and Join on
+The mobile tour is read-only and follows the real screens: Start, Quick Log and Join on
 Tonight, the first recap (or empty state) on Entries, notification status on
 Notifications, then Night reminders and Appearance in Settings. It never opens
 a live night or creates sample product data. Its route/target definitions live in
 `apps/mobile/src/lib/feature-tour.ts`.
+
+Quick Log always has a target on Tonight, including when there is no session. Start explains the Quick Log / Plan a Night choice; Quick Log explains the circle, Chaser, Undo and using planned drinks after linking a night. These steps never start a session or transfer entries.
 
 `FeatureTourProvider` keeps progress across routes. `TourScreen` owns each page's
 scroll view and target refs; `TourTarget` wraps the actual control with a
@@ -28,6 +30,8 @@ history and active-night changes), cross-page navigation, shared-window offsets,
 scrolling, delayed/missing measurements, dismissal and constrained card layouts.
 
 ## Web tour
+
+Home includes an explicit Quick Log step before Join. It targets the real entry, which remains visible without a session. The planned-night practice uses the same circular logging controls as live nights.
 
 The tour uses the same `NightFrame`, `TonightView`, `DrinkChooser`, `ParticipantCard`,
 `HistoryScreen`, and `SummaryScreen` components as normal app use. It does not render
