@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { quickEntryDestination } from '@/features/quick-log/entry-routing';
 describe('normal DWD entry and invitation priority', () => {
-  it('leaves guests in the logger and retains the signed-in home', () => {
+  it('renders the landing page for guests and retains the signed-in home', () => {
     expect(quickEntryDestination(null)).toBeNull();
     expect(quickEntryDestination('account')).toBe('/home');
   });

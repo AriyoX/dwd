@@ -1,8 +1,12 @@
-import type { Metadata } from 'next';
+import { publicMetadata } from '@/lib/public-metadata';
 import Link from 'next/link';
 import { LEGAL_CONTACT } from '@dwd/core';
 import { Wordmark } from '@/components/layout/wordmark';
-export const metadata: Metadata = { title: 'Support' };
+export const metadata = publicMetadata(
+  'Support',
+  'Contact DWD for help, privacy requests, account deletion or content reports.',
+  '/support',
+);
 export default function SupportPage() {
   return (
     <main className="page-shell" id="main-content">

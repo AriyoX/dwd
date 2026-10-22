@@ -6,19 +6,19 @@ import { PrimaryButton } from '@/components/primary-button';
 import { Notice, Screen } from '@/components/screen';
 import { useSupabase } from '@/providers/supabase-provider';
 import { useTheme } from '@/providers/theme-provider';
+import { QuickLogSuggestion } from '@/components/quick-log-suggestion';
 
 export default function WelcomeScreen() {
   const { access, issue } = useSupabase();
   const { colors, typography } = useTheme();
   const router = useRouter();
   return (
-    <Screen contentStyle={{ gap: 32, paddingBottom: 24 }}>
+    <Screen
+      contentStyle={{ gap: 32, paddingBottom: 24 }}
+      footer={<QuickLogSuggestion />}
+      floatingFooter
+    >
       <AuthHeader />
-      <PrimaryButton
-        label="Start logging as a guest"
-        large
-        onPress={() => router.push('/quick-log')}
-      />
       {access !== 'signed-out' ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <ActivityIndicator color={colors.primary} accessibilityLabel="Restoring your account" />
@@ -42,6 +42,11 @@ export default function WelcomeScreen() {
               label="Sign in"
               variant="secondary"
               onPress={() => router.push('/auth/sign-in')}
+            />
+            <PrimaryButton
+              label="Log now"
+              variant="quiet"
+              onPress={() => router.push('/quick-log?scope=guest')}
             />
           </View>
           <LegalLinks />

@@ -57,7 +57,6 @@ export default defineConfig({
     env: {
       DWD_E2E: '1',
       DWD_E2E_DIST_DIR: process.env['E2E_DIST_DIR'] ?? '.next-e2e',
-      DWD_EMAIL_CONFIRMATION_CODE_ENABLED: process.env['E2E_CONFIRMATION_CODES'] ?? 'true',
       NEXT_PUBLIC_SUPABASE_URL: backend,
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
         process.env['E2E_SUPABASE_PUBLISHABLE_KEY'] ?? 'local-browser-test-key',

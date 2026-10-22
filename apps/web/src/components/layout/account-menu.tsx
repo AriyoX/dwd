@@ -1,7 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, ChevronRight, History, MessageCircle, UserRound } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  History,
+  MessageCircle,
+  UserRound,
+} from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { SignOutButton } from '@/features/auth/sign-out-button';
 import { TourButton } from '@/features/tour/tour-provider';
@@ -74,6 +81,11 @@ export function AccountMenu({ name }: { name: string }) {
             if (menu.current) menu.current.open = false;
           }}
         >
+          <Link href="/events">
+            <CalendarDays size={19} aria-hidden="true" />
+            <span>Events</span>
+            <ChevronRight size={15} aria-hidden="true" />
+          </Link>
           <Link href="/history">
             <History size={19} aria-hidden="true" />
             <span>Night history</span>

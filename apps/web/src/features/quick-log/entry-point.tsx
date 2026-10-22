@@ -8,9 +8,11 @@ import styles from './quick-log.module.css';
 export function QuickLogEntry({
   accountId,
   resumeOnly = false,
+  label = 'Quick Log',
 }: {
   accountId?: string;
   resumeOnly?: boolean;
+  label?: string;
 }) {
   const [entry, setEntry] = useState({ resume: false, guest: false, counts: '' });
   useEffect(() => {
@@ -51,7 +53,7 @@ export function QuickLogEntry({
         <Plus size={24} aria-hidden="true" />
       </span>
       <div>
-        <strong>{entry.resume ? 'Resume Quick Log' : 'Quick Log'}</strong>
+        <strong>{entry.resume ? 'Resume Quick Log' : label}</strong>
         {entry.counts ? (
           <span className="muted small">
             {entry.counts}

@@ -44,7 +44,9 @@ describe('route-aware native tour', () => {
     await act(() => tour?.start());
     expect(runtime.dismissTo).toHaveBeenLastCalledWith('/');
     await arrive('/');
-    for (const index of [1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, 0]) {
+    const forward = FEATURE_TOUR_STEPS.map((_, index) => index).slice(1);
+    const backward = [...forward].reverse().slice(1).concat(0);
+    for (const index of [...forward, ...backward]) {
       await act(() => tour?.go(index));
       expect(tour?.index).toBe(index);
       const route = FEATURE_TOUR_STEPS[index]?.route;

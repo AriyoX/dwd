@@ -11,6 +11,9 @@ export function TheLinkUp() {
       <header className={styles['header']}>
         <span className={styles['miniWordmark']}>THE LINK UP</span>
         <nav className={styles['headerActions']} aria-label="Event links">
+          <Link href="/events" className={styles['headerLink']}>
+            All events
+          </Link>
           <Link href="/quick-log?scope=guest" className={styles['headerLink']}>
             Count shots <ArrowUpRight size={13} aria-hidden="true" />
           </Link>

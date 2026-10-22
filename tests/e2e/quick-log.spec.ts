@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('session options dismiss accessibly and guest Back returns to logging', async ({ page }) => {
+test('session options dismiss accessibly and guest Back opens the homepage with logs preserved', async ({
+  page,
+}) => {
   await page.route('**/auth/v1/**', (route) => route.abort());
   await page.goto('/quick-log');
   await page.getByText('Recent activity', { exact: true }).click();
@@ -21,7 +23,9 @@ test('session options dismiss accessibly and guest Back returns to logging', asy
   await expect(page.getByRole('button', { name: 'Log a shot' })).not.toBeVisible();
   await expect(page.getByText('1 drink · 0 chasers', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Back', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Just log it.' })).toBeVisible();
+  await expect(page).toHaveURL(/localhost:3100\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your night.Your own pace.');
+  await page.locator('main').getByRole('link', { name: 'Log now' }).click();
   await expect(page.getByText('1 drink · 0 chasers', { exact: true })).toBeVisible();
 });
 

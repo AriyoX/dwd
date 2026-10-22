@@ -8,7 +8,7 @@ import { AccountMenu } from '@/components/layout/account-menu';
 import { JoinCodeForm } from '@/features/nights/join-code-form';
 import { TonightBanners } from '@/features/ads/tonight-banners';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { QuickLogEntry } from '@/features/quick-log/entry-point';
+import { QuickLogSuggestion } from '@/features/quick-log/suggestion';
 import { StartTonight } from '@/features/nights/start-tonight';
 
 export default async function HomePage() {
@@ -29,7 +29,12 @@ export default async function HomePage() {
     <main className="page-shell home-shell" id="main-content">
       <header className="topbar">
         <Wordmark linked={false} />
-        <AccountMenu name={name} />
+        <div className="home-nav">
+          <Link className="text-link" href="/events">
+            Events
+          </Link>
+          <AccountMenu name={name} />
+        </div>
       </header>
       <header className="home-heading">
         <h1>{firstName ? `Your evening, ${firstName}.` : 'Your evening starts here.'}</h1>
@@ -38,7 +43,6 @@ export default async function HomePage() {
         </span>
       </header>
       <div className="stack-lg">
-        <QuickLogEntry {...(userId ? { accountId: userId } : {})} />
         <Link data-tour="history" className="text-link" href="/history">
           Night history
         </Link>
@@ -94,6 +98,7 @@ export default async function HomePage() {
         ) : null}
       </div>
       <TonightBanners />
+      <QuickLogSuggestion {...(userId ? { accountId: userId } : {})} />
       <footer className="app-footer">
         <p>DWD cannot determine sobriety or driving safety.</p>
         <nav aria-label="Legal">

@@ -1,6 +1,10 @@
-import type { Metadata } from 'next';
+import { publicMetadata } from '@/lib/public-metadata';
 import { LegalPage } from '@/components/legal-page';
-export const metadata: Metadata = { title: 'Drinking & safety' };
+export const metadata = publicMetadata(
+  'Drinking & safety',
+  'Understand what a drink count can and cannot tell you. DWD is for adults of legal drinking age.',
+  '/safety',
+);
 export default function SafetyPage() {
   return (
     <LegalPage

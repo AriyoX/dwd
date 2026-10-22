@@ -7,13 +7,6 @@ export const FEATURE_TOUR_STEPS = [
       'Start Tonight offers Quick Log for a simple count or Plan a Night for drinks, mates and an end time.',
   },
   {
-    id: 'quick-log',
-    route: '/',
-    title: 'Quick Log',
-    message:
-      'Tap the big circle to log a drink, then use Chaser or Undo. Add your session to a night to keep using this layout with your planned drinks.',
-  },
-  {
     id: 'join',
     route: '/',
     title: "Join a friend's night",

@@ -5,8 +5,10 @@ import './globals.css';
 import { themeCss } from '@/lib/theme';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { AccountQuickSync } from '@/features/quick-log/account-sync';
+import { resolveSiteUrl } from '@/lib/site-url';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(resolveSiteUrl(process.env)),
   title: { default: 'DWD', template: '%s · DWD' },
   description: 'Track what you drink during a shared night out.',
   applicationName: 'DWD',

@@ -1,5 +1,5 @@
 import { inviteTokenSchema } from '@dwd/core';
-/** Invitations take precedence even for returning accounts; null means render the guest logger. */
+/** Invitations take precedence even for returning accounts; null means render the landing page. */
 export function quickEntryDestination(accountId: string | null, join?: unknown): string | null {
   if (join !== undefined) {
     const token = inviteTokenSchema.safeParse(join);

@@ -121,24 +121,15 @@ test('contextual tour uses actual screens, interactive controls and isolated sam
       observeLocalSteps &&
       headers['rsc'] === '1' &&
       !headers['next-router-prefetch'] &&
-      ['quick-log', 'join', 'choices', 'bottles', 'group', 'help'].includes(
-        url.searchParams.get('tour') ?? '',
-      )
+      ['join', 'choices', 'bottles', 'group', 'help'].includes(url.searchParams.get('tour') ?? '')
     )
       localStepRequests.push(request.url());
   });
   await card.getByRole('button', { name: 'Next', exact: true }).click();
-  card = await coach(page, 'quick-log');
-  await expect(page.locator('[data-tour="quick-log"]')).toContainText('Quick Log');
-  await card.getByRole('button', { name: 'Next', exact: true }).click();
   card = await coach(page, 'join');
   await expect(page.getByLabel('Invitation link or code')).toHaveValue('Practice invite');
   await card.getByRole('button', { name: 'Back', exact: true }).click();
-  card = await coach(page, 'quick-log');
-  await card.getByRole('button', { name: 'Back', exact: true }).click();
   card = await coach(page, 'start');
-  await card.getByRole('button', { name: 'Next', exact: true }).click();
-  card = await coach(page, 'quick-log');
   await card.getByRole('button', { name: 'Next', exact: true }).click();
   await coach(page, 'join');
   await page.getByRole('button', { name: 'Join night', exact: true }).click();
@@ -338,7 +329,7 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   await expect(
     page
       .getByRole('navigation', { name: 'Your account' })
-      .getByRole('link', { name: 'Night history' }),
+      .getByRole('link', { name: 'Events', exact: true }),
   ).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(accountMenu).toBeFocused();
@@ -352,8 +343,6 @@ test('skip, normal navigation, stale routes, dark mode and installation tip', as
   await page.getByLabel('Account menu').click();
   await page.getByRole('button', { name: 'Take a tour' }).click();
   card = await coach(page, 'start');
-  await card.getByRole('button', { name: 'Next', exact: true }).click();
-  card = await coach(page, 'quick-log');
   await card.getByRole('button', { name: 'Next', exact: true }).click();
   await coach(page, 'join');
   await page.screenshot({ path: `.tmp/tour-${info.project.name}-dark.png` });

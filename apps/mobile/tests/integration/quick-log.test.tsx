@@ -8,6 +8,7 @@ import QuickHistoryScreen from '../../app/quick-history';
 import QuickTransferScreen from '../../app/quick-transfer';
 import StartTonightScreen from '../../app/start-tonight';
 import QuickBenefitsScreen from '../../app/quick-benefits';
+import { QuickLogSuggestion } from '@/components/quick-log-suggestion';
 import { QuickSyncProvider } from '@/providers/quick-sync-provider';
 import { nativeQuickOffer, nativeQuickStore } from '@/lib/quick-log';
 
@@ -26,6 +27,7 @@ const runtime = vi.hoisted(() => ({
   },
   haptic: vi.fn(),
   announce: vi.fn(),
+  completeIntroduction: vi.fn(),
   uuid: 0,
   failWrites: false,
   getNights: vi.fn(() => Promise.resolve([])),
@@ -41,7 +43,10 @@ vi.mock('react-native', () => ({
   Text: 'Text',
   View: 'View',
   useWindowDimensions: () => ({ width: 390, height: 844, fontScale: 1, scale: 3 }),
-  AccessibilityInfo: { announceForAccessibility: runtime.announce },
+  AccessibilityInfo: {
+    announceForAccessibility: runtime.announce,
+    isScreenReaderEnabled: () => Promise.resolve(false),
+  },
   AppState: { addEventListener: () => ({ remove: vi.fn() }) },
 }));
 vi.mock('react-native-reanimated', () => ({ useReducedMotion: () => true }));
@@ -75,6 +80,9 @@ vi.mock('@dwd/data', () => ({
   getQuickSessions: () => Promise.resolve([]),
 }));
 vi.mock('@/providers/connectivity-provider', () => ({ useConnectivity: () => ({ online: true }) }));
+vi.mock('@/providers/onboarding-provider', () => ({
+  useOnboarding: () => ({ complete: runtime.completeIntroduction }),
+}));
 vi.mock('@/lib/auth-state', async (original) => ({
   ...(await original<Record<string, unknown>>()),
   authHandoff: () => ({ remember: runtime.remember }),
@@ -153,6 +161,35 @@ afterEach(async () => {
   root = null;
 });
 describe('native public Quick Log', () => {
+  it('takes signed-out guests back to Welcome and retains their logs', async () => {
+    nativeQuickStore('guest').acknowledgeEligibility();
+    await render();
+    await press('Log one drink');
+    await press('Back');
+    expect(runtime.router.replace).toHaveBeenLastCalledWith('/welcome');
+    expect(runtime.completeIntroduction).toHaveBeenCalled();
+    expect(nativeQuickStore('guest').session()?.entries).toHaveLength(1);
+  });
+  it('dismisses the Quick Log suggestion and keeps it dismissed after remounting', async () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
+    await act(() => {
+      root = create(<QuickLogSuggestion />);
+    });
+    expect(button('Dismiss Quick Log suggestion')).toBeDefined();
+    await press('Dismiss Quick Log suggestion');
+    expect(button('Dismiss Quick Log suggestion')).toBeUndefined();
+    await act(() => root?.unmount());
+    await act(() => {
+      root = create(<QuickLogSuggestion />);
+    });
+    expect(button('Dismiss Quick Log suggestion')).toBeUndefined();
+    expect(values.get('dwd.quick-log.suggestion.v1:guest')).toBe('seen');
+    vi.unstubAllGlobals();
+  });
   it.each([false, true])('keeps transferred sessions in history (partial: %s)', async (partial) => {
     const store = nativeQuickStore('guest');
     store.acknowledgeEligibility();

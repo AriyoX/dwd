@@ -24,6 +24,7 @@ import { Action, PrimaryButton } from '@/components/primary-button';
 import { Notice, Panel, Screen } from '@/components/screen';
 import { Choice } from '@/components/choice';
 import { useSupabase } from '@/providers/supabase-provider';
+import { useOnboarding } from '@/providers/onboarding-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { LegalLinks } from '@/components/auth-chrome';
 import { useQuickSync } from '@/providers/quick-sync-provider';
@@ -46,6 +47,7 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
   const ads = useQuickLogAds();
   const { store, state, scope } = useQuickLog(guest, selectedId);
   const { session: account } = useSupabase();
+  const { complete: completeIntroduction } = useOnboarding();
   const { issue: syncIssue, retrySync } = useQuickSync();
   const { colors, typography } = useTheme();
   const router = useRouter();
@@ -129,9 +131,10 @@ function Logger({ guest, selectedId }: { guest: boolean; selectedId: string | un
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Action
           label="Back"
-          onPress={() =>
-            router.canGoBack() ? router.back() : router.replace(account ? '/' : '/welcome')
-          }
+          onPress={() => {
+            if (!account) completeIntroduction();
+            router.replace(account ? '/' : '/welcome');
+          }}
           style={{ alignItems: 'center', justifyContent: 'center' }}
         >
           <Ionicons name="chevron-back" size={26} color={colors.primary} />

@@ -58,8 +58,8 @@ async function user(profile = true) {
   return { client, email, password, id: data.user.id };
 }
 async function logGuest(page: Page) {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Just log it.' })).toBeVisible();
+  await page.goto('/quick-log');
+  await expect(page.getByRole('heading', { name: 'Quick Log', exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: /18 or older/ }).click();
   await page.getByRole('button', { name: 'Log one drink' }).click({ clickCount: 3, delay: 35 });
   await page.getByRole('button', { name: 'Log one non-alcoholic chaser' }).click();
@@ -76,7 +76,7 @@ async function signIn(page: Page, account: Awaited<ReturnType<typeof user>>) {
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 }
 
-test('the normal guest homepage is ready for logging, and discovery is dismissible with no repeated promotions', async ({
+test('guest Quick Log is ready for logging, and account discovery is dismissible with no repeated promotions', async ({
   page,
 }, info) => {
   await page.route('**/auth/v1/**', (route) => route.abort());
@@ -132,14 +132,18 @@ test('guest sign-in saves exactly once, resumes the same session and restores it
     await second.goto('http://localhost:3100/login');
     await signIn(second, account);
     await expect(second).toHaveURL(/\/home/);
-    await second.getByRole('link', { name: /Resume Quick Log/ }).click();
+    await second.getByRole('button', { name: 'Start Tonight', exact: true }).click();
+    await second
+      .getByRole('dialog')
+      .getByRole('link', { name: /Quick Log.*Keep count/ })
+      .click();
     await expect(second.getByText('3 drinks · 1 chaser', { exact: true })).toBeVisible();
     await second.getByRole('link', { name: 'Back', exact: true }).click();
     await second.getByRole('link', { name: 'Night history', exact: true }).click();
     await second.getByRole('link', { name: 'Quick Log history', exact: true }).click();
     await expect(second.getByText('Quick Log session', { exact: true })).toBeVisible();
     await expect(
-      second.getByText('Drink sizes and alcohol strength not recorded.', { exact: true }),
+      second.getByRole('heading', { name: '3 drinks · 1 chaser', exact: true }),
     ).toBeVisible();
     const result = await account.client.rpc('get_quick_log_sessions', {});
     expect(result.data as unknown as unknown[]).toHaveLength(1);
@@ -148,14 +152,14 @@ test('guest sign-in saves exactly once, resumes the same session and restores it
   }
 });
 
-test('Start Tonight opens Quick Log directly or the existing planned setup, while a live session has a separate resume entry', async ({
+test('Start Tonight offers Quick Log or planned setup and resumes the current quick session', async ({
   page,
 }) => {
   test.skip(!process.env['E2E_SUPABASE_PUBLISHABLE_KEY'], 'Local Supabase required.');
   const account = await user();
   await page.goto('/login');
   await signIn(page, account);
-  await expect(page.getByRole('link', { name: /Resume Quick Log/ })).not.toBeVisible();
+  await expect(page.locator('.home-shell .stack-lg > a[data-tour="quick-log"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
   await page.getByRole('link', { name: /Plan a Night.*Detailed tracking/ }).click();
   await expect(page).toHaveURL(/\/night\/new/);
@@ -165,7 +169,11 @@ test('Start Tonight opens Quick Log directly or the existing planned setup, whil
   await expect(page.getByRole('button', { name: 'Log one drink' })).toBeEnabled();
   await page.getByRole('button', { name: 'Log one drink' }).click();
   await page.getByRole('link', { name: 'Back', exact: true }).click();
-  await page.getByRole('link', { name: /Resume Quick Log/ }).click();
+  await page.getByRole('button', { name: 'Start Tonight', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: /Quick Log.*Keep count/ })
+    .click();
   await expect(page.getByText('1 drink · 0 chasers', { exact: true })).toBeVisible();
 });
 

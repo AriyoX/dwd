@@ -31,9 +31,7 @@ vi.mock('@/components/brand', () => ({ Brand: 'Brand' }));
 vi.mock('@/components/night-artwork', () => ({ NightArtwork: 'NightArtwork' }));
 vi.mock('@/components/tonight-banners', () => ({ TonightBanners: 'TonightBanners' }));
 vi.mock('@/components/night-activity', () => ({ NightActivity: 'NightActivity' }));
-vi.mock('@/hooks/use-quick-log', () => ({
-  useQuickLog: () => ({ state: { record: { activeSessionId: null, sessions: [] } } }),
-}));
+vi.mock('@/components/quick-log-suggestion', () => ({ QuickLogSuggestion: 'QuickLogSuggestion' }));
 vi.mock('@/components/appearance-picker', () => ({ AppearancePicker: 'AppearancePicker' }));
 vi.mock('@/components/disclosure', () => ({ Disclosure: 'Disclosure' }));
 vi.mock('@/components/settings-section', () => ({ SettingsSection: 'SettingsSection' }));
@@ -89,10 +87,7 @@ describe('tour targets on real screens', () => {
     { nights: [{ id: 'night', title: 'Tonight', role: 'host', endsAt: '2026-10-08T23:00:00Z' }] },
   ])('wraps the actual Start and Join buttons with any active-night state', async ({ nights }) => {
     await mount(TonightScreen, nights);
-    expect(targetIds()).toEqual(['quick-log', 'start', 'join']);
-    expect(
-      root?.root.findByProps({ id: 'quick-log' }).findAllByProps({ label: 'Quick Log' }),
-    ).toHaveLength(1);
+    expect(targetIds()).toEqual(['start', 'join']);
     expect(
       root?.root.findByProps({ id: 'start' }).findAllByProps({ label: 'Start Tonight' }),
     ).toHaveLength(1);

@@ -27,15 +27,6 @@ export const tourSteps: readonly TourStep[] = [
     onTargetClick: 'log',
   },
   {
-    id: 'quick-log',
-    route: '/home?tour=quick-log',
-    target: 'quick-log',
-    title: 'Quick Log',
-    description:
-      'Tap the big circle to log a drink, then use Chaser or Undo. Add your session to a night to keep this layout with your planned drinks.',
-    placement: 'bottom',
-  },
-  {
     id: 'join',
     route: '/home?tour=join',
     target: 'join',
